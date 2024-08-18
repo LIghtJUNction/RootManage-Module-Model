@@ -42,7 +42,7 @@ jobs:
 
       - name: Rename " MyModule" folder
         run: |
-          mv " main/MyModule" "main/${{ github.event.inputs.id }}"
+          mv main/MyModule main/${{ github.event.inputs.id }}
 
 
 
