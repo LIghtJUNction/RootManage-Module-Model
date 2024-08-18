@@ -1,15 +1,31 @@
 # KernelSu-Module-Model
+
 ## my module 文件夹
-请重命名为你的模块名
+
+> 点击action板块运行initial工作流，重命名为你的模块名
 
 ## CHANGELOG.md
-这里记录你的更改
+
+> 这里记录你的更改
 
 ## update.json
-这里填写更新链接
 
+> 这里填写更新链接
+
+## build.sh
+
+> 这里的作用是打包模块
+
+# *# 开始编写模块*
+
+1. 复刻(Fork)本项目
+2. 点击ation
+3. 运行initial工作流
+4. 点击模块文件夹，按照说明编写模块
+5. 点击运行action里的release工作流，自动打包发布
 
 # 以下是官方的详细说明
+
 # 模块开发指南 {#introduction}
 
 KernelSU 提供了一个模块机制，它可以在保持系统分区完整性的同时达到修改系统分区的效果；这种机制通常被称之为 systemless。
@@ -255,25 +271,27 @@ set_perm_recursive <directory> <owner> <group> <dirpermission> <filepermission> 
 在 KernelSU 中，根据脚本运行模式的不同分为两种：post-fs-data 模式和 late_start 服务模式。
 
 - post-fs-data 模式
+
   - 这个阶段是阻塞的。在执行完成之前或者 10 秒钟之后，启动过程会暂停。
   - 脚本在任何模块被挂载之前运行。这使得模块开发者可以在模块被挂载之前动态地调整它们的模块。
   - 这个阶段发生在 Zygote 启动之前。
   - 使用 setprop 会导致启动过程死锁！请使用 `resetprop -n <prop_name> <prop_value>` 代替。
   - **只有在必要时才在此模式下运行脚本**。
-
 - late_start 服务模式
+
   - 这个阶段是非阻塞的。你的脚本会与其余的启动过程**并行**运行。
   - **大多数脚本都建议在这种模式下运行**。
 
 在 KernelSU 中，启动脚本根据存放位置的不同还分为两种：通用脚本和模块脚本。
 
 - 通用脚本
+
   - 放置在 `/data/adb/post-fs-data.d`, `/data/adb/post-mount.d`, `/data/adb/service.d` 或 `/data/adb/boot-completed.d` 中。
   - 只有在脚本被设置为可执行（`chmod +x script.sh`）时才会被执行。
   - 在 `post-fs-data.d` 中的脚本以 post-fs-data 模式运行，在 `service.d` 中的脚本以 late_start 服务模式运行。
   - 模块**不应**在安装过程中添加通用脚本。
-
 - 模块脚本
+
   - 放置在模块自己的文件夹中。
   - 只有当模块被启用时才会执行。
   - `post-fs-data.sh` 以 post-fs-data 模式运行，`post-mount.sh` 以 post-mount 模式运行，而 `service.sh` 则以 late_start 服务模式运行，`boot-completed` 在 Android 系统启动完毕后以服务模式运行。

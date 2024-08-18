@@ -11,6 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.0
+        with:  
+          ref: master  
+          path: master 
+
+      - uses: actions/checkout@v4.1.0
+        with:  
+          ref: module  
+          path: module 
+
+
       - name: Get Version
         id: get_version
         run: |
@@ -23,10 +33,10 @@ jobs:
             "versionCode": "${{ steps.get_version.outputs.date }}",
             "zipUrl": "待填写",
             "changelog": “待填写"
-          }' > update.json
+          }' > master/update.json
 
-          sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" module.prop
-          sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" module.prop
+          sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" mater/MyModule/module.prop
+          sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" mater/MyModule/module.prop
 
       - name: run build.sh
         run: |
@@ -38,3 +48,5 @@ jobs:
           tag_name: ${{ github.event.inputs.tag }}
           files: | 
            ${{ github.event.inputs.ModuleName }}-*.zip 
+
+          generate_release_note: true
