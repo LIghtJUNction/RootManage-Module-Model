@@ -1,3 +1,7 @@
 #!/bin/sh
 
-zip -r -o -X -ll my module-$(cat module.prop | grep 'version=' | awk -F '=' '{print $2}').zip ./my module
+version=$(awk -F= '/version=/ {print $2}' my module/module.prop)
+#从module.prop获取版本
+
+zip -r "my module-${version}.zip" ./my\ module
+#打包模块
