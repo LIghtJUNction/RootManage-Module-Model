@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       id:
-        description: '请看module.prop说明'
+        description: '模块id,请看module.prop说明'
         required: true
       
       name:
