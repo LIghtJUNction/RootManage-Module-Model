@@ -41,6 +41,7 @@ jobs:
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Rename " MyModule" folder
+        if: ${{ github.event.inputs.id }} != 'MyModule' 
         run: |
           mv main/MyModule main/${{ github.event.inputs.id }}
 
