@@ -1,4 +1,13 @@
 # KernelSu-Module-Model
+## my module 文件夹
+请重命名为你的模块名
+
+## CHANGELOG.md
+这里记录你的更改
+
+## update.json
+这里填写更新链接
+
 
 # 以下是官方的详细说明
 # 模块开发指南 {#introduction}
