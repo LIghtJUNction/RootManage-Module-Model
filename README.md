@@ -1,3 +1,6 @@
+# KernelSu-Module-Model
+
+# 以下是官方的详细说明
 # 模块开发指南 {#introduction}
 
 KernelSU 提供了一个模块机制，它可以在保持系统分区完整性的同时达到修改系统分区的效果；这种机制通常被称之为 systemless。
