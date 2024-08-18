@@ -5,11 +5,7 @@ on:
     inputs:
       tag:
         description: 'Release Tag(一般就是版本号)'
-        required: true
-      ModuleName:
-        description: '模块名字'
-        required: true
-# 闲麻烦不想每次都输入，就把这个ture改成false        
+        required: true       
 jobs:
   build:
     runs-on: ubuntu-latest
