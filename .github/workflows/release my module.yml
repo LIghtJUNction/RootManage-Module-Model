@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release Tag(一般就是版本号)'
+        description: 'Release Tag(一般就填版本号)'
         required: true       
 jobs:
   build:

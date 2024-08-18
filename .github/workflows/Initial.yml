@@ -3,30 +3,78 @@ name: initial
 on:
   workflow_dispatch:
     inputs:
-      module_name:
-        description: 'Enter the module name'
+      id:
+        description: '请看module.prop说明'
+        required: true
+      
+      name:
+        description: '输入模块名'
         required: true
 
+      author:
+        description: '输入作者名'
+        required: true
+
+      description:
+        description: '请输入模块描述'
+        required: true
+
+
 jobs:
-  rename_module:
+  rename:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.0
+        with:  
+          ref: master  
+          path: master 
 
+      - uses: actions/checkout@v4.1.0
+        with:  
+          ref: module  
+          path: module 
+
+      - name: Get Version
+        id: get_version
+        run: |
+          echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
       - name: Rename " MyModule" folder
         run: |
-          mv " MyModule" "${{ github.event.inputs.module_name }}"
+          mv " master/MyModule" "master/${{ github.event.inputs.id }}"
 
-      - name: Update the name key in the file
+
+
+      - name: Add the id key in the file
         run: |
-          echo "name=${{ github.event.inputs.module_name }}" >> your_file.txt
+          echo "id=${{ github.event.inputs.id }}" >> master/${{ github.event.inputs.id }}/module.prop
+      - name: Add the name key in the file
+        run: |
+          echo "name=${{ github.event.inputs.name }}" >> master/${{ github.event.inputs.id }}/module.prop
+
+      - name: Add the version key in the file
+        run: |
+          echo "version=0.0.1" >> master/${{ github.event.inputs.id }}/module.prop
+
+      - name: Add the version code key in the file
+        run: |
+          echo "versionCode=${{ steps.get_version.outputs.date }}" >> master/${{ github.event.inputs.id }}/module.prop
+
+      - name: Add the author key in the file
+        run: |
+          echo "author=${{ github.event.inputs.author }}" >> master/${{ github.event.inputs.id }}/module.prop
+
+      - name: Add the description key in the file
+        run: |
+          echo "description=${{ github.event.inputs.description }}" >> master/${{ github.event.inputs.id }}/module.prop
+
+
+
 
       - name: Commit changes
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "Rename module folder to ${{ github.event.inputs.module_name }} and update name key"
+          git commit -m "Rename module folder to ${{ github.event.inputs.id }} and update module.prop"
           git push origin master
