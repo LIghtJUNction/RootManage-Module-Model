@@ -5,15 +5,20 @@ on:
     inputs:
       tag:
         description: 'Release Tag(一般就填版本号)'
-        required: true       
+        required: true     
+      name:
+        description: '请填写模块名字'
+        required: true      
+        
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.1.0
         with:  
-          ref: master  
-          path: master 
+          ref: main  
+          path: main 
 
       - uses: actions/checkout@v4.1.0
         with:  
@@ -33,7 +38,7 @@ jobs:
             "versionCode": "${{ steps.get_version.outputs.date }}",
             "zipUrl": "待填写",
             "changelog": “待填写"
-          }' > master/update.json
+          }' > main/update.json
 
           sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" mater/MyModule/module.prop
           sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" mater/MyModule/module.prop
@@ -47,6 +52,6 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag }}
           files: | 
-           ${{ github.event.inputs.ModuleName }}-*.zip 
+           ${{ github.event.inputs.name }}-*.zip 
 
           generate_release_note: true
