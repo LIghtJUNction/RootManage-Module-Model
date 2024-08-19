@@ -8,7 +8,7 @@ on:
         required: true
       
       name:
-        description: '输入模块名'
+        description: '输入模块�?'
         required: true
 
       author:
@@ -16,7 +16,7 @@ on:
         required: true
 
       description:
-        description: '请输入模块描述'
+        description: '请输入模块描�?'
         required: true
 
 
@@ -70,13 +70,18 @@ jobs:
           echo "description=${{ github.event.inputs.description }}" >> main/${{ github.event.inputs.id }}/module.prop
 
 
+      - name: Debugging Output
+        run: |
+          git status
+          git log -1
 
 
       - name: Commit changes
-        working-directory: main
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
           git commit -m "Rename module folder to ${{ github.event.inputs.id }} and update module.prop"
           git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
