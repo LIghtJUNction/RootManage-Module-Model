@@ -92,7 +92,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
-          git add .
+          git add update.json MyModule/module.prop
           git commit -m "更新 update.json和module.prop"
 
       - name: Push changes 
