@@ -70,17 +70,17 @@ jobs:
 
       - name: 更新 update.json 和 module.prop
         run: |
-          ls
-          echo '{
-            "version": "${{ env.version }}",
-            "versionCode": "${{ env.date }}",
-            "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
-            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
-          }' >> update.json
-
+          
           sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
           sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
 
+      - name: Commit changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add .
+          git commit -m "update update.json & module.prop"
+          git push origin main
 
 
       - name: Create GitHub Release

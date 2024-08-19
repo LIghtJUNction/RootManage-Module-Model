@@ -38,34 +38,52 @@ jobs:
         id: get_version
         run: |
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
-
+      - name: »ñÈ¡²Ö¿â URL
+        id: get_repo_url
+        run: |
+          echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
 
       - name: Add the id key in the file
         run: |
-          echo "id=MyModule" >> MyModule/module.prop
+          echo "id=${{ github.event.inputs.id }}" >> MyModule/module.prop
+          echo "id=${{ github.event.inputs.id }}" >> $GITHUB_ENV
       - name: Add the name key in the file
         run: |
           echo "name=${{ github.event.inputs.name }}" >> MyModule/module.prop
-
+          echo "name=${{ github.event.inputs.name }}" >> $GITHUB_ENV
       - name: Add the version key in the file
         run: |
           echo "version=0.0.1" >> MyModule/module.prop
-
+          echo "version=0.0.1" >> $GITHUB_ENV
       - name: Add the version code key in the file
         run: |
           echo "versionCode=${{ steps.get_version.outputs.date }}" >> MyModule/module.prop
-
+          echo "versionCode=${{ steps.get_version.outputs.date }}" >> $GITHUB_ENV
       - name: Add the author key in the file
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
-
+          echo "author=${{ github.event.inputs.author }}" >> GITHUB_ENV
       - name: Add the description key in the file
         run: |
           echo "description=${{ github.event.inputs.description }}" >> MyModule/module.prop
+          echo "description=${{ github.event.inputs.description }}" >> $GITHUB_ENV
 
       - name: List files for debug
         run: ls -la
 
+      - name: init__update.json
+        run: |
+          echo "" > update.json
+          
+          echo "zipUrl=${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" >> $GITHUB_ENV
+          echo "changelog=${{ env.repo_url }}/raw/main/CHANGELOG.md" >> $GITHUB_ENV
+
+          echo '{
+            "version": "${{ env.version }}",
+            "versionCode": "${{ env.date }}",
+            "zipUrl": "${{ env.zipUrl }}",
+            "changelog": "${{ env.changelog }}
+            }' > update.json
 
 
       - name: Debugging Output
