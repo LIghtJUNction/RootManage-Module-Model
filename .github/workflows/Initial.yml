@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       id:
-        description: '模块id,请看module.prop说明'
+        description: 'æ¨¡å—id,è¯·çœ‹module.propè¯´æ˜Ž'
         required: true
       
       name:
-        description: '输入模块�?'
+        description: 'è¾“å…¥æ¨¡å—å?'
         required: true
 
       author:
-        description: '输入作者名'
+        description: 'è¾“å…¥ä½œè€…å'
         required: true
 
       description:
-        description: '请输入模块描�?'
+        description: 'è¯·è¾“å…¥æ¨¡å—æè¿?'
         required: true
 
 
@@ -83,5 +83,4 @@ jobs:
           git add .
           git commit -m "Rename module folder to ${{ github.event.inputs.id }} and update module.prop"
           git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
