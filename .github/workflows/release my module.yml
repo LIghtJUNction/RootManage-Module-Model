@@ -16,7 +16,7 @@ jobs:
           ref: main  
       - uses: actions/checkout@v4.1.0
         with:  
-          ref: mmodule  
+          ref: module  
           path: module
 
       - name: 获取仓库 URL
