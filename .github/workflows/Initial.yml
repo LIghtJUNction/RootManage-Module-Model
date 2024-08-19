@@ -99,22 +99,20 @@ jobs:
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
-            echo "No changes to commit."
-            exit 0
-          else
-            echo "Changes detected, proceeding with commit."
+            echo "skip=true" >> $GITHUB_ENV
           fi
-
+          
       - name: Commit changes
+        if: env.skip != 'true'
         run: |
           git config --global user.name "GitHub Action"
           git add .
           git commit -m "Automated commit by GitHub Action"
-        if: success()  
-
+          
       - name: Push changes
+        if: env.skip != 'true'
         run: git push origin main
-        if: success()
+          
 
       - name: Package module ´ò°üÄ£¿é
         run: |

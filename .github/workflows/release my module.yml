@@ -83,22 +83,22 @@ jobs:
         run: |
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
+            echo "skip=true" >> $GITHUB_ENV
             exit 0
-          else
-            echo "Changes detected, proceeding with commit."
           fi
-
+          
       - name: Commit changes
+        if: env.skip != 'true'
         run: |
           git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
           git add .
           git commit -m "更新 update.json和module.prop"
-        if: success()  
-
+          
       - name: Push changes 
+        if: env.skip != 'true'
         run: git push origin main
-        if: success()
-
+          
       - name: Package module 打包模块
         run: |
           # 打包模块
