@@ -7,5 +7,5 @@ author=$(awk -F= '/author=/ {print $2}' ./module.prop)
 description=$(awk -F= '/description=/ {print $2}' ./module.prop)
 #从module.prop获取信息
 
-zip -r "${name}-${version}(${versionCode})-by${author}.zip" ./
+zip -r "${name}-${version}(${versionCode})-by${author}.zip" *
 #打包模块
