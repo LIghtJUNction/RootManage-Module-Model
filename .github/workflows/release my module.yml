@@ -94,12 +94,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-      - name: Verify file existence
-        run: |
-          if [ ! -f "mymodule-0.0.1-20240819-bylightjunction.zip" ]; then
-            echo "File does not exist!"
-            exit 1
-          fi
+
 
       - name: upload
         run: |

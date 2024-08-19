@@ -108,7 +108,7 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "Rename module folder to MyModule and update module.prop"
+          git commit -m "init≥ı ºªØ"
           git push origin main
 
       - name: Package module
