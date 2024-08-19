@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       id:
-        description: 'æ¨¡å—id,è¯·çœ‹module.propè¯´æ˜Ž'
+        description: 'ÇëÊäÈëÄ£¿éid£¬ÀýÈçZygisk_shamiko'
         required: true
       
       name:
-        description: 'è¾“å…¥æ¨¡å—å?'
+        description: 'ÇëÊäÈëÄ£¿éÃû£¬ÀýÈçshamiko'
         required: true
 
       author:
-        description: 'è¾“å…¥ä½œè€…å'
+        description: '×÷ÕßÃû'
         required: true
 
       description:
-        description: 'è¯·è¾“å…¥æ¨¡å—æè¿?'
+        description: 'Ä£¿éÃèÊö'
         required: true
 
 
@@ -25,12 +25,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4.1.0
+      - uses: actions/checkout@v3
         with:  
           ref: main  
           path: main 
 
-      - uses: actions/checkout@v4.1.0
+      - uses: actions/checkout@v3
         with:  
           ref: module  
           path: module 
@@ -40,7 +40,7 @@ jobs:
         run: |
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
 
-      - name: Rename " MyModule" folder
+      - name: Rename "MyModule" folder
         if: ${{ github.event.inputs.id != 'MyModule'  }}
         run: |
           mv main/MyModule main/${{ github.event.inputs.id }}
