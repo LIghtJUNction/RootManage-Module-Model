@@ -51,8 +51,6 @@ jobs:
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
 
-          echo "zipUrl=${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" >> $GITHUB_ENV
-          echo "changelog=${{ env.repo_url }}/raw/main/CHANGELOG.md" >> $GITHUB_ENV
 
 
     

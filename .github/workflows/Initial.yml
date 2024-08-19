@@ -37,7 +37,7 @@ jobs:
       - name: Get Version
         id: get_version
         run: |
-          echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
       - name: ªÒ»°≤÷ø‚ URL
         id: get_repo_url
         run: |
