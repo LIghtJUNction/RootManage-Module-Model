@@ -79,7 +79,7 @@ jobs:
           fi
 
 
-# 即便没有任何改动也不会报错，方便我debug
+# 即便没有任何改动也不会报错，方便debug
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
