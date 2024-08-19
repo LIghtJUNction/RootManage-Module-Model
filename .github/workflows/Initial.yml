@@ -39,31 +39,31 @@ jobs:
       - name: Rename "MyModule" folder
         if: ${{ github.event.inputs.id != 'MyModule'  }}
         run: |
-          mv main/MyModule main/${{ github.event.inputs.id }}
+          mv MyModule ${{ github.event.inputs.id }}
 
 
       - name: Add the id key in the file
         run: |
-          echo "id=${{ github.event.inputs.id }}" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "id=${{ github.event.inputs.id }}" >> ${{ github.event.inputs.id }}/module.prop
       - name: Add the name key in the file
         run: |
-          echo "name=${{ github.event.inputs.name }}" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "name=${{ github.event.inputs.name }}" >> ${{ github.event.inputs.id }}/module.prop
 
       - name: Add the version key in the file
         run: |
-          echo "version=0.0.1" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "version=0.0.1" >> ${{ github.event.inputs.id }}/module.prop
 
       - name: Add the version code key in the file
         run: |
-          echo "versionCode=${{ steps.get_version.outputs.date }}" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "versionCode=${{ steps.get_version.outputs.date }}" >> ${{ github.event.inputs.id }}/module.prop
 
       - name: Add the author key in the file
         run: |
-          echo "author=${{ github.event.inputs.author }}" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "author=${{ github.event.inputs.author }}" >> ${{ github.event.inputs.id }}/module.prop
 
       - name: Add the description key in the file
         run: |
-          echo "description=${{ github.event.inputs.description }}" >> main/${{ github.event.inputs.id }}/module.prop
+          echo "description=${{ github.event.inputs.description }}" >> ${{ github.event.inputs.id }}/module.prop
 
       - name: List files for debug
         run: ls -la
