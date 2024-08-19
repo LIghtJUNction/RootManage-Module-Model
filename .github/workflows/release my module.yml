@@ -130,5 +130,5 @@ jobs:
           echo "UPSTREAM_ACCESS_TOKEN is missing. Creating an issue to notify you:)."
           curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                -H "Accept: application/vnd.github.v3+json" \
-               -d '{"title":"UPSTREAM_ACCESS_TOKEN Missing","body":"The UPSTREAM_ACCESS_TOKEN is missing in the GitHub Actions workflow. 如果你想要在发布模块的同时，上传到母仓库，请在设置界面填写UPSTREAM_ACCESS_TOKEN"}' \
+               -d '{"title":"UPSTREAM_ACCESS_TOKEN Missing","body":"The UPSTREAM_ACCESS_TOKEN 缺失，（运行工作流发布模块的时候）如果你想要在发布模块的同时，上传到母仓库，请在设置界面填写UPSTREAM_ACCESS_TOKEN，如果你不想上传，忽略即可：）"}' \
                https://api.github.com/repos/${{ github.repository }}/issues

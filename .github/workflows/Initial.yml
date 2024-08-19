@@ -86,6 +86,7 @@ jobs:
       - name: init__CHANGELOG.md
         run: |
           echo "" > CHANGELOG.md
+          echo -e "# Changelog 0.0.0\n\n1. 恭喜你成功创建了一个 KernelSU/Aptch/Magisk 模块项目\n2. 这是一个示例\n" >> CHANGELOG.md
 
 
 
@@ -112,6 +113,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}
+          name: "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}模块现已发布"
+          body_path: CHANGELOG.md
           files: |
             ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
           generate_release_notes: true
