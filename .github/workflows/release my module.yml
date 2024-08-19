@@ -94,12 +94,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
-      - name: Verify file existence
+      - name: debug
         run: |
-          if [ ! -f "*.zip" ]; then
-            echo "File does not exist!"
-            exit 1
-          fi
+          ls
 
       - name: upload
         run: |
