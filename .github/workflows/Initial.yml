@@ -1,4 +1,4 @@
-name: initial
+name: initial 初始化
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
           echo "" > MyModule/module.prop
 
 
-      - name: Get Version
+      - name: Get Version 获取版本
         id: get_version
         run: |
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
@@ -43,35 +43,35 @@ jobs:
         run: |
           echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
 
-      - name: Add the id key in the file
+      - name: Add the id key in the file 将模块id写入模块配置文件
         run: |
           echo "id=${{ github.event.inputs.id }}" >> MyModule/module.prop
           echo "id=${{ github.event.inputs.id }}" >> $GITHUB_ENV
-      - name: Add the name key in the file
+      - name: Add the name key in the file 将模块名写入模块配置文件
         run: |
           echo "name=${{ github.event.inputs.name }}" >> MyModule/module.prop
           echo "name=${{ github.event.inputs.name }}" >> $GITHUB_ENV
-      - name: Add the version key in the file
+      - name: Add the version key in the file 将模块初始版本0.0.0写入模块配置文件
         run: |
           echo "version=0.0.0" >> MyModule/module.prop
           echo "version=0.0.0" >> $GITHUB_ENV
-      - name: Add the version code key in the file
+      - name: Add the version code key in the file 将版本代码写入模块配置文件
         run: |
           echo "versionCode=${{ env.date }}" >> MyModule/module.prop
           echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
-      - name: Add the author key in the file
+      - name: Add the author key in the file 将作者写入模块配置文件
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
           echo "author=${{ github.event.inputs.author }}" >> $GITHUB_ENV
-      - name: Add the description key in the file
+      - name: Add the description key in the file 将描述写入模块配置文件
         run: |
           echo "description=${{ github.event.inputs.description }}" >> MyModule/module.prop
           echo "description=${{ github.event.inputs.description }}" >> $GITHUB_ENV
 
-      - name: List files for debug
+      - name: List files for debug 让我看看运行情况
         run: ls -la
 
-      - name: init__update.json
+      - name: init__update.json 初始化更新用的json文件
         run: |
           echo "" > update.json
           cat <<EOF > update.json
@@ -83,33 +83,45 @@ jobs:
           }
           EOF
 
-      - name: init__CHANGELOG.md
+      - name: init__CHANGELOG.md 初始化更新记录文件
         run: |
           echo "" > CHANGELOG.md
           echo -e "# Changelog 0.0.0\n\n1. 恭喜你成功创建了一个 KernelSU/Aptch/Magisk 模块项目\n2. 这是一个示例\n" >> CHANGELOG.md
 
 
 
-      - name: Debugging Output
+      - name: Debugging Output 调试一下
         run: |
           git status
           git log -1
 
+# 即便没有任何改动也不会报错，方便我debug
+      - name: Check for changes
+        run: |
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+            exit 0
+          else
+            echo "Changes detected, proceeding with commit."
+          fi
 
       - name: Commit changes
         run: |
           git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
           git add .
-          git commit -m "init初始化"
-          git push origin main
+          git commit -m "Automated commit by GitHub Action"
+        if: success()  
 
-      - name: Package module
+      - name: Push changes
+        run: git push origin main
+        if: success()
+
+      - name: Package module 打包模块
         run: |
           # 打包模块
           zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release 发布模块
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}

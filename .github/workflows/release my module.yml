@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
 
-      - name: Extract variables from module.prop
+      - name: Extract variables from module.prop 获取一些变量的值，以便后续调用
         id: extract_vars
         run: |
           # 提取变量并保存到环境变量中
@@ -78,21 +78,33 @@ jobs:
           fi
 
 
+# 即便没有任何改动也不会报错，方便我debug
+      - name: Check for changes
+        run: |
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+            exit 0
+          else
+            echo "Changes detected, proceeding with commit."
+          fi
 
       - name: Commit changes
         run: |
           git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-          git add update.json MyModule/module.prop
-          git commit -m "update update.json & module.prop"
-          git push origin main
+          git add .
+          git commit -m "更新 update.json和module.prop"
+        if: success()  
 
-      - name: Package module
+      - name: Push changes 
+        run: git push origin main
+        if: success()
+
+      - name: Package module 打包模块
         run: |
           # 打包模块
           zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release 发布模块
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}
@@ -106,7 +118,7 @@ jobs:
 
 
 
-      - name: upload
+      - name: upload 上传（需要设置token/可选）
         if: env.UPSTREAM_ACCESS_TOKEN != ''
         run: |
           # 推送到母仓库
@@ -124,7 +136,7 @@ jobs:
 
 
 
-      - name: Notify if UPSTREAM_ACCESS_TOKEN is missing
+      - name: Notify if UPSTREAM_ACCESS_TOKEN is missing 提醒下你，不喜欢可以删掉
         if: env.UPSTREAM_ACCESS_TOKEN == ''
         run: |
           echo "UPSTREAM_ACCESS_TOKEN is missing. Creating an issue to notify you:)."
