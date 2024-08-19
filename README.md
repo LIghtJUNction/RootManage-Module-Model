@@ -1,7 +1,12 @@
-# KernelSu-Module-Model
+# RootManage-Module-Model
 
 
-## MyModule 文件夹[![点我跳转至该文件夹](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml/badge.svg)]([https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml](https://github.com/LIghtJUNction/KernelSu-Module-Model-/tree/main/MyModule)https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml)
+## MyModule 文件夹
+
+> 在此处编辑模块内容
+
+
+## 初始化[![initial 初始化](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/Initial.yml/badge.svg)](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/Initial.yml)
 
 > 请点击action板块运行initial工作流
 
