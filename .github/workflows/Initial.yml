@@ -87,11 +87,7 @@ jobs:
         run: |
           echo "" > CHANGELOG.md
 
-      - name: Generate Changelog
-        run: |
-          gem install github_changelog_generator
-          # 使用 changelog-generator 工具生成 changelog
-          changelog-generator --unreleased > CHANGELOG.md
+
 
       - name: Debugging Output
         run: |
