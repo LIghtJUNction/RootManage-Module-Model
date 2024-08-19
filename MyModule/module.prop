@@ -1,4 +1,7 @@
-#必需文件
-#请自行删改,请点击action运行initial工作流
 
-
+id=MyModule
+name=mymodule
+version=0.0.1
+versionCode=20240819
+author=lightjunction
+description=请点击actions，找到initial，运行这个工作流
