@@ -24,12 +24,12 @@ jobs:
         id: extract_vars
         run: |
           # 提取变量并保存到环境变量中
-          id=$(awk -F= '/id=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
-          name=$(awk -F= '/name=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
-          version=$(awk -F= '/version=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
-          versionCode=$(awk -F= '/versionCode=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
-          author=$(awk -F= '/author=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
-          description=$(awk -F= '/description=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          id=$(awk -F= '/id=/ {print $2}' Mymodule/module.prop)
+          name=$(awk -F= '/name=/ {print $2}' Mymodule/module.prop)
+          version=$(awk -F= '/version=/ {print $2}' Mymodule/module.prop)
+          versionCode=$(awk -F= '/versionCode=/ {print $2}' Mymodule/module.prop)
+          author=$(awk -F= '/author=/ {print $2}' Mymodule/module.prop)
+          description=$(awk -F= '/description=/ {print $2}' Mymodule/module.prop)
           
           # 检查提取的变量是否为空，并输出提示信息
           if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ]; then
@@ -62,14 +62,14 @@ jobs:
           }' > update.json
 
           # 检查 module.prop 是否存在
-          if [ ! -f "${{ github.event.inputs.id }}/module.prop" ]; then
+          if [ ! -f "Mymodule/module.prop" ]; then
             echo "未找到 module.prop 文件"
             exit 1
           fi
 
           # 替换 module.prop 中的 version 和 versionCode
-          current_version=$(grep -oP 'version=\K[^ ]+' "${{ github.event.inputs.id }}/module.prop" || echo "not_found")
-          current_versionCode=$(grep -oP 'versionCode=\K[^ ]+' "${{ github.event.inputs.id }}/module.prop" || echo "not_found")
+          current_version=$(grep -oP 'version=\K[^ ]+' "Mymodule/module.prop" || echo "not_found")
+          current_versionCode=$(grep -oP 'versionCode=\K[^ ]+' "Mymodule/module.prop" || echo "not_found")
 
           if [ "$current_version" = "not_found" ]; then
             echo "未在 module.prop 文件中找到 version 模式"
@@ -81,8 +81,8 @@ jobs:
             exit 1
           fi
 
-          sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" "${{ github.event.inputs.id }}/module.prop"
-          sed -i "s/$current_versionCode/${{ env.date }}/g" "${{ github.event.inputs.id }}/module.prop"
+          sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" "Mymodule/module.prop"
+          sed -i "s/$current_versionCode/${{ env.date }}/g" "Mymodule/module.prop"
 
       - name: Package module
         run: |
