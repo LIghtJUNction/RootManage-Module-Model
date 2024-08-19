@@ -1,14 +1,4 @@
 #必需文件
-
-
-
-#请自行删改
-#id=<string> 例如Zygisk_shamiko 这将是文件夹名
-#name=<string> 例如shamiko 这将在管理器中展示
-#version=<string>
-#versionCode=<int>
-#author=<string>
-#description=<string>
-
+#请自行删改,请点击action运行initial工作流
 
 
