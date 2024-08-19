@@ -6,12 +6,6 @@ on:
       tag:
         description: 'Release Tag (一般就填版本号)'
         required: true     
-      id:
-        description: '模块 ID'
-        required: true     
-      name:
-        description: '模块名'
-        required: true     
 
 jobs:
   build:
@@ -36,6 +30,12 @@ jobs:
           versionCode=$(awk -F= '/versionCode=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
           author=$(awk -F= '/author=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
           description=$(awk -F= '/description=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          
+          # 检查提取的变量是否为空，并输出提示信息
+          if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ]; then
+            echo "请先执行 initial 工作流以生成 module.prop 文件"
+            exit 1
+          fi
 
           # 保存变量到环境文件
           echo "id=${id}" >> $GITHUB_ENV
@@ -87,7 +87,7 @@ jobs:
       - name: Package module
         run: |
           # 打包模块
-          zip -r "${{ env.name }}-${{ env.version }}(${{ env.versionCode }})-by${{ env.author }}.zip" *
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
 
       - name: Create GitHub Release
