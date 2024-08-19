@@ -6,10 +6,16 @@ on:
       tag:
         description: 'Release Tag(一般就填版本号)'
         required: true     
+
+      id:
+        description: '模块id'
+        required: true     
       name:
-        description: '请填写模块名字'
-        required: true      
-        
+        description: '模块名'
+        required: true     
+
+
+
 
 jobs:
   build:
@@ -18,14 +24,12 @@ jobs:
       - uses: actions/checkout@v4.1.0
         with:  
           ref: main  
-          path: main 
 
-      - uses: actions/checkout@v4.1.0
-        with:  
-          ref: module  
-          path: module 
-
-
+      - name: Get Repository URL
+        id: get_repo_url
+        run: |
+          echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
+    
       - name: Get Version
         id: get_version
         run: |
@@ -36,9 +40,9 @@ jobs:
           echo '{
             "version": "${{ github.event.inputs.tag }}",
             "versionCode": "${{ steps.get_version.outputs.date }}",
-            "zipUrl": "待填写",
-            "changelog": “待填写"
-          }' > main/update.json
+            "zipUrl": "${{ env.repo_url }}/releases/download/${{ github.event.inputs.tag }}/${{github.event.inputs.name }}-${{ github.event.inputs.tag }}.zip",
+            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
+          }' > update.json
 
           sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" mater/MyModule/module.prop
           sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" mater/MyModule/module.prop
