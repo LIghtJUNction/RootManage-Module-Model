@@ -78,12 +78,14 @@ jobs:
           echo "zipUrl=${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" >> $GITHUB_ENV
           echo "changelog=${{ env.repo_url }}/raw/main/CHANGELOG.md" >> $GITHUB_ENV
 
-          echo '{
+          cat <<EOF > update.json
+          {
             "version": "${{ env.version }}",
             "versionCode": "${{ env.date }}",
             "zipUrl": "${{ env.zipUrl }}",
-            "changelog": "${{ env.changelog }}
-            }' > update.json
+            "changelog": "${{ env.changelog }}"
+          }
+          EOF
 
 
       - name: Debugging Output
