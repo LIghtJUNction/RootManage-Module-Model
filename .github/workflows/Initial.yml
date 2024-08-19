@@ -113,11 +113,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}
-          name: "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}模块现已发布"
-          body_path: CHANGELOG.md
+          name: "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }} 模块现已发布"
+          body_path: CHANGELOG.md  # 如果使用这个，确保 generate_release_notes 不启用
           files: |
             ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
-          generate_release_notes: true
           fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
