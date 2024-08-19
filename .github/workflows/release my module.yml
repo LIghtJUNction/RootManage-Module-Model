@@ -25,6 +25,26 @@ jobs:
         id: get_repo_url
         run: |
           echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
+
+      - name: Extract variables from module.prop
+        id: extract_vars
+        run: |
+          # 提取变量并保存到环境变量中
+          id=$(awk -F= '/id=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          name=$(awk -F= '/name=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          version=$(awk -F= '/version=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          versionCode=$(awk -F= '/versionCode=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          author=$(awk -F= '/author=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+          description=$(awk -F= '/description=/ {print $2}' ${{ github.event.inputs.id }}/module.prop)
+
+          # 保存变量到环境文件
+          echo "id=${id}" >> $GITHUB_ENV
+          echo "name=${name}" >> $GITHUB_ENV
+          echo "version=${version}" >> $GITHUB_ENV
+          echo "versionCode=${versionCode}" >> $GITHUB_ENV
+          echo "author=${author}" >> $GITHUB_ENV
+          echo "description=${description}" >> $GITHUB_ENV
+
     
       - name: 获取版本
         id: get_version
@@ -75,5 +95,5 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag }}
           files: |
-            ${{ github.event.inputs.name }}-*.zip
+            ${{ env.name }}-${{ env.version }}(${{ env.versionCode }})-by${{ env.author }}.zip
           generate_release_note: true
