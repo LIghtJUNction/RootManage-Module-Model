@@ -1,7 +1,7 @@
 
 id=MyModule
 name=mymodule
-version=0.0.1
+version=0.0.0
 versionCode=20240819
 author=lightjunction
-description=请点击actions，找到initial，运行这个工作流
+description=这是一个样版，测试initial工作流是否能正常运行
