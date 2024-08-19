@@ -81,6 +81,7 @@ jobs:
           git push origin main
 
 
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -91,3 +92,16 @@ jobs:
           fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload
+        run: |
+
+          # 推送到母仓库
+          git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
+          git push upstream module
+        env:
+          UPSTREAM_ACCESS_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
+          # 用于身份验证的 token
+          GITHUB_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
+
+

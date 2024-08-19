@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.0
         with:  
           ref: main  
 
@@ -111,3 +111,18 @@ jobs:
           git commit -m "Rename module folder to MyModule and update module.prop"
           git push origin main
 
+      - name: Package module
+        run: |
+          # 打包模块
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
+          
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.version }}
+          files: |
+            ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
