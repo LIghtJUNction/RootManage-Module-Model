@@ -42,14 +42,14 @@ jobs:
           }' > update.json
 
           # 检查 module.prop 是否存在
-          if [ ! -f "MyModule/module.prop" ]; then
+          if [ ! -f "${{ github.event.inputs.id }}/module.prop" ]; then
             echo "未找到 module.prop 文件"
             exit 1
           fi
 
           # 替换 module.prop 中的 version 和 versionCode
-          current_version=$(grep -oP 'version=\K[^ ]+' MyModule/module.prop || echo "not_found")
-          current_versionCode=$(grep -oP 'versionCode=\K[^ ]+' MyModule/module.prop || echo "not_found")
+          current_version=$(grep -oP 'version=\K[^ ]+' "${{ github.event.inputs.id }}/module.prop" || echo "not_found")
+          current_versionCode=$(grep -oP 'versionCode=\K[^ ]+' "${{ github.event.inputs.id }}/module.prop" || echo "not_found")
 
           if [ "$current_version" = "not_found" ]; then
             echo "未在 module.prop 文件中找到 version 模式"
@@ -61,12 +61,12 @@ jobs:
             exit 1
           fi
 
-          sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" MyModule/module.prop
-          sed -i "s/$current_versionCode/${{ env.date }}/g" MyModule/module.prop
+          sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" "${{ github.event.inputs.id }}/module.prop"
+          sed -i "s/$current_versionCode/${{ env.date }}/g" "${{ github.event.inputs.id }}/module.prop"
 
       - name: 运行 build.sh
         run: |
-          sh build.sh
+          sh "${{ github.event.inputs.id }}/build.sh"
           
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v1
