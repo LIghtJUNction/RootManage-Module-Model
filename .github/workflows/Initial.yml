@@ -28,12 +28,8 @@ jobs:
       - uses: actions/checkout@v3
         with:  
           ref: main  
-          path: main 
 
-      - uses: actions/checkout@v3
-        with:  
-          ref: module  
-          path: module 
+
 
       - name: Get Version
         id: get_version
@@ -68,6 +64,10 @@ jobs:
       - name: Add the description key in the file
         run: |
           echo "description=${{ github.event.inputs.description }}" >> main/${{ github.event.inputs.id }}/module.prop
+
+      - name: List files for debug
+        run: ls -la
+
 
 
       - name: Debugging Output
