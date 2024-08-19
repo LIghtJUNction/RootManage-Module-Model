@@ -93,15 +93,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: upload
-        run: |
+
       - name: Verify file existence
         run: |
-          if [ ! -f "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" ]; then
+          if [ ! -f "*.zip" ]; then
             echo "File does not exist!"
             exit 1
           fi
 
+      - name: upload
+        run: |
           # 推送到母仓库
           git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
           git add ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
