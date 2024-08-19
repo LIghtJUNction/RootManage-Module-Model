@@ -44,6 +44,8 @@ jobs:
           # 保存变量到环境文件
           echo "id=${id}" >> $GITHUB_ENV
           echo "name=${name}" >> $GITHUB_ENV
+          echo "version-old=${version}" >> $GITHUB_ENV
+          echo "versionCode-old=${versionCode}" >> $GITHUB_ENV
           echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
           echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
           echo "author=${author}" >> $GITHUB_ENV
@@ -55,6 +57,12 @@ jobs:
           # 打包模块
           zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
+          
+      - name: 调试变量
+        run: |
+          echo "Version: $version"
+          echo "VersionCode: $versionCode"
+
       - name: 更新 update.json 和 module.prop
         run: |
           echo '{
@@ -64,9 +72,9 @@ jobs:
             "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
           }' > update.json
 
+          sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
+          sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
 
-          sed -i "s/$version/${{ env.version }}/g" "MyModule/module.prop"
-          sed -i "s/$versionCode/${{ env.date }}/g" "MyModule/module.prop"
 
 
       - name: Create GitHub Release
