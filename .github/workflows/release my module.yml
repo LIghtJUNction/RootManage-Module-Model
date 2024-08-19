@@ -44,8 +44,8 @@ jobs:
             "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
           }' > update.json
 
-          sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" mater/MyModule/module.prop
-          sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" mater/MyModule/module.prop
+          sed -i "s/$(grep -oP 'version=\K[^ ]+' module.prop)/${{ github.event.inputs.tag }}/g" main/MyModule/module.prop
+          sed -i "s/$(grep -oP 'versionCode=\K[^ ]+' module.prop)/$(date +%Y%m%d)/g" main/MyModule/module.prop
 
       - name: run build.sh
         run: |
