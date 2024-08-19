@@ -1,18 +1,19 @@
 # KernelSu-Module-Model
 
-## MyModule 文件夹
+
+## MyModule 文件夹[![点我跳转至该文件夹](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml/badge.svg)]([https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml](https://github.com/LIghtJUNction/KernelSu-Module-Model-/tree/main/MyModule)https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml)
 
 > 请点击action板块运行initial工作流
 
 ![1724035593757](images/README/1724035593757.png)
 
-## release my module
+## release my module[![release](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml/badge.svg)](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/release%20my%20module.yml)
 
 > 只需填写版本号（标签tag）即可一键打包MyModule下的文件
 
 ```
 在本工作流代码部分找到并按照自己喜好的格式修改
-可用的变量如下
+可用的部分变量如下
 env.id----------安装后将是文件夹名字，如Zygisk_shamiko
 env.name--------安装后将是模块名，例如shamiko
 env.version-----当前模块版本号
@@ -26,22 +27,28 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 ## CHANGELOG.md
 
 > 这里记录你的更改
+>
+> 请把高版本写在上面
+>
+> 每次发布更新前写好
 
 ## update.json
 
-> 这里填写更新链接
+> 无需手动填写，工作流自动更新
 
 # *# 开始编写模块*
 
 1. 复刻(Fork)本项目
 2. 点击ation
 3. 运行initial工作流
-4. 点击MyModule模块文件夹，按照说明编写模块
+4. 点击MyModule模块文件夹，按照说明要求编写模块
 5. 点击运行action里的release工作流，自动打包发布
 
 # 注意事项
 
 > 1.请不要给MyModule改名，如要改名，请自行修改工作流，将关键字MyModule修改为你想要的名字（没有必要，因为最终安装在手机上，在data/adb/modules/模块id文件夹，MyModule这个名字只是在github库里方便标识文件路径，并不影响）
+>
+
 
 # 以下是官方的详细说明
 
