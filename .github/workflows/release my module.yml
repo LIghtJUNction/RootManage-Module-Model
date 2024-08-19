@@ -107,9 +107,10 @@ jobs:
 
 
       - name: upload
+        if: env.UPSTREAM_ACCESS_TOKEN != ''
         run: |
           # 推送到母仓库
-          if: env.UPSTREAM_ACCESS_TOKEN != ''
+          
           git status
           git checkout -b module
           git pull upstream module --rebase
