@@ -1,7 +1,7 @@
 
 id=MyModule
 name=mymodule
-version=0.0.0
+version=0.0.1
 versionCode=20240819
 author=Lightjunction
 description=这是一个模块模板，请点击action，运行初始化工作流
