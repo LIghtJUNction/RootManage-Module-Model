@@ -95,6 +95,13 @@ jobs:
 
       - name: upload
         run: |
+      - name: Verify file existence
+        run: |
+          if [ ! -f "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" ]; then
+            echo "File does not exist!"
+            exit 1
+          fi
+
           # 推送到母仓库
           git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
           git add ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
