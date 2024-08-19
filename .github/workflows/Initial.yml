@@ -31,7 +31,7 @@ jobs:
 
       - name: init__module.prop
         run: |
-          echo "" > Mymodule/module.prop
+          echo "" > MyModule/module.prop
 
 
       - name: Get Version
@@ -42,26 +42,26 @@ jobs:
 
       - name: Add the id key in the file
         run: |
-          echo "id=Mymodule" >> Mymodule/module.prop
+          echo "id=MyModule" >> MyModule/module.prop
       - name: Add the name key in the file
         run: |
-          echo "name=${{ github.event.inputs.name }}" >> Mymodule/module.prop
+          echo "name=${{ github.event.inputs.name }}" >> MyModule/module.prop
 
       - name: Add the version key in the file
         run: |
-          echo "version=0.0.1" >> Mymodule/module.prop
+          echo "version=0.0.1" >> MyModule/module.prop
 
       - name: Add the version code key in the file
         run: |
-          echo "versionCode=${{ steps.get_version.outputs.date }}" >> Mymodule/module.prop
+          echo "versionCode=${{ steps.get_version.outputs.date }}" >> MyModule/module.prop
 
       - name: Add the author key in the file
         run: |
-          echo "author=${{ github.event.inputs.author }}" >> Mymodule/module.prop
+          echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
 
       - name: Add the description key in the file
         run: |
-          echo "description=${{ github.event.inputs.description }}" >> Mymodule/module.prop
+          echo "description=${{ github.event.inputs.description }}" >> MyModule/module.prop
 
       - name: List files for debug
         run: ls -la
@@ -79,6 +79,6 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "Rename module folder to Mymodule and update module.prop"
+          git commit -m "Rename module folder to MyModule and update module.prop"
           git push origin main
 
