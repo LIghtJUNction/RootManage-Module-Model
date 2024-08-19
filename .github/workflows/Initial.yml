@@ -53,8 +53,8 @@ jobs:
           echo "name=${{ github.event.inputs.name }}" >> $GITHUB_ENV
       - name: Add the version key in the file
         run: |
-          echo "version=0.0.1" >> MyModule/module.prop
-          echo "version=0.0.1" >> $GITHUB_ENV
+          echo "version=0.0.0" >> MyModule/module.prop
+          echo "version=0.0.0" >> $GITHUB_ENV
       - name: Add the version code key in the file
         run: |
           echo "versionCode=${{ env.date }}" >> MyModule/module.prop
