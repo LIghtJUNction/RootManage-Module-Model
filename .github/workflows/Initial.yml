@@ -83,5 +83,4 @@ jobs:
           git add .
           git commit -m "Rename module folder to ${{ github.event.inputs.id }} and update module.prop"
           git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
