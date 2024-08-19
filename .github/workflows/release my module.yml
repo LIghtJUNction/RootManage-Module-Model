@@ -51,6 +51,11 @@ jobs:
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
 
+          echo "zipUrl=${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" >> $GITHUB_ENV
+          echo "changelog=${{ env.repo_url }}/raw/main/CHANGELOG.md" >> $GITHUB_ENV
+
+
+    
 
       - name: Package module
         run: |
@@ -65,12 +70,13 @@ jobs:
 
       - name: 更新 update.json 和 module.prop
         run: |
+          ls
           echo '{
             "version": "${{ env.version }}",
             "versionCode": "${{ env.date }}",
             "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
             "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
-          }' > update.json
+          }' >> update.json
 
           sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
           sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
