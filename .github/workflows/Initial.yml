@@ -21,7 +21,7 @@ on:
 
 
 jobs:
-  rename:
+  init:
     runs-on: ubuntu-latest
 
     steps:
@@ -57,8 +57,8 @@ jobs:
           echo "version=0.0.1" >> $GITHUB_ENV
       - name: Add the version code key in the file
         run: |
-          echo "versionCode=${{ steps.get_version.outputs.date }}" >> MyModule/module.prop
-          echo "versionCode=${{ steps.get_version.outputs.date }}" >> $GITHUB_ENV
+          echo "versionCode=${{ env.date }}" >> MyModule/module.prop
+          echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
       - name: Add the author key in the file
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
