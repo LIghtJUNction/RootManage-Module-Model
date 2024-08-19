@@ -1,8 +1,27 @@
 # KernelSu-Module-Model
 
-## my module 文件夹
+## MyModule 文件夹
 
-> 点击action板块运行initial工作流，重命名为你的模块名
+> 请点击action板块运行initial工作流
+
+![1724035593757](images/README/1724035593757.png)
+
+## release my module
+
+> 只需填写版本号（标签tag）即可一键打包MyModule下的文件
+
+```
+在本工作流代码部分找到并按照自己喜好的格式修改
+可用的变量如下
+env.id----------安装后将是文件夹名字，如Zygisk_shamiko
+env.name--------安装后将是模块名，例如shamiko
+env.version-----当前模块版本号
+env.versionCode-默认是年份+月份+日期
+env.author------模块作者
+env.description-模块描述
+默认命名格式如下（文件位置：.github\workflows\release my module.yml）
+${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
+```
 
 ## CHANGELOG.md
 
@@ -12,17 +31,17 @@
 
 > 这里填写更新链接
 
-## build.sh
-
-> 这里的作用是打包模块
-
 # *# 开始编写模块*
 
 1. 复刻(Fork)本项目
 2. 点击ation
 3. 运行initial工作流
-4. 点击模块文件夹，按照说明编写模块
+4. 点击MyModule模块文件夹，按照说明编写模块
 5. 点击运行action里的release工作流，自动打包发布
+
+# 注意事项
+
+> 1.请不要给MyModule改名，如要改名，请自行修改工作流，将关键字MyModule修改为你想要的名字（没有必要，因为最终安装在手机上，在data/adb/modules/模块id文件夹，MyModule这个名字只是在github库里方便标识文件路径，并不影响）
 
 # 以下是官方的详细说明
 

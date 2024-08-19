@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release Tag (一般就填版本号)'
+        description: 'Release Tag (就填版本号)'
         required: true     
 
 jobs:
@@ -19,6 +19,10 @@ jobs:
         id: get_repo_url
         run: |
           echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
+      - name: 获取版本
+        id: get_version
+        run: |
+          echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
 
       - name: Extract variables from module.prop
         id: extract_vars
@@ -40,60 +44,35 @@ jobs:
           # 保存变量到环境文件
           echo "id=${id}" >> $GITHUB_ENV
           echo "name=${name}" >> $GITHUB_ENV
-          echo "version=${version}" >> $GITHUB_ENV
-          echo "versionCode=${versionCode}" >> $GITHUB_ENV
+          echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
+          echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
 
-    
-      - name: 获取版本
-        id: get_version
-        run: |
-          echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
-
-      - name: 更新 update.json 和 module.prop
-        run: |
-          # 创建 update.json 文件
-          echo '{
-            "version": "${{ github.event.inputs.tag }}",
-            "versionCode": "${{ env.date }}",
-            "zipUrl": "${{ env.repo_url }}/releases/download/${{ github.event.inputs.tag }}/${{ github.event.inputs.name }}-${{ github.event.inputs.tag }}.zip",
-            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
-          }' > update.json
-
-          # 检查 module.prop 是否存在
-          if [ ! -f "MyModule/module.prop" ]; then
-            echo "未找到 module.prop 文件"
-            exit 1
-          fi
-
-          # 替换 module.prop 中的 version 和 versionCode
-          current_version=$(grep -oP 'version=\K[^ ]+' "MyModule/module.prop" || echo "not_found")
-          current_versionCode=$(grep -oP 'versionCode=\K[^ ]+' "MyModule/module.prop" || echo "not_found")
-
-          if [ "$current_version" = "not_found" ]; then
-            echo "未在 module.prop 文件中找到 version 模式"
-            exit 1
-          fi
-
-          if [ "$current_versionCode" = "not_found" ]; then
-            echo "未在 module.prop 文件中找到 versionCode 模式"
-            exit 1
-          fi
-
-          sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" "MyModule/module.prop"
-          sed -i "s/$current_versionCode/${{ env.date }}/g" "MyModule/module.prop"
 
       - name: Package module
         run: |
           # 打包模块
           zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
+      - name: 更新 update.json 和 module.prop
+        run: |
+          echo '{
+            "version": "${{ env.version }}",
+            "versionCode": "${{ env.date }}",
+            "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
+            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
+          }' > update.json
+
+
+          sed -i "s/$version/${{ env.version }}/g" "MyModule/module.prop"
+          sed -i "s/$versionCode/${{ env.date }}/g" "MyModule/module.prop"
+
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.event.inputs.tag }}
+          tag_name: ${{ env.version }}
           files: |
             ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
           generate_release_notes: true
