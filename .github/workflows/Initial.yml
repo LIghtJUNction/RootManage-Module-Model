@@ -74,16 +74,12 @@ jobs:
       - name: init__update.json
         run: |
           echo "" > update.json
-          
-          echo "zipUrl=${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" >> $GITHUB_ENV
-          echo "changelog=${{ env.repo_url }}/raw/main/CHANGELOG.md" >> $GITHUB_ENV
-
           cat <<EOF > update.json
           {
             "version": "${{ env.version }}",
             "versionCode": "${{ env.date }}",
-            "zipUrl": "${{ env.zipUrl }}",
-            "changelog": "${{ env.changelog }}"
+            "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
+            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
           }
           EOF
 
