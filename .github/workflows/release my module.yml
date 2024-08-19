@@ -38,9 +38,10 @@ jobs:
           versionCode=$(awk -F= '/versionCode=/ {print $2}' MyModule/module.prop)
           author=$(awk -F= '/author=/ {print $2}' MyModule/module.prop)
           description=$(awk -F= '/description=/ {print $2}' MyModule/module.prop)
-          
+          updateJson=$(awk -F= '/updateJson=/ {print $2}' MyModule/module.prop)
+        
           # 检查提取的变量是否为空，并输出提示信息
-          if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ]; then
+          if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ] || [ -z "$updateJson"]; then
             echo "请先执行 initial 工作流以生成 module.prop 文件"
             exit 1
           fi
@@ -54,7 +55,7 @@ jobs:
           echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
-
+          echo "updateJson=${updateJson}" >> $GITHUB_ENV
 
       - name: 调试变量
         run: |
