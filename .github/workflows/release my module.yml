@@ -84,16 +84,19 @@ jobs:
           sed -i "s/$current_version/${{ github.event.inputs.tag }}/g" "${{ github.event.inputs.id }}/module.prop"
           sed -i "s/$current_versionCode/${{ env.date }}/g" "${{ github.event.inputs.id }}/module.prop"
 
-      - name: 运行 build.sh
+      - name: Package module
         run: |
-          cd ${{ github.event.inputs.id }}
+          # 打包模块
+          zip -r "${{ env.name }}-${{ env.version }}(${{ env.versionCode }})-by${{ env.author }}.zip" *
 
-          sh build.sh
-          
-      - name: 创建 GitHub Release
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event.inputs.tag }}
           files: |
             ${{ env.name }}-${{ env.version }}(${{ env.versionCode }})-by${{ env.author }}.zip
-          generate_release_note: true
+          generate_release_notes: true
+          fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
