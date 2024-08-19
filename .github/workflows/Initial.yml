@@ -83,6 +83,19 @@ jobs:
           }
           EOF
 
+      - name: init__CHANGELOG.md
+        run: |
+          echo "" > CHANGELOG.md
+          cat <<EOF > CHANGELOG.md
+          v0.0.1诞生了！
+          模块作者是${{ github.event.inputs.author }}
+          模块名字是${{ github.event.inputs.name }}
+          模块id是id是${{ github.event.inputs.id }}
+          模块的作用是${{ github.event.inputs.description }}
+          此后的更新日志需要自己编辑CHANGGELOG.md！（记得把这一行删了）
+
+          EOF
+
 
       - name: Debugging Output
         run: |
