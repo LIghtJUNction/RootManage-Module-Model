@@ -29,6 +29,16 @@ jobs:
         with:  
           ref: main  
 
+      - name: Check if directory exists & clear it
+        run: |
+          if [ -d "Mymodule/module.prop" ]; then
+          echo "Directory exists."
+          echo "" > Mymodule/module.prop
+          else
+            echo "Directory does not exist."
+            echo "" > ${{ github.event.inputs.id }}/module.prop
+          fi
+
 
 
       - name: Get Version
