@@ -52,25 +52,28 @@ jobs:
           echo "description=${description}" >> $GITHUB_ENV
 
 
-
-    
-
-      - name: Package module
-        run: |
-          # 打包模块
-          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
-
-          
       - name: 调试变量
         run: |
-          echo "Version: $version"
-          echo "VersionCode: $versionCode"
+          echo "版本: ${{ env.version }}"
+          echo "版本号: ${{ env.versionCode }}"
+          echo "旧版本: ${{ env.version-old }}"
+          echo "旧版本号: ${{ env.versionCode-old }}"
+          echo "日期: ${{ env.date }}"
+          echo "作者: ${{ env.author }}"
 
-      - name: 更新 update.json 和 module.prop
+      - name: Check if updates are needed & 更新 update.json 和 module.prop
         run: |
-          
-          sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
-          sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
+          if [ "${{ env.version }}" != "${{ env.version-old }}" ]; then
+            echo "Version needs update."
+            sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
+          fi
+
+          if [ "${{ env.versionCode }}" != "${{ env.versionCode-old }}" ]; then
+            echo "VersionCode needs update."
+            sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
+          fi
+
+
 
       - name: Commit changes
         run: |
@@ -80,7 +83,10 @@ jobs:
           git commit -m "update update.json & module.prop"
           git push origin main
 
-
+      - name: Package module
+        run: |
+          # 打包模块
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
