@@ -2,6 +2,6 @@
 id=MyModule
 name=mymodule
 version=0.0.1
-versionCode=20240819
+versionCode=
 author=lightjunction
 description=请点击actions，找到initial，运行这个工作流
