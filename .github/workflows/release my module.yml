@@ -95,9 +95,10 @@ jobs:
 
       - name: upload
         run: |
-
           # 推送到母仓库
           git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
+          git add ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
+          git commit -m "模块共享"
           git push upstream module
         env:
           UPSTREAM_ACCESS_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}

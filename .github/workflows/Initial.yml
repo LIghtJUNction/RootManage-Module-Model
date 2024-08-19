@@ -87,7 +87,7 @@ jobs:
         run: |
           echo "" > CHANGELOG.md
           cat <<EOF > CHANGELOG.md
-          v0.0.1诞生了！
+          v0.0.0诞生了！
           模块作者是${{ github.event.inputs.author }}
           模块名字是${{ github.event.inputs.name }}
           模块id是id是${{ github.event.inputs.id }}
@@ -115,7 +115,7 @@ jobs:
         run: |
           # 打包模块
           zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" *
-          
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
