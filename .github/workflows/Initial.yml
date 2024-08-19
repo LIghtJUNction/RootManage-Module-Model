@@ -62,7 +62,7 @@ jobs:
       - name: Add the author key in the file
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
-          echo "author=${{ github.event.inputs.author }}" >> GITHUB_ENV
+          echo "author=${{ github.event.inputs.author }}" >> $GITHUB_ENV
       - name: Add the description key in the file
         run: |
           echo "description=${{ github.event.inputs.description }}" >> MyModule/module.prop
