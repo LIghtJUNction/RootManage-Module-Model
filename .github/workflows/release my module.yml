@@ -95,7 +95,7 @@ jobs:
         with:
           tag_name: ${{ github.event.inputs.tag }}
           files: |
-            ${{ env.name }}-${{ env.version }}(${{ env.versionCode }})-by${{ env.author }}.zip
+            ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
           generate_release_notes: true
           fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
         env:
