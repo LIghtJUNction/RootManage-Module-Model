@@ -1,7 +1,7 @@
 
 id=init-NetHunter-kernelsu
 name=NetHunter-kernelsu
-version=0.0.0
+version=0.0.1
 versionCode=20240903
 author=SherlockChiang&LIghtJUNction
 description=测试NetHunter-kernelsu分支初始化
