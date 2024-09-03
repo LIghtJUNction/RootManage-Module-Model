@@ -18,7 +18,9 @@ jobs:
       - uses: actions/checkout@v4.1.0
         with:  
           ref: ${{ github.ref_name }}    
-
+          
+      - name: Fetch LFS files 关键步骤-拉取大文件的原文件
+        run: git lfs pull
 
       - name: 获取仓库 URL
         id: get_repo_url
