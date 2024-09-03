@@ -126,7 +126,7 @@ jobs:
         if: env.skip != 'true'
         run: |
           git config --global user.name "GitHub Action"
-          git add .
+          git add update.json CHANGELOG.md MyModule/module.prop
           git commit -m "Automated commit by GitHub Action"
           
       - name: Push changes
