@@ -96,10 +96,15 @@ jobs:
           echo "" > CHANGELOG.md
           echo -e "# Changelog 0.0.0\n\n1. 恭喜你成功创建了一个 KernelSU/Aptch/Magisk 模块项目\n2. 这是一个示例\n" >> CHANGELOG.md
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "actions@github.com"
 
 
       - name: Debugging Output 调试一下
         run: |
+          
           git status
           git log -1
 
