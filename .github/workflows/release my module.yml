@@ -105,7 +105,7 @@ jobs:
         run: |
           # 打包模块
           
-          zip -rj "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" MyModule/*
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" -C MyModule .
           
       - name: Create GitHub Release 发布模块
         uses: softprops/action-gh-release@v1
