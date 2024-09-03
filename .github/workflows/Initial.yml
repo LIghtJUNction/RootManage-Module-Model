@@ -73,7 +73,11 @@ jobs:
           echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}  /update.json" >> $GITHUB_ENV
 
       - name: List files for debug 让我看看运行情况
-        run: ls -la
+        run: |
+          ls -la
+          cd MyModule
+          ls -la
+          cd ..
 
       - name: init__update.json 初始化更新用的json文件
         run: |
@@ -122,7 +126,7 @@ jobs:
         run: |
           # 打包模块
           
-          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" MyModule/*
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" */MyModule
 
       - name: Create GitHub Release 发布模块
         uses: softprops/action-gh-release@v1
