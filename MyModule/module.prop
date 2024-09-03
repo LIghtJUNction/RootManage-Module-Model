@@ -1,8 +1,8 @@
 
-id=init_main
-name=main
+id=init-NetHunter-kernelsu
+name=init-NetHunter-kernelsu
 version=0.0.0
 versionCode=20240903
 author=LIghtJUNction
-description=测试
+description=测试NetHunter-kernelsu分支初始化
 updateJson=http://raw.githubusercontent.com/LIghtJUNction/RootManage-Module-Model/main  /update.json
