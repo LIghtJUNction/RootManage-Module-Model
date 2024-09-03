@@ -16,8 +16,12 @@ jobs:
           ref: main  
       - uses: actions/checkout@v4.1.0
         with:  
-          ref: module  
-          path: module
+          ref: modules
+          path: modules
+      - uses: actions/checkout@v4.1.0
+        with:  
+          ref: ${{ github.ref_name }}    
+          path: ${{ github.ref_name }}  
 
       - name: 获取仓库 URL
         id: get_repo_url
@@ -98,7 +102,7 @@ jobs:
 
       - name: Push changes 
         if: env.skip != 'true'
-        run: git push origin main
+        run: git push origin ${{ github.ref_name }}  
 
       - name: Package module 打包模块
         run: |
@@ -128,7 +132,7 @@ jobs:
           # 推送到母仓库
           
           git status
-          git checkout -b module
+          git checkout -b modules
           git pull upstream module --rebase
           git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
           git add ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
