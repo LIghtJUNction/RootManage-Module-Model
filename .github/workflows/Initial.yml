@@ -29,6 +29,9 @@ jobs:
         with:  
           ref: ${{ github.ref_name }}    
 
+      - name: Fetch LFS files 关键步骤-拉取大文件的原文件
+        run: git lfs pull
+
       - name: init__module.prop
         run: |
           echo "" > MyModule/module.prop
@@ -71,6 +74,10 @@ jobs:
         run: |
           echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/update.json" >> MyModule/module.prop
           echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/update.json" >> $GITHUB_ENV
+
+
+
+
 
       - name: List files for debug 让我看看运行情况
         run: |
