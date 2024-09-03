@@ -19,8 +19,25 @@ jobs:
         with:  
           ref: ${{ github.ref_name }}    
           
-      - name: Fetch LFS files 关键步骤-拉取大文件的原文件
-        run: git lfs pull
+      - name: Manage large files with Git LFS
+        run: |
+          # 安装 Git LFS
+          git lfs install
+    
+          # 拉取 LFS 文件
+          git lfs pull
+    
+          # 找到 MyModule 目录下超过 100MB 的文件并通过 Git LFS 进行跟踪
+          find MyModule/ -type f -size +100M | while read -r file; do
+            git lfs track "$file"
+          done
+    
+          # 添加 .gitattributes 文件和所有被 LFS 跟踪的文件到暂存区
+          git add .gitattributes
+          git add $(git lfs ls-files -n)
+    
+          # 提交更改
+          git commit -m "Track large files with Git LFS" || echo "No changes to commit"
 
       - name: 获取仓库 URL
         id: get_repo_url
