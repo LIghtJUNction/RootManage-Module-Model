@@ -1,22 +1,22 @@
-name: initial ³õÊ¼»¯
+name: initial åˆå§‹åŒ–
 
 on:
   workflow_dispatch:
     inputs:
       id:
-        description: 'ÇëÊäÈëÄ£¿éid£¬ÀıÈçZygisk_shamiko'
+        description: 'è¯·è¾“å…¥æ¨¡å—idï¼Œä¾‹å¦‚Zygisk_shamiko'
         required: true
       
       name:
-        description: 'ÇëÊäÈëÄ£¿éÃû£¬ÀıÈçshamiko'
+        description: 'è¯·è¾“å…¥æ¨¡å—åï¼Œä¾‹å¦‚shamiko'
         required: true
 
       author:
-        description: '×÷ÕßÃû'
+        description: 'ä½œè€…å'
         required: true
 
       description:
-        description: 'Ä£¿éÃèÊö'
+        description: 'æ¨¡å—æè¿°'
         required: true
 
 
@@ -27,55 +27,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.0
         with:  
-          ref: main  
+          ref: ${{ github.ref_name }}    
 
       - name: init__module.prop
         run: |
           echo "" > MyModule/module.prop
 
 
-      - name: Get Version »ñÈ¡°æ±¾
+      - name: Get Version è·å–ç‰ˆæœ¬
         id: get_version
         run: |
           echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
-      - name: »ñÈ¡²Ö¿â URL
+      - name: è·å–ä»“åº“ URL
         id: get_repo_url
         run: |
           echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
 
-      - name: Add the id key in the file ½«Ä£¿éidĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the id key in the file å°†æ¨¡å—idå†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "id=${{ github.event.inputs.id }}" >> MyModule/module.prop
           echo "id=${{ github.event.inputs.id }}" >> $GITHUB_ENV
-      - name: Add the name key in the file ½«Ä£¿éÃûĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the name key in the file å°†æ¨¡å—åå†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "name=${{ github.event.inputs.name }}" >> MyModule/module.prop
           echo "name=${{ github.event.inputs.name }}" >> $GITHUB_ENV
-      - name: Add the version key in the file ½«Ä£¿é³õÊ¼°æ±¾0.0.0Ğ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the version key in the file å°†æ¨¡å—åˆå§‹ç‰ˆæœ¬0.0.0å†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "version=0.0.0" >> MyModule/module.prop
           echo "version=0.0.0" >> $GITHUB_ENV
-      - name: Add the version code key in the file ½«°æ±¾´úÂëĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the version code key in the file å°†ç‰ˆæœ¬ä»£ç å†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "versionCode=${{ env.date }}" >> MyModule/module.prop
           echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
-      - name: Add the author key in the file ½«×÷ÕßĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the author key in the file å°†ä½œè€…å†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
           echo "author=${{ github.event.inputs.author }}" >> $GITHUB_ENV
-      - name: Add the description key in the file ½«ÃèÊöĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the description key in the file å°†æè¿°å†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
           echo "description=${{ github.event.inputs.description }}" >> MyModule/module.prop
           echo "description=${{ github.event.inputs.description }}" >> $GITHUB_ENV
-      - name: Add the updateJson key in the file ½«¸üĞÂÁ´½ÓĞ´ÈëÄ£¿éÅäÖÃÎÄ¼ş
+      - name: Add the updateJson key in the file å°†æ›´æ–°é“¾æ¥å†™å…¥æ¨¡å—é…ç½®æ–‡ä»¶
         run: |
-          echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/main/update.json" >> MyModule/module.prop
-          echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/main/update.json" >> $GITHUB_ENV
+          echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}  /update.json" >> MyModule/module.prop
+          echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}  /update.json" >> $GITHUB_ENV
 
-      - name: List files for debug ÈÃÎÒ¿´¿´ÔËĞĞÇé¿ö
+      - name: List files for debug è®©æˆ‘çœ‹çœ‹è¿è¡Œæƒ…å†µ
         run: ls -la
 
-      - name: init__update.json ³õÊ¼»¯¸üĞÂÓÃµÄjsonÎÄ¼ş
+      - name: init__update.json åˆå§‹åŒ–æ›´æ–°ç”¨çš„jsonæ–‡ä»¶
         run: |
           echo "" > update.json
           cat <<EOF > update.json
@@ -83,23 +83,23 @@ jobs:
             "version": "${{ env.version }}",
             "versionCode": "${{ env.date }}",
             "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
-            "changelog": "${{ env.repo_url }}/raw/main/CHANGELOG.md"
+            "changelog": "${{ env.repo_url }}/raw/${{ github.ref_name }}  /CHANGELOG.md"
           }
           EOF
 
-      - name: init__CHANGELOG.md ³õÊ¼»¯¸üĞÂ¼ÇÂ¼ÎÄ¼ş
+      - name: init__CHANGELOG.md åˆå§‹åŒ–æ›´æ–°è®°å½•æ–‡ä»¶
         run: |
           echo "" > CHANGELOG.md
-          echo -e "# Changelog 0.0.0\n\n1. ¹§Ï²Äã³É¹¦´´½¨ÁËÒ»¸ö KernelSU/Aptch/Magisk Ä£¿éÏîÄ¿\n2. ÕâÊÇÒ»¸öÊ¾Àı\n" >> CHANGELOG.md
+          echo -e "# Changelog 0.0.0\n\n1. æ­å–œä½ æˆåŠŸåˆ›å»ºäº†ä¸€ä¸ª KernelSU/Aptch/Magisk æ¨¡å—é¡¹ç›®\n2. è¿™æ˜¯ä¸€ä¸ªç¤ºä¾‹\n" >> CHANGELOG.md
 
 
 
-      - name: Debugging Output µ÷ÊÔÒ»ÏÂ
+      - name: Debugging Output è°ƒè¯•ä¸€ä¸‹
         run: |
           git status
           git log -1
 
-# ¼´±ãÃ»ÓĞÈÎºÎ¸Ä¶¯Ò²²»»á±¨´í£¬·½±ãdebug
+# å³ä¾¿æ²¡æœ‰ä»»ä½•æ”¹åŠ¨ä¹Ÿä¸ä¼šæŠ¥é”™ï¼Œæ–¹ä¾¿debug
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
@@ -115,24 +115,24 @@ jobs:
           
       - name: Push changes
         if: env.skip != 'true'
-        run: git push origin main
+        run: git push origin ${{ github.ref_name }}  
           
 
-      - name: Package module ´ò°üÄ£¿é
+      - name: Package module æ‰“åŒ…æ¨¡å—
         run: |
-          # ´ò°üÄ£¿é
+          # æ‰“åŒ…æ¨¡å—
           
-          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" MyModule
+          zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" MyModule/*
 
-      - name: Create GitHub Release ·¢²¼Ä£¿é
+      - name: Create GitHub Release å‘å¸ƒæ¨¡å—
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}
-          name: "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }} Ä£¿éÏÖÒÑ·¢²¼"
-          body_path: CHANGELOG.md  # Èç¹ûÊ¹ÓÃÕâ¸ö£¬È·±£ generate_release_notes ²»ÆôÓÃ
+          name: "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }} æ¨¡å—ç°å·²å‘å¸ƒ"
+          body_path: CHANGELOG.md  # å¦‚æœä½¿ç”¨è¿™ä¸ªï¼Œç¡®ä¿ generate_release_notes ä¸å¯ç”¨
           files: |
             ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
-          fail_on_unmatched_files: false  # Èç¹ûÎÄ¼şÆ¥ÅäÊ§°Ü²»»áµ¼ÖÂ¹¤×÷Á÷Ê§°Ü
+          fail_on_unmatched_files: false  # å¦‚æœæ–‡ä»¶åŒ¹é…å¤±è´¥ä¸ä¼šå¯¼è‡´å·¥ä½œæµå¤±è´¥
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
