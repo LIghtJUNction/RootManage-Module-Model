@@ -1,5 +1,10 @@
 # RootManage-Module-Model
 
+本项目分支:
+当前默认分支:Main
+[MagicNet](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/MagicNet). 已发布 状态:维护中
+[NetHunter4ksu](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/) 未发布 状态:不积极维护
+
 
 ## MyModule 文件夹
 
@@ -56,6 +61,8 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 
 > 1.请不要给MyModule改名，如要改名，请自行修改工作流，将关键字MyModule修改为你想要的名字（没有必要，因为最终安装在手机上，在data/adb/modules/模块id文件夹，MyModule这个名字只是在github库里方便标识文件路径，并不影响）
 >
+
+
 
 
 # 以下是官方的详细说明
