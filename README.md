@@ -1,9 +1,9 @@
 # RootManage-Module-Model
 
-本项目分支:
-当前默认分支:Main
-[MagicNet](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/MagicNet). 已发布 状态:维护中
-[NetHunter4ksu](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/) 未发布 状态:不积极维护
+##本项目分支:
+###当前默认分支:Main
+###[MagicNet](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/MagicNet). 已发布 状态:维护中
+###[NetHunter-ksu](https://github.com/LIghtJUNction/RootManage-Module-Model/tree/NetHunter-ksu) 未发布 状态:不积极维护
 
 
 ## MyModule 文件夹
