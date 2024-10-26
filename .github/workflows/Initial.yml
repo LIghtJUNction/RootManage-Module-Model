@@ -49,10 +49,6 @@ jobs:
           # 提交更改
           git commit -m "Track large files with Git LFS" || echo "No changes to commit"
 
-      - name: init__module.prop
-        run: |
-          echo "" > MyModule/module.prop
-
 
       - name: Get Version 获取版本
         id: get_version
@@ -65,7 +61,7 @@ jobs:
 
       - name: Add the id key in the file 将模块id写入模块配置文件
         run: |
-          echo "id=${{ github.event.inputs.id }}" >> MyModule/module.prop
+          echo "id=${{ github.event.inputs.id }}" > MyModule/module.prop
           echo "id=${{ github.event.inputs.id }}" >> $GITHUB_ENV
       - name: Add the name key in the file 将模块名写入模块配置文件
         run: |
