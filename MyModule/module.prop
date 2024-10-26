@@ -1,7 +1,7 @@
 
 id=NetHunter-kernelsu
 name=NetHunter
-version=0.0.2_debug
+version=debug
 versionCode=20241026
 author=SherlockChiang&LIghtJUNction
 description=测试NetHunter-kernelsu分支初始化
