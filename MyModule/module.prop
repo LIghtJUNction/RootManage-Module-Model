@@ -1,6 +1,6 @@
 id=UniCron
 name=UniCron
-version=0.0.0
+version=0.0.1
 versionCode=20241211
 author=LIghtJUNction
 description=前置模块，提供统一的定时脚本服务
