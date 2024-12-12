@@ -1,4 +1,9 @@
 # RootManage-Module-Model
+[![Stars](https://img.shields.io/github/stars/YAWAsau/backup_script?label=stars)](https://github.com/LIghtJUNction)
+[![Download](https://img.shields.io/github/downloads/YAWAsau/backup_script/total)](https://github.com/LIghtJUNction/RootManage-Module-Model/releases)
+[![Release](https://img.shields.io/github/v/release/YAWAsau/backup_script?label=release)](https://github.com/LIghtJUNction/RootManage-Module-Model/releases/latest)
+[![License](https://img.shields.io/github/license/YAWAsau/backup_script?label=License)](https://choosealicense.com/licenses/gpl-3.0)
+
 
 ## 本项目分支:
 ### 当前默认分支:Main
