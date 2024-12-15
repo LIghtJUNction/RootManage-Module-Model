@@ -86,7 +86,7 @@ jobs:
           echo "日期: ${{ env.date }}"
           echo "作者: ${{ env.author }}"
 
-      - name: Check if updates are needed & 更新 update.json 和 module.prop
+      - name: 更新module.prop
         run: |
           if [ "${{ env.version }}" != "${{ env.version-old }}" ]; then
             echo "Version needs update."
@@ -97,6 +97,19 @@ jobs:
             echo "VersionCode needs update."
             sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
           fi
+
+      - name: 更新 update.json
+        run: |
+            cat <<EOF > update.json
+            {
+              "version": "${{ env.version }}",
+              "versionCode": "${{ env.date }}",
+              "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
+              "changelog": "更新日志内容",
+              "description": "${{ env.description }}"
+            }
+            EOF
+
 
 
 # 即便没有任何改动也不会报错，方便debug
@@ -159,13 +172,3 @@ jobs:
           UPSTREAM_ACCESS_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
           # 用于身份验证的 token
 
-
-
-      - name: Notify if UPSTREAM_ACCESS_TOKEN is missing 提醒下你，不喜欢可以删掉
-        if: env.UPSTREAM_ACCESS_TOKEN == ''
-        run: |
-          echo "UPSTREAM_ACCESS_TOKEN is missing. Creating an issue to notify you:)."
-          curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               -d '{"title":"UPSTREAM_ACCESS_TOKEN Missing","body":"The UPSTREAM_ACCESS_TOKEN 缺失，（运行工作流发布模块的时候）如果你想要在发布模块的同时，上传到母仓库，请在设置界面填写UPSTREAM_ACCESS_TOKEN，如果你不想上传，忽略即可：）"}' \
-               https://api.github.com/repos/${{ github.repository }}/issues
