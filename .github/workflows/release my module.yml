@@ -105,7 +105,7 @@ jobs:
               "version": "${{ env.version }}",
               "versionCode": "${{ env.date }}",
               "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
-              "changelog": "更新日志内容",
+              "changelog": "${{ env.repo_url }}/${{ github.ref_name }}    /CHANGELOG.md",
               "description": "${{ env.description }}"
             }
             EOF
