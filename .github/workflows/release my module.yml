@@ -113,6 +113,11 @@ jobs:
 
 
 # 即便没有任何改动也不会报错，方便debug
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
@@ -120,18 +125,12 @@ jobs:
             echo "skip=true" >> $GITHUB_ENV
             exit 0
           fi
-
-      - name: Commit changes
-        if: env.skip != 'true'
+          
+      - name: Add and commit changes
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
           git add update.json MyModule/module.prop
           git commit -m "更新 update.json和module.prop"
-
-      - name: Push changes 
         if: env.skip != 'true'
-        run: git push origin ${{ github.ref_name }}  
 
       - name: Package module 打包模块
         run: |
