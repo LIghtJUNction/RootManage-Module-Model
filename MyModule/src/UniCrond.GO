@@ -24,6 +24,7 @@ var (
     runningTasks  = make(map[string]cron.EntryID)
     cronScheduler *cron.Cron
     mutex         sync.Mutex
+    lockFilePath  = "/data/local/tmp/unicrond.lock" // 全局锁文件路径
 )
 
 func listRunningTasks() {
@@ -102,7 +103,7 @@ func runWithoutInotify() {
 }
 
 func loadTasks() {
-    lock := flock.New("/tmp/unicrond.lock")
+    lock := flock.New(lockFilePath)
     locked, err := lock.TryLock()
     if err != nil {
         fmt.Printf("无法获取锁: %v\n", err)
@@ -157,15 +158,19 @@ func loadTasks() {
                                 continue
                             }
 
-                            entryID, err := cronScheduler.AddFunc(spec, func() {
-                                addJobToSchedule(command)
-                            })
+                            entryID, err := cronScheduler.AddFunc(spec, func(cmd string) func() {
+                                return func() {
+                                    addJobToSchedule(cmd)
+                                }
+                            }(command))
                             if err != nil {
                                 log.Printf("添加任务失败 '%s': %v\n", command, err)
                                 continue
                             }
 
+                            mutex.Lock()
                             runningTasks[command] = entryID
+                            mutex.Unlock()
                             log.Printf("添加任务到调度：%s\n", command)
                         }
                     }
@@ -272,6 +277,36 @@ func main() {
     }
 
     fmt.Println("启动 UniCrond")
+    fmt.Println("酷安@LIghtJUNction")
+    // 使用全局锁文件路径
+    fmt.Println("使用锁文件路径:", lockFilePath)
+    
+    // 确保锁文件目录存在
+    lockDir := filepath.Dir(lockFilePath)
+    if _, err := os.Stat(lockDir); os.IsNotExist(err) {
+        err := os.MkdirAll(lockDir, 0755)
+        if err != nil {
+            log.Fatalf("无法创建锁文件目录: %v", err)
+        }
+    }
+    
+    lock := flock.New(lockFilePath)
+    
+    // 尝试获取锁
+    locked, err := lock.TryLock()
+    if err != nil {
+        log.Fatalf("无法获取锁: %v", err)
+    }
+    if !locked {
+        log.Fatalf("锁已被其他进程持有")
+    }
+    defer func() {
+        err := lock.Unlock()
+        if err != nil {
+            log.Printf("无法释放锁: %v", err)
+        }
+    }()
+
     loadTasks()
     runScheduler()
 }
