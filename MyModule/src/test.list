@@ -1,0 +1,32 @@
+# UniCrond测试名单
+
+1. UniCrond
+期望：正确启动初始化日志
+开始扫描/data/adb/modules/$moduleid/UniCron(如果有这个目录，没有则跳过这个模块)/$moduleid.cron 
+识别其中的cron语句，添加至任务集合中并统一运行
+
+
+UniCron -l 显示当前已有任务
+
+退出终端，杀死UniCrond进程
+
+2.UniCrond -b
+进入后台运行模式
+监控
+/data/adb/modules/$moduleid/UniCron/目录下的$moduleid.cron文件是否发生变化
+如果变化，则刷新当前的任务集合
+仅监控
+/data/adb/modules/$moduleid/disable是否存在
+请勿检测/data/adb/modules/$moduleid/整个目录，避免因为日志文件更新也触发UniCrond刷新
+
+保证连续运行 UniCron -b 不创建新的Unicrond进程，保证在同一时刻只有一个UniCrond进程
+
+2.UniCron -f
+强制重启UniCron至前台模式
+
+3.UniCron -f -b
+强制重启UniCron至后台模式（先杀死之前的UniCrond进程/无论前台后台）
+
+4.确保 pgrep -f UniCrond 结果仅有一个进程
+
+5.确保cron更新/移除时，UniCrond能及时刷新任务集
