@@ -1,6 +1,7 @@
 {
-  "version": "0.0.0",
+  "version": "UniCron-debug",
   "versionCode": "20241216",
-  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/0.0.0/UniCron-0.0.0-20241216-byLIghtJUNction.zip",
-  "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/raw/debug/CHANGELOG.md"
+  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/UniCron-debug/UniCron-UniCron-debug-20241216-byLIghtJUNction.zip",
+  "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/debug/CHANGELOG.md",
+  "description": "v3.0debug"
 }
