@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -13,7 +12,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
+
+	"github.com/robfig/cron/v3"
 )
 
 var (
@@ -25,6 +25,7 @@ var (
 	unicrontDir   = "/data/adb/modules/UniCron/"
 	shutdownChan  = make(chan struct{})
 	logFile       *os.File
+	taskScheduler *cron.Cron
 )
 
 func init() {
@@ -53,7 +54,7 @@ func initLogging() {
 	if err != nil {
 		log.Fatalf("无法打开日志文件: %v", err)
 	}
-	log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+	log.SetOutput(logFile)
 	log.Println("日志记录已初始化。")
 }
 
@@ -129,26 +130,27 @@ func loadCronFile(filePath string) {
 		}
 
 		command := strings.Join(parts[5:], " ")
-		addTaskToSchedule(command)
+		spec := strings.Join(parts[:5], " ")
+
+		addTaskToSchedule(command, spec)
 	}
 }
 
-func addTaskToSchedule(command string) {
+func addTaskToSchedule(command, spec string) {
 	if _, exists := runningTasks.Load(command); exists {
 		log.Printf("任务已存在，跳过添加：%s", command)
 		return
 	}
 
-	duration := 10 * time.Second // 示例，需替换为实际解析的调度规则
-	ticker := time.NewTicker(duration)
-	runningTasks.Store(command, ticker)
+	entryID, err := taskScheduler.AddFunc(spec, func() {
+		executeCommand(command)
+	})
+	if err != nil {
+		log.Printf("添加任务失败，表达式: '%s'，命令: '%s': %v", spec, command, err)
+		return
+	}
 
-	go func(cmd string) {
-		for range ticker.C {
-			executeCommand(cmd)
-		}
-	}(command)
-
+	runningTasks.Store(command, entryID)
 	log.Printf("添加任务到调度：%s", command)
 }
 
@@ -241,6 +243,11 @@ func main() {
 	defer lockFile.Close()
 
 	initLogging()
+
+	taskScheduler = cron.New(cron.WithSeconds())
+	defer taskScheduler.Stop()
+	taskScheduler.Start()
+
 	startIPC()
 	loadTasks()
 
