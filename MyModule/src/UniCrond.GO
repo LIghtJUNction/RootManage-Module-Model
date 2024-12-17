@@ -369,4 +369,168 @@ func killExistingProcesses() error {
     if _, err := os.Stat(lockFilePath); err == nil {
         err := os.Remove(lockFilePath)
         if err != nil {
-            log.Printf("
+        log.Printf("无法移除锁文件: %v", err)
+        }
+    }
+    return nil
+}
+
+func printDebugInfo(flag string) {
+    switch flag {
+    case "tasks":
+        log.Println("调试信息：当前任务列表")
+        listRunningTasks()
+    default:
+        log.Printf("未知的调试标志: %s\n", flag)
+    }
+}
+
+func printUsage() {
+    fmt.Println("UniCrond")
+    fmt.Println("Usage:")
+    fmt.Println("  unicrond [options]")
+    fmt.Println()
+    fmt.Println("Options:")
+    fmt.Println("  -h         print this message")
+    fmt.Println("  -i         daemon runs without inotify support")
+    fmt.Println("  -n         run in foreground")
+    fmt.Println("  -f         force restart UniCrond")
+    fmt.Println("  -b         run in background")
+    fmt.Println("  -l         Lists the tasks that are currently running")
+    fmt.Println("  -V         print version and exit")
+    fmt.Println("  -x <flag>  print debug information")
+}
+
+func daemonize(args []string) {
+    // 移除 '-b' 参数
+    newArgs := []string{}
+    for _, arg := range args {
+        if arg != "-b" {
+            newArgs = append(newArgs, arg)
+        }
+    }
+
+    cmd := exec.Command(os.Args[0], newArgs...)
+    // 设置会话ID，确保子进程与父进程分离
+    cmd.SysProcAttr = &syscall.SysProcAttr{
+        Setsid: true,
+    }
+
+    // 重定向标准输入、输出、错误
+    cmd.Stdin = nil
+    cmd.Stdout = nil
+    cmd.Stderr = nil
+
+    err := cmd.Start()
+    if err != nil {
+        log.Fatalf("守护进程启动失败: %v", err)
+    }
+    log.Printf("守护进程已启动，PID: %d\n", cmd.Process.Pid)
+    os.Exit(0)
+}
+
+func main() {
+    // 定义命令行参数
+    version := flag.Bool("V", false, "print version and exit")
+    listTasksFlag := flag.Bool("l", false, "Lists the tasks that are currently running")
+    debug := flag.String("x", "", "print debug information")
+    forceRestart := flag.Bool("f", false, "force restart UniCrond")
+    foreground := flag.Bool("n", false, "run in foreground")
+    background := flag.Bool("b", false, "run in background")
+    inotify := flag.Bool("i", false, "daemon runs without inotify support")
+    help := flag.Bool("h", false, "print this message")
+
+    flag.Parse()
+
+    if *help {
+        printUsage()
+        return
+    }
+
+    if *version {
+        fmt.Println("UniCrond version 1.0")
+        return
+    }
+
+    // 如果 -f 标志被设置，尝试杀死已有的 UniCrond 进程
+    if *forceRestart {
+        log.Println("强制重启 UniCrond，尝试关闭已有的进程")
+        err := killExistingProcesses()
+        if err != nil {
+            log.Printf("无法关闭已有的 UniCrond 进程: %v\n", err)
+        } else {
+            log.Println("已关闭已有的 UniCrond 进程")
+        }
+    }
+
+    // 如果 -b 标志被设置，先进行守护进程化，再退出父进程
+    if *background {
+        log.Println("以后台模式运行。")
+        daemonize(os.Args[1:])
+    }
+
+    // 尝试获取全局锁，确保仅有一个 UniCrond 实例运行
+    lockFile, err := os.OpenFile(lockFilePath, os.O_CREATE|os.O_RDWR, 0666)
+    if err != nil {
+        log.Fatalf("无法打开锁文件: %v", err)
+    }
+    defer lockFile.Close()
+
+    err = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+    if err != nil {
+        log.Fatalf("无法获取锁: %v", err)
+    }
+    defer syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+
+    // 初始化日志
+    initLogging()
+    // 启动 IPC 监听器
+    startIPC()
+    // 移除被禁用的任务
+    removeDisabledTasks()
+
+    // 如果 -l 标志被设置，连接到 IPC Socket 查询任务列表
+    if *listTasksFlag {
+        response, err := sendIPCCommand("list")
+        if err != nil {
+            fmt.Printf("无法连接到运行中的 UniCrond 实例: %v\n", err)
+            os.Exit(1)
+        }
+        fmt.Print(response)
+        return
+    }
+
+    // 如果有调试信息请求
+    if *debug != "" {
+        printDebugInfo(*debug)
+        return
+    }
+
+    // 处理系统信号以优雅关闭
+    go func() {
+        sigChan := make(chan os.Signal, 1)
+        signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+        sig := <-sigChan
+        log.Printf("接收到信号: %v，正在关闭...\n", sig)
+        shutdownChan <- struct{}{}
+    }()
+
+    if *foreground {
+        log.Println("运行前台模式")
+        runScheduler()
+        loadTasks()
+    } else if *inotify {
+        runWithoutInotify()
+    } else {
+        // 默认模式: 初始化调度器后加载任务
+        log.Println("启动 UniCrond")
+        log.Println("酷安@LIghtJUNction")
+        runScheduler() // 初始化调度器
+        loadTasks()    // 加载任务
+    }
+
+    // 阻塞主线程，保持守护进程运行，直到收到关闭信号
+    <-shutdownChan
+    log.Println("UniCrond 正在关闭...")
+    os.Exit(0)
+}
