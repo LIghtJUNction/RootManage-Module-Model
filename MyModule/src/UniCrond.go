@@ -44,28 +44,27 @@ func initLogging() {
     logsDir := filepath.Join(unicrontDir, "logs")
     logFilePath := filepath.Join(logsDir, "UniCron.log")
 
-    if _, err := os.Stat(unicrontDir); !os.IsNotExist(err) {
-        if _, err := os.Stat(disablePath); os.IsNotExist(err) {
-            if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-                err := os.MkdirAll(logsDir, 0755)
-                if err != nil {
-                    log.Fatalf("无法创建日志目录: %v", err)
-                }
-            }
-            var err error
-            // 清空日志文件并设置权限为0666
-            logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-            if err != nil {
-                log.Fatalf("无法打开日志文件: %v", err)
-            }
-            log.SetOutput(io.MultiWriter(os.Stdout, logFile))
-            log.Println("日志记录已初始化。")
-        } else {
-            log.Println("UniCron 被禁用，不初始化日志。")
-        }
-    } else {
+    if _, err := os.Stat(unicrontDir); os.IsNotExist(err) {
         log.Println("UniCron 目录不存在，不初始化日志。")
+        return
     }
+
+    if _, err := os.Stat(disablePath); err == nil {
+        log.Println("UniCron 被禁用，不初始化日志。")
+        return
+    }
+
+    if err := os.MkdirAll(logsDir, 0755); err != nil {
+        log.Fatalf("无法创建日志目录: %v", err)
+    }
+
+    var err error
+    logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+    if err != nil {
+        log.Fatalf("无法打开日志文件: %v", err)
+    }
+    log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+    log.Println("日志记录已初始化。")
 }
 
 func removeDisabledTasks() {
