@@ -17,13 +17,14 @@ import (
 )
 
 var (
-	runningTasks        = make(map[string]*time.Ticker)
-	mutex               sync.Mutex
-	lockFilePath        = "/data/local/tmp/unicrond.lock"
-	logFile             *os.File
-	ipcSocketPath       = "/data/local/tmp/unicrond.sock"
-	unicrontDir         = "/data/adb/modules/UniCron/"
-	shutdownChan        = make(chan struct{})
+	runningTasks = sync.Map{}
+	mutex        sync.Mutex
+
+	lockFilePath  = "/data/local/tmp/unicrond.lock"
+	ipcSocketPath = "/data/local/tmp/unicrond.sock"
+	unicrontDir   = "/data/adb/modules/UniCron/"
+	shutdownChan  = make(chan struct{})
+	logFile       *os.File
 )
 
 func init() {
@@ -64,50 +65,22 @@ func ensureDirExists(path string) {
 	}
 }
 
-func removeDisabledTasks() {
-	baseDir := "/data/adb/modules"
-	modules, err := os.ReadDir(baseDir)
+func acquireLock(lockFilePath string) (*os.File, error) {
+	lockFile, err := os.OpenFile(lockFilePath, os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
-		log.Printf("读取模块目录时出错: %v", err)
-		return
+		return nil, fmt.Errorf("无法打开锁文件: %v", err)
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
-	for _, module := range modules {
-		if module.IsDir() && module.Name() != "UniCron" {
-			modulePath := filepath.Join(baseDir, module.Name())
-			disablePath := filepath.Join(modulePath, "disable")
-			if _, err := os.Stat(disablePath); err == nil {
-				if ticker, exists := runningTasks[module.Name()]; exists {
-					ticker.Stop()
-					delete(runningTasks, module.Name())
-					log.Printf("移除被禁用模块的任务: %s", module.Name())
-				}
-			}
-		}
+	err = syscall.Flock(int(lockFile.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err != nil {
+		lockFile.Close()
+		return nil, fmt.Errorf("无法获取锁: %v", err)
 	}
-}
-
-func listRunningTasks() string {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if len(runningTasks) == 0 {
-		return "当前没有正在运行的任务。\n"
-	}
-
-	var builder strings.Builder
-	builder.WriteString("正在运行的任务列表：\n")
-	for task := range runningTasks {
-		builder.WriteString(fmt.Sprintf("任务: %s\n", task))
-	}
-	return builder.String()
+	return lockFile, nil
 }
 
 func loadTasks() {
 	baseDir := "/data/adb/modules"
-	newTaskCommands := sync.Map{}
-
 	modules, err := os.ReadDir(baseDir)
 	if err != nil {
 		log.Printf("读取模块目录时出错: %v", err)
@@ -130,23 +103,12 @@ func loadTasks() {
 			if !strings.HasSuffix(file.Name(), ".cron") {
 				continue
 			}
-
-			loadCronFile(filepath.Join(unicrontPath, file.Name()), &newTaskCommands)
-		}
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-	for cmd := range runningTasks {
-		if _, ok := newTaskCommands.Load(cmd); !ok {
-			log.Printf("移除不存在的任务: %s", cmd)
-			runningTasks[cmd].Stop()
-			delete(runningTasks, cmd)
+			loadCronFile(filepath.Join(unicrontPath, file.Name()))
 		}
 	}
 }
 
-func loadCronFile(filePath string, newTaskCommands *sync.Map) {
+func loadCronFile(filePath string) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Printf("无法读取 cron 文件 %s: %v", filePath, err)
@@ -167,29 +129,19 @@ func loadCronFile(filePath string, newTaskCommands *sync.Map) {
 		}
 
 		command := strings.Join(parts[5:], " ")
-		spec := strings.Join(parts[:5], " ")
-
-		newTaskCommands.Store(command, true)
-		addTaskToSchedule(command, spec)
+		addTaskToSchedule(command)
 	}
 }
 
-func addTaskToSchedule(command, spec string) {
-	if _, exists := runningTasks[command]; exists {
+func addTaskToSchedule(command string) {
+	if _, exists := runningTasks.Load(command); exists {
 		log.Printf("任务已存在，跳过添加：%s", command)
 		return
 	}
 
-	duration, err := time.ParseDuration(spec)
-	if err != nil {
-		log.Printf("无效的 cron 格式 '%s': %v", spec, err)
-		return
-	}
-
+	duration := 10 * time.Second // 示例，需替换为实际解析的调度规则
 	ticker := time.NewTicker(duration)
-	mutex.Lock()
-	runningTasks[command] = ticker
-	mutex.Unlock()
+	runningTasks.Store(command, ticker)
 
 	go func(cmd string) {
 		for range ticker.C {
@@ -246,7 +198,8 @@ func handleConnection(conn net.Conn) {
 	command := strings.TrimSpace(string(buffer[:n]))
 	switch command {
 	case "list":
-		conn.Write([]byte(listRunningTasks()))
+		response := listRunningTasks()
+		conn.Write([]byte(response))
 	case "shutdown":
 		log.Println("收到关闭命令，正在关闭...")
 		conn.Write([]byte("正在关闭 UniCrond\n"))
@@ -256,11 +209,19 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+func listRunningTasks() string {
+	var builder strings.Builder
+	runningTasks.Range(func(key, value any) bool {
+		builder.WriteString(fmt.Sprintf("任务: %s\n", key))
+		return true
+	})
+	return builder.String()
+}
+
 func main() {
 	version := flag.Bool("V", false, "print version and exit")
-	listTasksFlag := flag.Bool("l", false, "Lists the tasks that are currently running")
-	background := flag.Bool("b", false, "run in background")
 	help := flag.Bool("h", false, "print this message")
+	background := flag.Bool("b", false, "run in background")
 	flag.Parse()
 
 	if *help {
@@ -273,17 +234,18 @@ func main() {
 		return
 	}
 
-	if *background {
-		log.Println("以后台模式运行。")
-		os.Exit(0)
+	lockFile, err := acquireLock(lockFilePath)
+	if err != nil {
+		log.Fatalf("无法启动 UniCrond: %v", err)
 	}
+	defer lockFile.Close()
 
 	initLogging()
 	startIPC()
 	loadTasks()
 
-	if *listTasksFlag {
-		fmt.Print(listRunningTasks())
+	if *background {
+		log.Println("以后台模式运行")
 		return
 	}
 
