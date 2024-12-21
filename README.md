@@ -68,7 +68,8 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 > 1.请不要给MyModule改名，如要改名，请自行修改工作流，将关键字MyModule修改为你想要的名字（没有必要，因为最终安装在手机上，在data/adb/modules/模块id文件夹，MyModule这个名字只是在github库里方便标识文件路径，并不影响）
 >
 
-
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/LIghtJUNction/RootManage-Module-Model.svg?variant=adaptive)](https://starchart.cc/LIghtJUNction/RootManage-Module-Model)
 
 
 # 以下是官方的详细说明
