@@ -4,6 +4,8 @@
 [![Release](https://img.shields.io/github/v/release/LIghtJUNction/RootManage-Module-Model?label=release)](https://github.com/LIghtJUNction/RootManage-Module-Model/releases/latest)
 [![License](https://img.shields.io/github/license/LIghtJUNction/RootManage-Module-Model?label=License)](https://choosealicense.com/licenses/gpl-3.0)
 
+[![Repobeats analytics image](https://repobeats.axiom.co/api/embed/7a3672ae3c424e1c04e25afe6ef553652e788130.svg "Repobeats analytics image")](https://github.com/LIghtJUNction/RootManage-Module-Model/)
+
 
 ## 本项目分支:
 ### 当前默认分支:Main
