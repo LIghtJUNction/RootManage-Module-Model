@@ -18,7 +18,6 @@
 
 > 在此处编辑模块内容
 
-
 ## 初始化[![initial 初始化](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/Initial.yml/badge.svg)](https://github.com/LIghtJUNction/KernelSu-Module-Model-/actions/workflows/Initial.yml)
 
 > 请点击action板块运行initial工作流
@@ -53,6 +52,11 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 ## update.json
 
 > 无需手动填写，工作流自动更新
+
+## 友情链接
+
+[skt-utils](https://github.com/GunRain/Magisk-Module-EG/blob/aaa/mod-root/skt-utils.sh)
+
 
 # *# 开始编写模块*
 
@@ -411,3 +415,6 @@ start user apps (autostart)
 ```
 
 如果你对 Android 的 init 语言感兴趣，推荐阅读[文档](https://android.googlesource.com/platform/system/core/+/master/init/README.md)。
+
+
+
