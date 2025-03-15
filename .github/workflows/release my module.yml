@@ -15,6 +15,7 @@ jobs:
         with:  
           ref: modules
           path: modules
+          
       - uses: actions/checkout@v4.1.0
         with:  
           ref: ${{ github.ref_name }}    
@@ -25,7 +26,7 @@ jobs:
           git lfs install
     
           # 拉取 LFS 文件
-          git lfs pull
+          git lfs pull || echo "LFS pull failed, continuing anyway"
     
           # 找到 MyModule 目录下超过 100MB 的文件并通过 Git LFS 进行跟踪
           find MyModule/ -type f -size +100M | while read -r file; do
@@ -33,8 +34,8 @@ jobs:
           done
     
           # 添加 .gitattributes 文件和所有被 LFS 跟踪的文件到暂存区
-          git add .gitattributes
-          git add $(git lfs ls-files -n)
+          git add .gitattributes || true
+          git add $(git lfs ls-files -n) || echo "No LFS files to add"
     
           # 提交更改
           git commit -m "Track large files with Git LFS" || echo "No changes to commit"
@@ -43,64 +44,136 @@ jobs:
         id: get_repo_url
         run: |
           echo "repo_url=https://github.com/${{ github.repository }}" >> "$GITHUB_ENV"
+      
       - name: 获取版本
         id: get_version
         run: |
-          echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
+          # 设置基本日期
+          today_prefix=$(date +%Y%m%d)
+          echo "date=${today_prefix}" >> "$GITHUB_ENV"
+          
+          # 安装 GitHub CLI
+          if ! command -v gh &> /dev/null; then
+            echo "安装 GitHub CLI..."
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+          
+          # 查找并获取今天的最后一个版本序号
+          latest_seq=0
+          
+          # 列出所有release并查找今天的日期前缀
+          echo "检查已有版本..."
+          releases=$(gh release list --repo ${{ github.repository }} --limit 100 | grep "${today_prefix}" || echo "")
+          
+          if [ -n "$releases" ]; then
+            echo "找到今天的版本，提取序列号..."
+            while read -r line; do
+              # 提取版本号字段 (通常在第一列)
+              version_part=$(echo "$line" | awk '{print $1}')
+              
+              # 查找与今天日期匹配的模式
+              if [[ "$line" =~ ${today_prefix}([0-9][0-9]) ]]; then
+                seq=${BASH_REMATCH[1]}
+                echo "找到序列号: $seq"
+                # 转换为数字进行比较
+                seq_num=$(echo "$seq" | sed 's/^0*//')
+                if [ -z "$seq_num" ]; then seq_num=0; fi
+                
+                if [ "$seq_num" -gt "$latest_seq" ]; then
+                  latest_seq=$seq_num
+                fi
+              fi
+            done <<< "$releases"
+          else
+            echo "今天没有发布过版本，序列号将从 01 开始"
+          fi
+          
+          echo "最后的序列号: $latest_seq"
+          
+          # 序号加1
+          next_seq=$((latest_seq + 1))
+          
+          # 确保不超过99
+          if [ $next_seq -gt 99 ]; then
+            echo "警告: 今天的版本发布已超过99个，将使用99作为序列号"
+            next_seq=99
+          fi
+          
+          # 格式化为两位数字
+          seq_padded=$(printf "%02d" $next_seq)
+          
+          echo "新序列号: $seq_padded"
+          
+          # 将变量保存到环境中
+          echo "versionSeq=${seq_padded}" >> "$GITHUB_ENV"
+          echo "versionCode=${today_prefix}${seq_padded}" >> "$GITHUB_ENV"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: 获取分支名
         id: get_ref_name
         run: |
           echo "ref_name=${{ github.ref_name }}" >> "$GITHUB_ENV"
 
-
       - name: Extract variables from module.prop 获取一些变量的值，以便后续调用
         id: extract_vars
         run: |
-          # 提取变量并保存到环境变量中
-          id=$(awk -F= '/id=/ {print $2}' MyModule/module.prop)
-          name=$(awk -F= '/name=/ {print $2}' MyModule/module.prop)
-          version=$(awk -F= '/version=/ {print $2}' MyModule/module.prop)
-          versionCode=$(awk -F= '/versionCode=/ {print $2}' MyModule/module.prop)
-          author=$(awk -F= '/author=/ {print $2}' MyModule/module.prop)
-          description=$(awk -F= '/description=/ {print $2}' MyModule/module.prop)
-          updateJson=$(awk -F= '/updateJson=/ {print $2}' MyModule/module.prop)
+          # 检查module.prop文件是否存在
+          if [ ! -f "MyModule/module.prop" ]; then
+            echo "错误: MyModule/module.prop 不存在，请先执行 initial 工作流"
+            exit 1
+          fi
+          
+          # 使用grep而不是awk，更可靠地提取变量
+          id=$(grep "^id=" MyModule/module.prop | cut -d= -f2-)
+          name=$(grep "^name=" MyModule/module.prop | cut -d= -f2-)
+          version=$(grep "^version=" MyModule/module.prop | cut -d= -f2-)
+          versionCode=$(grep "^versionCode=" MyModule/module.prop | cut -d= -f2-)
+          author=$(grep "^author=" MyModule/module.prop | cut -d= -f2-)
+          description=$(grep "^description=" MyModule/module.prop | cut -d= -f2-)
+          updateJson=$(grep "^updateJson=" MyModule/module.prop | cut -d= -f2-)
         
-          # 检查提取的变量是否为空，并输出提示信息
-          if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ] || [ -z "$updateJson"]; then
-            echo "请先执行 initial 工作流以生成 module.prop 文件"
+          # 检查提取的变量是否为空
+          if [ -z "$id" ] || [ -z "$name" ] || [ -z "$version" ] || [ -z "$versionCode" ] || [ -z "$author" ] || [ -z "$description" ]; then
+            echo "错误: module.prop 文件不完整，请检查必填字段"
             exit 1
           fi
 
           # 保存变量到环境文件
           echo "id=${id}" >> $GITHUB_ENV
           echo "name=${name}" >> $GITHUB_ENV
-          echo "version-old=${version}" >> $GITHUB_ENV
-          echo "versionCode-old=${versionCode}" >> $GITHUB_ENV
+          echo "version_old=${version}" >> $GITHUB_ENV
+          echo "versionCode_old=${versionCode}" >> $GITHUB_ENV
           echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
-          echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
+          # 使用带序列号的完整版本代号
+          echo "versionCode=${{ env.fullVersionCode }}" >> $GITHUB_ENV
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
-          echo "updateJson=${updateJson}" >> $GITHUB_ENV
+          if [ -n "$updateJson" ]; then
+            echo "updateJson=${updateJson}" >> $GITHUB_ENV
+          fi
 
       - name: 调试变量
         run: |
           echo "版本: ${{ env.version }}"
           echo "版本号: ${{ env.versionCode }}"
-          echo "旧版本: ${{ env.version-old }}"
-          echo "旧版本号: ${{ env.versionCode-old }}"
           echo "日期: ${{ env.date }}"
+          echo "序列号: ${{ env.versionSeq }}"
+          echo "旧版本: ${{ env.version_old }}"
+          echo "旧版本号: ${{ env.versionCode_old }}"
           echo "作者: ${{ env.author }}"
 
       - name: 更新module.prop
         run: |
-          if [ "${{ env.version }}" != "${{ env.version-old }}" ]; then
+          if [ "${{ env.version }}" != "${{ env.version_old }}" ]; then
             echo "Version needs update."
-            sed -i "s/${{ env.version-old }}/${{ env.version }}/g" "MyModule/module.prop"
+            sed -i "s/version=${{ env.version_old }}/version=${{ env.version }}/g" "MyModule/module.prop"
           fi
 
-          if [ "${{ env.versionCode }}" != "${{ env.versionCode-old }}" ]; then
+          if [ "${{ env.versionCode }}" != "${{ env.versionCode_old }}" ]; then
             echo "VersionCode needs update."
-            sed -i "s/${{ env.versionCode-old }}/${{ env.date }}/g" "MyModule/module.prop"
+            sed -i "s/versionCode=${{ env.versionCode_old }}/versionCode=${{ env.versionCode }}/g" "MyModule/module.prop"
           fi
 
       - name: 更新 update.json
@@ -108,22 +181,18 @@ jobs:
             cat <<EOF > update.json
             {
               "version": "${{ env.version }}",
-              "versionCode": "${{ env.date }}",
+              "versionCode": "${{ env.versionCode }}",
               "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
-              "changelog": "${{ env.repo_url }}/${{ github.ref_name }}/CHANGELOG.md",
+              "changelog": "${{ env.repo_url }}/raw/${{ github.ref_name }}/CHANGELOG.md",
               "description": "${{ env.description }}"
             }
             EOF
 
-
-
-# 即便没有任何改动也不会报错，方便debug
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
             echo "skip=true" >> $GITHUB_ENV
-            exit 0
           fi
 
       - name: Commit changes
@@ -138,14 +207,31 @@ jobs:
         if: env.skip != 'true'
         run: git push origin ${{ github.ref_name }}  
 
+      - name: 检查是否为调试模式
+        run: |
+          if [ "${{ github.event.inputs.tag }}" = "debug" ]; then
+            echo "DEBUG_MODE=true" >> $GITHUB_ENV
+            echo "正在以调试模式运行，将跳过 Release 创建步骤"
+          else
+            echo "DEBUG_MODE=false" >> $GITHUB_ENV
+            echo "正常模式运行，将创建 Release"
+          fi
+
       - name: Package module 打包模块
         run: |
           # 打包模块
-          
           cd MyModule && zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" * && mv *.zip .. && cd ..
 
-          
+      - name: 调试模式 - 上传模块作为工作流构建工件
+        if: env.DEBUG_MODE == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}
+          path: ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
+          retention-days: 7
+
       - name: Create GitHub Release 发布模块
+        if: env.DEBUG_MODE != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.version }}
@@ -158,22 +244,108 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-
-
-      - name: upload 上传（需要设置token/可选）
-        if: env.UPSTREAM_ACCESS_TOKEN != ''
+      - name: 准备上传到母仓库 (条件检查)
+        if: env.DEBUG_MODE != 'true'
+        id: check_upstream
         run: |
-          # 推送到母仓库
+          if [ -n "${{ secrets.UPSTREAM_ACCESS_TOKEN }}" ]; then
+            echo "准备上传到母仓库..."
+            echo "can_upload=true" >> $GITHUB_ENV
+          else
+            echo "未设置UPSTREAM_ACCESS_TOKEN，跳过上传步骤"
+            echo "can_upload=false" >> $GITHUB_ENV
+
+      - name: 创建PR提交模块到母仓库
+        if: env.DEBUG_MODE != 'true' && env.can_upload == 'true'
+        run: |
+          # 确保 modules 目录存在并进入
+          if [ ! -d "modules" ]; then
+            echo "Error: modules 目录不存在，尝试创建"
+            mkdir -p modules
+          fi
           
-          git status
-          git checkout -b modules
-          git pull upstream module --rebase
-          git remote add upstream https://github.com/LIghtJUNction/KernelSu-Module-Model-.git
-          git add ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
-          git commit -m "模块共享"
-          git push upstream module
+          cd modules
+          
+          # 配置 git
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # 添加上游仓库
+          git remote add upstream https://github.com/LIghtJUNction/RootManage-Module-Model.git || echo "Remote already exists"
+          
+          # 获取上游最新代码
+          git fetch upstream modules
+          git checkout -b modules || git checkout modules
+          git pull upstream modules --rebase || echo "First pull, continuing..."
+          
+          # 创建模块ID对应的文件夹（如果不存在）
+          MODULE_DIR="${{ env.id }}"
+          mkdir -p "$MODULE_DIR"
+          
+          # 复制模块到对应ID文件夹
+          cp "../${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" "$MODULE_DIR/"
+          
+          # 创建或更新模块信息文件
+          cat > "$MODULE_DIR/info.json" <<EOF
+          {
+            "id": "${{ env.id }}",
+            "name": "${{ env.name }}",
+            "version": "${{ env.version }}",
+            "versionCode": "${{ env.versionCode }}",
+            "author": "${{ env.author }}",
+            "description": "${{ env.description }}",
+            "updateTime": "$(date '+%Y-%m-%d %H:%M:%S')",
+            "repo": "${{ github.repository }}"
+          }
+          EOF
+          
+          # 添加并提交文件
+          git add "$MODULE_DIR"
+          git commit -m "添加模块: ${{ env.name }} v${{ env.version }}" || echo "没有更改需要提交"
+          
+          # 创建新分支用于PR
+          pr_branch="add-${{ env.id }}-${{ env.version }}-${{ env.versionCode }}"
+          git checkout -b $pr_branch
+          
+          # 推送新分支到自己的仓库
+          git push -u origin $pr_branch --force
+          
+          # 安装 GitHub CLI (如果需要)
+          if ! command -v gh &> /dev/null; then
+            echo "安装 GitHub CLI..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh
+          fi
+          
+          # 返回到主目录并创建PR
+          cd ..
+          
+          echo "正在创建Pull Request..."
+          gh auth login --with-token <<< "${{ secrets.UPSTREAM_ACCESS_TOKEN }}"
+          gh pr create \
+            --repo LIghtJUNction/RootManage-Module-Model \
+            --base modules \
+            --head ${{ github.repository_owner }}:$pr_branch \
+            --title "添加模块: ${{ env.name }} v${{ env.version }}" \
+            --body "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}
+          模块信息:
+          - ID: ${{ env.id }}
+          - 名称: ${{ env.name }}
+          - 版本: ${{ env.version }}
+          - 版本代码: ${{ env.versionCode }}
+          - 作者: ${{ env.author }}
+          - 描述: ${{ env.description }}
+          - 仓库: ${{ github.repository }}
+          
+          此PR由${{ github.repository }}仓库的发布流程自动创建。" || echo "PR创建失败或已存在"
         env:
-          UPSTREAM_ACCESS_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
-          # 用于身份验证的 token
+          GH_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
+
+      - name: 完成
+        run: echo "工作流已完成"
+
+
 

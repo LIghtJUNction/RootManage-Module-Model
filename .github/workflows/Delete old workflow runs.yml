@@ -2,6 +2,15 @@ name: Delete old workflow runs
 
 on:
   workflow_dispatch:
+    inputs:
+      days:
+        description: "保留多少天内的工作流记录"
+        required: false
+        default: "7"
+      minimum_runs:
+        description: "每个工作流至少保留多少条记录"
+        required: false
+        default: "3"
 
 jobs:
   delete_old_runs:
@@ -9,9 +18,8 @@ jobs:
     steps:
       - name: Delete workflow runs
         uses: Mattraks/delete-workflow-runs@v2
-        if: github.ref == 'refs/heads/master'
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          retain_days: 0
-          keep_minimum_runs: 5
+          retain_days: ${{ github.event.inputs.days }}
+          keep_minimum_runs: ${{ github.event.inputs.minimum_runs }}

@@ -49,11 +49,22 @@ jobs:
           # 提交更改
           git commit -m "Track large files with Git LFS" || echo "No changes to commit"
 
+      - name: 初始化
+        run: |
+          mkdir -p MyModule
+          touch MyModule/module.prop
+
 
       - name: Get Version 获取版本
         id: get_version
         run: |
-          echo "date=$(date +%Y%m%d)" >> "$GITHUB_ENV"
+          # 生成今天的日期
+          today_date=$(date +%Y%m%d)
+          echo "date=${today_date}" >> "$GITHUB_ENV"
+          
+          # 初始化版本使用日期+01序列号
+          echo "versionCode=${today_date}01" >> "$GITHUB_ENV"
+
       - name: 获取仓库 URL
         id: get_repo_url
         run: |
@@ -88,10 +99,6 @@ jobs:
           echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/update.json" >> MyModule/module.prop
           echo "updateJson=http://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/update.json" >> $GITHUB_ENV
 
-
-
-
-
       - name: List files for debug 让我看看运行情况
         run: |
           ls -la
@@ -122,13 +129,6 @@ jobs:
           git config --global user.email "actions@github.com"
 
 
-      - name: Debugging Output 调试一下
-        run: |
-          
-          git status
-          git log -1
-
-# 即便没有任何改动也不会报错，方便debug
       - name: Check for changes
         run: |
           if git diff-index --quiet HEAD --; then
@@ -153,7 +153,6 @@ jobs:
           
           cd MyModule && zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" * && mv *.zip .. && cd ..
 
-
       - name: Create GitHub Release 发布模块
         uses: softprops/action-gh-release@v1
         with:
@@ -165,4 +164,3 @@ jobs:
           fail_on_unmatched_files: false  # 如果文件匹配失败不会导致工作流失败
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
