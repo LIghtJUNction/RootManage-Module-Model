@@ -146,8 +146,10 @@ jobs:
           echo "version_old=${version}" >> $GITHUB_ENV
           echo "versionCode_old=${versionCode}" >> $GITHUB_ENV
           echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
-          # 使用带序列号的完整版本代号
-          echo "versionCode=${{ env.fullVersionCode }}" >> $GITHUB_ENV
+          
+          # 修正：使用已经计算好的 versionCode 变量，而不是不存在的 fullVersionCode
+          echo "versionCode=${{ env.versionCode }}" >> $GITHUB_ENV
+          
           echo "author=${author}" >> $GITHUB_ENV
           echo "description=${description}" >> $GITHUB_ENV
           if [ -n "$updateJson" ]; then
