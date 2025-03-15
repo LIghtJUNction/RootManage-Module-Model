@@ -270,7 +270,7 @@ jobs:
         run: |
           # 确保 modules 目录存在并进入
           if [ ! -d "modules" ]; then
-            echo "Error: modules 目录不存在，尝试创建"
+            echo "创建modules目录..."
             mkdir -p modules
           fi
           
@@ -280,22 +280,34 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           
-          # 添加上游仓库
-          git remote add upstream https://github.com/LIghtJUNction/RootManage-Module-Model.git || echo "Remote already exists"
+          # 清理任何潜在的未提交修改
+          git reset --hard HEAD || true
           
-          # 获取上游最新代码
+          # 确保远程仓库配置正确
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream https://github.com/LIghtJUNction/RootManage-Module-Model.git
+          
+          # 获取上游最新代码，创建一个全新的分支，避免合并冲突
+          echo "获取上游modules分支..."
           git fetch upstream modules
-          git checkout -b modules || git checkout modules
-          git pull upstream modules --rebase || echo "First pull, continuing..."
+          
+          # 创建新的PR分支名称
+          pr_branch="add-${{ env.id }}-${{ env.version }}-${{ env.versionCode }}"
+          
+          # 基于上游modules分支创建全新的分支，避免历史冲突
+          echo "创建新分支基于上游modules分支..."
+          git checkout -b $pr_branch upstream/modules
           
           # 创建模块ID对应的文件夹（如果不存在）
           MODULE_DIR="${{ env.id }}"
           mkdir -p "$MODULE_DIR"
           
           # 复制模块到对应ID文件夹
+          echo "复制模块文件..."
           cp "../${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" "$MODULE_DIR/"
           
           # 创建或更新模块信息文件
+          echo "创建模块信息文件..."
           cat > "$MODULE_DIR/info.json" <<EOF
           {
             "id": "${{ env.id }}",
@@ -310,47 +322,40 @@ jobs:
           EOF
           
           # 添加并提交文件
+          echo "添加和提交修改..."
           git add "$MODULE_DIR"
           git commit -m "添加模块: ${{ env.name }} v${{ env.version }}" || echo "没有更改需要提交"
           
-          # 创建新分支用于PR
-          pr_branch="add-${{ env.id }}-${{ env.version }}-${{ env.versionCode }}"
-          git checkout -b $pr_branch
-          
           # 推送新分支到自己的仓库
+          echo "推送分支到远程..."
           git push -u origin $pr_branch --force
-          
-          # 安装 GitHub CLI (如果需要)
-          if ! command -v gh &> /dev/null; then
-            echo "安装 GitHub CLI..."
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh
-          fi
           
           # 返回到主目录并创建PR
           cd ..
           
+          # 设置GitHub CLI认证
+          echo "配置GitHub CLI认证..."
+          echo "${{ secrets.UPSTREAM_ACCESS_TOKEN }}" > ./github_token.txt
+          gh auth login --with-token < ./github_token.txt
+          rm ./github_token.txt
+          
           echo "正在创建Pull Request..."
-          gh auth login --with-token <<< "${{ secrets.UPSTREAM_ACCESS_TOKEN }}"
           gh pr create \
             --repo LIghtJUNction/RootManage-Module-Model \
             --base modules \
-            --head ${{ github.repository_owner }}:$pr_branch \
+            --head "${{ github.repository_owner }}:$pr_branch" \
             --title "添加模块: ${{ env.name }} v${{ env.version }}" \
             --body "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}
-          模块信息:
-          - ID: ${{ env.id }}
-          - 名称: ${{ env.name }}
-          - 版本: ${{ env.version }}
-          - 版本代码: ${{ env.versionCode }}
-          - 作者: ${{ env.author }}
-          - 描述: ${{ env.description }}
-          - 仓库: ${{ github.repository }}
-          
-          此PR由${{ github.repository }}仓库的发布流程自动创建。" || echo "PR创建失败或已存在"
+              模块信息:
+              - ID: ${{ env.id }}
+              - 名称: ${{ env.name }}
+              - 版本: ${{ env.version }}
+              - 版本代码: ${{ env.versionCode }}
+              - 作者: ${{ env.author }}
+              - 描述: ${{ env.description }}
+              - 仓库: ${{ github.repository }}
+              
+              此PR由${{ github.repository }}仓库的发布流程自动创建。" || echo "PR创建失败或已存在"
         env:
           GH_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
 
