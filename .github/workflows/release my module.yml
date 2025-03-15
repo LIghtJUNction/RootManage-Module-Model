@@ -224,7 +224,7 @@ jobs:
 
       - name: 调试模式 - 上传模块作为工作流构建工件
         if: env.DEBUG_MODE == 'true'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}
           path: ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip
