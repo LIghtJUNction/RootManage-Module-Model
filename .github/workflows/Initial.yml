@@ -112,7 +112,7 @@ jobs:
           cat <<EOF > update.json
           {
             "version": "${{ env.version }}",
-            "versionCode": "${{ env.date }}00",
+            "versionCode": "${{ env.versionCode }}",
             "zipUrl": "${{ env.repo_url }}/releases/download/${{ env.version }}/${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip",
             "changelog": "${{ env.repo_url }}/raw/${{ github.ref_name }}/CHANGELOG.md"
           }
