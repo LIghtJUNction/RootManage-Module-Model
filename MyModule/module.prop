@@ -1,7 +1,7 @@
-id=example
-name=example
-version=0.0.1
-versionCode=2025031502
+id=SystemlessShaker
+name=SystemlessShaker
+version=0.0.0
+versionCode=2025031501
 author=LIghtJUNction
-description=示例
+description=基于ZygiskNext 修改加速度传感器数据实现模拟摇动
 updateJson=http://raw.githubusercontent.com/LIghtJUNction/RootManage-Module-Model/main/update.json
