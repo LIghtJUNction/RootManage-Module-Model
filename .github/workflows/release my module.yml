@@ -340,7 +340,7 @@ jobs:
           rm ./github_token.txt
           
           echo "正在创建Pull Request..."
-          gh pr create \
+          PR_URL=$(gh pr create \
             --repo LIghtJUNction/RootManage-Module-Model \
             --base modules \
             --head "${{ github.repository_owner }}:$pr_branch" \
@@ -355,7 +355,29 @@ jobs:
               - 描述: ${{ env.description }}
               - 仓库: ${{ github.repository }}
               
-              此PR由${{ github.repository }}仓库的发布流程自动创建。" || echo "PR创建失败或已存在"
+              此PR由${{ github.repository }}仓库的发布流程自动创建。" || echo "PR创建失败或已存在")
+          
+          # 检查PR是否创建成功，并保存PR编号
+          if [[ "$PR_URL" == http* ]]; then
+            echo "PR创建成功: $PR_URL"
+            echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+            
+            # 将PR编号保存到环境变量
+            PR_NUMBER=$(echo "$PR_URL" | awk -F/ '{print $NF}')
+            echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+            echo "PR编号: $PR_NUMBER"
+            
+            # PR创建成功后，删除本地临时分支
+            cd modules
+            git checkout main || git checkout master || echo "切换到默认分支失败，但继续执行"
+            git branch -D $pr_branch || echo "删除本地分支失败，但继续执行"
+            
+            # 删除远程临时分支 (如果PR已经创建成功，可以安全删除)
+            echo "PR已创建成功，删除远程临时分支..."
+            git push origin --delete $pr_branch || echo "删除远程分支失败，可能需要手动删除"
+          else
+            echo "PR创建可能失败或已存在，跳过删除临时分支"
+          fi
         env:
           GH_TOKEN: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
 
