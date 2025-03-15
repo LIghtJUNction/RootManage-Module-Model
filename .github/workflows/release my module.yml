@@ -253,20 +253,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 准备上传到母仓库 (条件检查)
+      - name: 提交模块并生成PR链接
         if: env.DEBUG_MODE != 'true'
-        id: check_upstream
-        run: |
-          if [ -n "${{ secrets.UPSTREAM_ACCESS_TOKEN }}" ]; then
-            echo "准备上传到母仓库..."
-            echo "can_upload=true" >> $GITHUB_ENV
-          else
-            echo "未设置UPSTREAM_ACCESS_TOKEN，跳过上传步骤"
-            echo "can_upload=false" >> $GITHUB_ENV
-          fi
-
-      - name: 创建PR提交模块到母仓库
-        if: env.DEBUG_MODE != 'true' && env.can_upload == 'true'
         run: |
           # 确保 modules 目录存在并进入
           if [ ! -d "modules" ]; then
@@ -320,7 +308,7 @@ jobs:
             "repo": "${{ github.repository }}"
           }
           EOF
-                    
+
           # 添加并提交文件
           echo "添加和提交修改..."
           git add "$MODULE_DIR"
@@ -329,41 +317,29 @@ jobs:
           # 推送新分支到自己的仓库
           echo "推送分支到远程..."
           git push -u origin $pr_branch --force
+        
+          # 返回主目录
+          cd ..
           
-          # 直接使用 curl 创建 PR (代替 gh cli)
-          echo "正在使用API创建Pull Request..."
+          # 生成PR链接并保存到环境变量
+          PR_LINK="https://github.com/LIghtJUNction/RootManage-Module-Model/compare/modules...${{ github.repository_owner }}:$pr_branch}?expand=1"
+          echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
+          echo "PR_BRANCH=$pr_branch" >> $GITHUB_ENV
           
-          # 构建PR数据
-          PR_DATA=$(cat <<EOF
-          {
-            "title": "添加模块: ${{ env.name }} v${{ env.version }}",
-            "body": "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}\n\n模块信息:\n- ID: ${{ env.id }}\n- 名称: ${{ env.name }}\n- 版本: ${{ env.version }}\n- 版本代码: ${{ env.versionCode }}\n- 作者: ${{ env.author }}\n- 描述: ${{ env.description }}\n- 仓库: ${{ github.repository }}\n\n此PR由${{ github.repository }}仓库的发布流程自动创建。",
-            "head": "${{ github.repository_owner }}:$pr_branch",
-            "base": "modules"
-          }
-          EOF
-          )
-          
-          # 发送API请求创建PR
-          PR_RESPONSE=$(curl -s -X POST \
-            -H "Authorization: token ${{ secrets.UPSTREAM_ACCESS_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d "$PR_DATA" \
-            "https://api.github.com/repos/LIghtJUNction/RootManage-Module-Model/pulls")
-          
-          # 检查是否成功创建PR
-          PR_URL=$(echo "$PR_RESPONSE" | grep -o '"html_url": "[^"]*"' | head -1 | cut -d'"' -f4)
-          ERROR_MSG=$(echo "$PR_RESPONSE" | grep -o '"message": "[^"]*"' | head -1 | cut -d'"' -f4)
-          
-          if [ -n "$PR_URL" ]; then
-            echo "PR创建成功: $PR_URL"
-            echo "PR_URL=$PR_URL" >> $GITHUB_ENV
-          else
-            echo "PR创建失败，错误信息: $ERROR_MSG"
-            echo "完整响应: $PR_RESPONSE"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "=================================="
+          echo "模块已提交到分支: $pr_branch"
+          echo "请点击以下链接创建PR:"
+          echo "$PR_LINK"
+          echo "=================================="
+
+      - name: 上传PR链接作为工件
+        if: env.DEBUG_MODE != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PR链接
+          path: |
+            echo "PR创建链接: ${{ env.PR_LINK }}" > pr-link.txt
+            cat pr-link.txt
 
       - name: 完成
         run: echo "工作流已完成"
