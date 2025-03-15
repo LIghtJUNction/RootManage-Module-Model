@@ -1,7 +1,7 @@
 id=example
 name=示例
-version=0.0.0
-versionCode=20250315
+version=debug
+versionCode=
 author=LIghtJUNction
 description=模块示例
 updateJson=http://raw.githubusercontent.com/LIghtJUNction/RootManage-Module-Model/main/update.json
