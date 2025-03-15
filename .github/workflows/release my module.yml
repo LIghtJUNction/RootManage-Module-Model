@@ -320,7 +320,7 @@ jobs:
             "repo": "${{ github.repository }}"
           }
           EOF
-          
+                    
           # 添加并提交文件
           echo "添加和提交修改..."
           git add "$MODULE_DIR"
@@ -330,52 +330,39 @@ jobs:
           echo "推送分支到远程..."
           git push -u origin $pr_branch --force
           
-          # 返回到主目录并创建PR
-          cd ..
+          # 直接使用 curl 创建 PR (代替 gh cli)
+          echo "正在使用API创建Pull Request..."
           
-          # 配置GitHub CLI认证 - 使用更可靠的方式
-          echo "配置GitHub CLI认证..."
-          # 先确保环境变量未设置，避免干扰
-          unset GH_TOKEN
+          # 构建PR数据
+          PR_DATA=$(cat <<EOF
+          {
+            "title": "添加模块: ${{ env.name }} v${{ env.version }}",
+            "body": "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}\n\n模块信息:\n- ID: ${{ env.id }}\n- 名称: ${{ env.name }}\n- 版本: ${{ env.version }}\n- 版本代码: ${{ env.versionCode }}\n- 作者: ${{ env.author }}\n- 描述: ${{ env.description }}\n- 仓库: ${{ github.repository }}\n\n此PR由${{ github.repository }}仓库的发布流程自动创建。",
+            "head": "${{ github.repository_owner }}:$pr_branch",
+            "base": "modules"
+          }
+          EOF
+          )
           
-          # 创建临时配置文件
-          mkdir -p ~/.config/gh
-          echo "github.com:
-            - user: github-actions[bot]
-              oauth_token: ${{ secrets.UPSTREAM_ACCESS_TOKEN }}
-          " > ~/.config/gh/hosts.yml
+          # 发送API请求创建PR
+          PR_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.UPSTREAM_ACCESS_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "$PR_DATA" \
+            "https://api.github.com/repos/LIghtJUNction/RootManage-Module-Model/pulls")
           
-          # 替换原来的认证逻辑，使用配置文件认证方式
-          echo "正在创建Pull Request..."
-          PR_URL=$(gh pr create \
-            --repo LIghtJUNction/RootManage-Module-Model \
-            --base modules \
-            --head "${{ github.repository_owner }}:$pr_branch" \
-            --title "添加模块: ${{ env.name }} v${{ env.version }}" \
-            --body "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}
-
-              模块信息:
-              - ID: ${{ env.id }}
-              - 名称: ${{ env.name }}
-              - 版本: ${{ env.version }}
-              - 版本代码: ${{ env.versionCode }}
-              - 作者: ${{ env.author }}
-              - 描述: ${{ env.description }}
-              - 仓库: ${{ github.repository }}
-              
-              此PR由${{ github.repository }}仓库的发布流程自动创建。")
-                        
-                        # 检查PR是否创建成功
-                        RESULT=$?
-                        if [ $RESULT -eq 0 ] && [[ "$PR_URL" == http* ]]; then
-                          echo "PR创建成功: $PR_URL"
-                          # 其余代码保持不变...
-                        else
-                          echo "PR创建失败，错误代码: $RESULT，信息: $PR_URL"
-                          echo "可能原因：权限不足或PR已存在，跳过后续步骤。"
-                        fi
+          # 检查是否成功创建PR
+          PR_URL=$(echo "$PR_RESPONSE" | grep -o '"html_url": "[^"]*"' | head -1 | cut -d'"' -f4)
+          ERROR_MSG=$(echo "$PR_RESPONSE" | grep -o '"message": "[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          if [ -n "$PR_URL" ]; then
+            echo "PR创建成功: $PR_URL"
+            echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+          else
+            echo "PR创建失败，错误信息: $ERROR_MSG"
+            echo "完整响应: $PR_RESPONSE"
+          fi
         env:
-          # 避免使用GH_TOKEN环境变量，改为使用配置文件认证
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 完成
