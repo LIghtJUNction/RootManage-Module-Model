@@ -354,26 +354,26 @@ jobs:
             --title "添加模块: ${{ env.name }} v${{ env.version }}" \
             --body "这是由 GitHub Actions 自动创建的 PR，添加了模块 ${{ env.name }} v${{ env.version }}
 
-模块信息:
-- ID: ${{ env.id }}
-- 名称: ${{ env.name }}
-- 版本: ${{ env.version }}
-- 版本代码: ${{ env.versionCode }}
-- 作者: ${{ env.author }}
-- 描述: ${{ env.description }}
-- 仓库: ${{ github.repository }}
-
-此PR由${{ github.repository }}仓库的发布流程自动创建。")
-          
-          # 检查PR是否创建成功
-          RESULT=$?
-          if [ $RESULT -eq 0 ] && [[ "$PR_URL" == http* ]]; then
-            echo "PR创建成功: $PR_URL"
-            # 其余代码保持不变...
-          else
-            echo "PR创建失败，错误代码: $RESULT，信息: $PR_URL"
-            echo "可能原因：权限不足或PR已存在，跳过后续步骤。"
-          fi
+              模块信息:
+              - ID: ${{ env.id }}
+              - 名称: ${{ env.name }}
+              - 版本: ${{ env.version }}
+              - 版本代码: ${{ env.versionCode }}
+              - 作者: ${{ env.author }}
+              - 描述: ${{ env.description }}
+              - 仓库: ${{ github.repository }}
+              
+              此PR由${{ github.repository }}仓库的发布流程自动创建。")
+                        
+                        # 检查PR是否创建成功
+                        RESULT=$?
+                        if [ $RESULT -eq 0 ] && [[ "$PR_URL" == http* ]]; then
+                          echo "PR创建成功: $PR_URL"
+                          # 其余代码保持不变...
+                        else
+                          echo "PR创建失败，错误代码: $RESULT，信息: $PR_URL"
+                          echo "可能原因：权限不足或PR已存在，跳过后续步骤。"
+                        fi
         env:
           # 避免使用GH_TOKEN环境变量，改为使用配置文件认证
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
