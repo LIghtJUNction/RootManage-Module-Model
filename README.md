@@ -47,8 +47,7 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 > 无需手动填写，工作流自动更新
 
 ## 友情链接
-
-
+[模块仓库](https://github.com/LIghtJUNction/RootManage-Module-Model/modules)
 
 # *# 开始编写模块*
 
@@ -59,6 +58,10 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 5. 点击运行action里的release工作流，自动打包发布
 
 6. 输入标签为debug : 不发布release
+
+## 贡献指南
+
+
 
 # 注意事项
 

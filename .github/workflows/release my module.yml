@@ -336,7 +336,8 @@ jobs:
           cd ..
           
           # 生成PR链接并保存到环境变量
-          echo "PR创建链接: https://github.com/LIghtJUNction/RootManage-Module-Model/compare/modules...LIghtJUNction:add-example-0.0.1-2025031502?expand=1" > pr-link.txt
+          echo "PR创建链接: https://github.com/${{ github.repository }}/compare/modules...$(echo ${{ github.repository_owner }}):$pr_branch?expand=1" > pr-link.txt
+          PR_LINK="https://github.com/${{ github.repository }}/compare/modules...$(echo ${{ github.repository_owner }}):$pr_branch?expand=1"
           echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
           echo "PR_BRANCH=$pr_branch" >> $GITHUB_ENV
 
