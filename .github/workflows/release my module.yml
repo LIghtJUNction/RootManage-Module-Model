@@ -261,6 +261,7 @@ jobs:
           else
             echo "未设置UPSTREAM_ACCESS_TOKEN，跳过上传步骤"
             echo "can_upload=false" >> $GITHUB_ENV
+          fi
 
       - name: 创建PR提交模块到母仓库
         if: env.DEBUG_MODE != 'true' && env.can_upload == 'true'
