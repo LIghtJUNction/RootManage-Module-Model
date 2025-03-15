@@ -84,8 +84,7 @@ jobs:
           echo "version=0.0.0" >> $GITHUB_ENV
       - name: Add the version code key in the file 将版本代码写入模块配置文件
         run: |
-          echo "versionCode=${{ env.date }}" >> MyModule/module.prop
-          echo "versionCode=${{ env.date }}" >> $GITHUB_ENV
+          echo "versionCode=${{ env.versionCode }}" >> MyModule/module.prop
       - name: Add the author key in the file 将作者写入模块配置文件
         run: |
           echo "author=${{ github.event.inputs.author }}" >> MyModule/module.prop
