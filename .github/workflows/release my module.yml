@@ -228,7 +228,7 @@ jobs:
           # 确保当前目录存在文件
           ls -la
           zip -r "../${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" ./*
-          cd ..
+          cd .. 
           # 验证压缩包
           echo "已创建模块压缩包:"
           ls -lh "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip"
@@ -277,6 +277,18 @@ jobs:
           git remote remove upstream 2>/dev/null || true
           git remote add upstream https://github.com/LIghtJUNction/RootManage-Module-Model.git
           
+          # 获取所有远程分支
+          git fetch origin
+          
+          # 删除旧的PR分支（以add-开头的分支）
+          echo "删除旧的PR分支..."
+          for branch in $(git branch -r | grep 'origin/add-' | sed 's/origin\///'); do
+            if [[ "$branch" == add-${{ env.id }}* ]]; then
+              echo "发现与当前模块ID相关的旧PR分支: $branch，正在删除..."
+              git push origin --delete "$branch" || echo "无法删除分支 $branch，可能不存在或权限不足"
+            fi
+          done
+          
           # 获取上游最新代码，创建一个全新的分支，避免合并冲突
           echo "获取上游modules分支..."
           git fetch upstream modules
@@ -324,10 +336,11 @@ jobs:
           cd ..
           
           # 生成PR链接并保存到环境变量
-          PR_LINK="https://github.com/LIghtJUNction/RootManage-Module-Model/compare/modules...${{ github.repository_owner }}:$pr_branch}?expand=1"
+          echo "PR创建链接: https://github.com/LIghtJUNction/RootManage-Module-Model/compare/modules...LIghtJUNction:add-example-0.0.1-2025031502?expand=1" > pr-link.txt
           echo "PR_LINK=$PR_LINK" >> $GITHUB_ENV
           echo "PR_BRANCH=$pr_branch" >> $GITHUB_ENV
-          
+
+          cat pr-link.txt
           echo "=================================="
           echo "模块已提交到分支: $pr_branch"
           echo "请点击以下链接创建PR:"
@@ -340,8 +353,7 @@ jobs:
         with:
           name: PR链接
           path: |
-            echo "PR创建链接: ${{ env.PR_LINK }}" > pr-link.txt
-            cat pr-link.txt
+            pr-link.txt
 
       - name: 完成
         run: echo "工作流已完成"
