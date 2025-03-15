@@ -219,8 +219,15 @@ jobs:
 
       - name: Package module 打包模块
         run: |
-          # 打包模块
-          cd MyModule && zip -r "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" * && mv *.zip .. && cd ..
+          # 正确打包模块 - 进入MyModule目录后打包所有内容
+          cd MyModule
+          # 确保当前目录存在文件
+          ls -la
+          zip -r "../${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip" ./*
+          cd ..
+          # 验证压缩包
+          echo "已创建模块压缩包:"
+          ls -lh "${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip"
 
       - name: 调试模式 - 上传模块作为工作流构建工件
         if: env.DEBUG_MODE == 'true'
