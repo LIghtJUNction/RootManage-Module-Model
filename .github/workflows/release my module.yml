@@ -195,19 +195,21 @@ jobs:
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
             echo "skip=true" >> $GITHUB_ENV
+          else
+            echo "skip=false" >> $GITHUB_ENV
           fi
 
       - name: Commit changes
-        if: env.skip != 'true'
         run: |
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add update.json MyModule/module.prop
-          git commit -m "更新 update.json和module.prop"
-
-      - name: Push changes 
-        if: env.skip != 'true'
-        run: git push origin ${{ github.ref_name }}  
+          if git diff --cached --quiet; then
+            echo "没有需要提交的更改"
+          else
+            git commit -m "更新 update.json和module.prop"
+            git push origin ${{ github.ref_name }}
+          fi
 
       - name: 检查是否为调试模式
         run: |
