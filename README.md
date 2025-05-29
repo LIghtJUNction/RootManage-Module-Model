@@ -47,6 +47,7 @@ ${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zi
 > 无需手动填写，工作流自动更新
 
 ## 友情链接
+> [!TIP]
 [模块仓库](https://github.com/LIghtJUNction/RootManage-Module-Model/modules)
 
 # *# 开始编写模块*
