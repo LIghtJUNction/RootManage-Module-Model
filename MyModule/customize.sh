@@ -109,3 +109,4 @@ ui_print "  可以在任意终端中使用Go和gogogo命令"
 set_perm "$MODPATH/gogogo/bin/gogogo" 0 0 0755
 set_perm "$MODPATH/GOROOT/bin/go" 0 0 0755
 set_perm "$MODPATH/GOROOT/bin/gofmt" 0 0 0755
+set_perm "$MODPATH/gogogorc" 0 0 0755
