@@ -45,6 +45,15 @@ else
 fi
 # 应该很少有人同时安装两个吧
 
+# 创建必要的目录结构
+mkdir -p "$MODPATH/GOCACHE"
+mkdir -p "$MODPATH/GOTELEMETRYDIR"
+mkdir -p "$MODPATH/go/pkg/mod"
+mkdir -p "$MODPATH/go/bin"
+
+mkdir -p "$MODPATH/system/bin"
+
+
 # 解压Go语言压缩包到GOROOT目录
 ui_print "- 正在解压Go语言环境..."
 GO_TAR="$MODPATH/go1.24.3.linux-arm64.tar.gz"
@@ -69,10 +78,13 @@ else
   ui_print "  ❌ 未找到Go语言压缩包: $GO_TAR"
 fi
 
-# 创建必要的目录结构
-mkdir -p "$MODPATH/GOCACHE"
-mkdir -p "$MODPATH/GOTELEMETRYDIR"
-mkdir -p "$MODPATH/go/pkg/mod"
+# 移动bin
+mv "$MODPATH/GOROOT/bin/go" "$MODPATH/system/bin/go"
+mv "$MODPATH/GOROOT/bin/gofmt" "$MODPATH/system/bin/gofmt"
+
+# 移除刚刚的压缩包
+rm -f "$GO_TAR"
+
 
 # 设置环境变量配置文件
 cat > "$MODPATH/gogogo.env" << 'EOF'
