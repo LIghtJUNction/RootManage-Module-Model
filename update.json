@@ -1,7 +1,7 @@
 {
-  "version": "debug",
-  "versionCode": "20250122",
-  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/debug/MagicSub-debug-20250122-byLIghtJUNction.zip",
-  "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/MagicSub/CHANGELOG.md",
+  "version": "1.0.0",
+  "versionCode": "2025060205",
+  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/1.0.0/MagicSub-1.0.0-2025060205-byLIghtJUNction.zip",
+  "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/raw/MagicSub/CHANGELOG.md",
   "description": "MagicNetVdebug依赖模块-订阅管理者"
 }
