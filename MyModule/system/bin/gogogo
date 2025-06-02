@@ -1,5 +1,5 @@
 #!/system/bin/sh
-. /data/adb/modules/gogogo/.gogogo
+. /data/adb/modules/gogogo/gogogorc
 
 /data/adb/modules/gogogo/gogogo/bin/gogogo "$@"
 # 这个脚本是go的入口脚本
