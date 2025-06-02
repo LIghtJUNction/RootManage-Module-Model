@@ -136,13 +136,12 @@ ui_print "  可以在任意终端中使用Go和gogogo命令"
 # 设置目录权限
 ui_print "- 设置目录和文件权限..."
 
-
 # 设置环境变量文件权限
 set_perm "$MODPATH/gogogo.env" 0 0 0644
-
 
 # 使service.sh可执行
 set_perm "$MODPATH/service.sh" 0 0 0755
 
 ui_print "- 权限设置完成"
 ui_print "- 安装完成！请重启设备以激活模块"
+
