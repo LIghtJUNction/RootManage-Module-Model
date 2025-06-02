@@ -1,0 +1,8 @@
+#!/system/bin/sh
+
+. /data/adb/modules/gogogo/.gogogo
+
+/data/adb/modules/gogogo/GOROOT/bin/go "$@"
+# 这个脚本是go的入口脚本
+
+#这下环境变量就强制设置好了

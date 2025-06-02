@@ -650,16 +650,142 @@ func main() {
 
 // 检查Go环境并为Android设备设置必要的环境变量
 func checkGoEnvironment() bool {
+	// 检查是否为Android设备
+	isAndroid := false
+	if _, err := os.Stat("/data/adb"); err == nil {
+		isAndroid = true
+	}
+
+	// 首先尝试从各种位置加载环境变量
+	// 1. 从环境变量配置文件加载（如果存在）
+	envFiles := []string{
+		"/data/adb/modules/gogogo/gogogo.env",    // Magisk模块环境配置
+		"/data/adb/modules/gogogo/go.env",        // 全局环境
+		"/data/local/go.env",                     // 本地环境
+		"/sdcard/go.env",                         // 用户环境
+		"/data/adb/modules/gogogo/gogogo_env.sh", // 模块脚本
+	}
+
+	// 检查环境变量文件，尝试自动加载
+	for _, envFile := range envFiles {
+		if _, err := os.Stat(envFile); err == nil {
+			if strings.HasSuffix(envFile, ".sh") {
+				// 这里无法直接在Go中source shell脚本，但可以提示用户
+				if os.Getenv("GOGOGO_VERBOSE") != "" {
+					fmt.Printf("找到环境变量脚本: %s (无法自动加载)\n", envFile)
+				}
+			} else if strings.HasSuffix(envFile, ".env") {
+				if os.Getenv("GOGOGO_VERBOSE") != "" {
+					fmt.Printf("找到环境变量文件: %s (尝试解析)\n", envFile)
+				}
+				// 尝试解析.env文件
+				if data, err := os.ReadFile(envFile); err == nil {
+					lines := strings.Split(string(data), "\n")
+					for _, line := range lines {
+						line = strings.TrimSpace(line)
+						// 跳过注释和空行
+						if line == "" || strings.HasPrefix(line, "#") {
+							continue
+						}
+						// 处理格式为KEY=VALUE的行
+						if parts := strings.SplitN(line, "=", 2); len(parts) == 2 {
+							key := strings.TrimSpace(parts[0])
+							value := strings.TrimSpace(parts[1])
+							// 只设置未定义的环境变量
+							if os.Getenv(key) == "" {
+								os.Setenv(key, value)
+								if os.Getenv("GOGOGO_VERBOSE") != "" {
+									fmt.Printf("已从文件设置环境变量: %s=%s\n", key, value)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 2. 如果在Android设备上且找到了GoGogo模块，设置所有必要环境变量
+	if isAndroid {
+		moduleDir := "/data/adb/modules/gogogo"
+		if _, err := os.Stat(moduleDir); err == nil {
+			fmt.Printf("%s检测到Android环境，自动配置Go环境变量...%s\n", Cyan+Bold, Reset)
+
+			// 设置关键环境变量
+			envVars := map[string]string{
+				"GOENV":          moduleDir + "/gogogo.env",
+				"GOROOT":         moduleDir + "/GOROOT",
+				"GOPATH":         moduleDir + "/go",
+				"GOCACHE":        moduleDir + "/GOCACHE",
+				"GOTELEMETRYDIR": moduleDir + "/GOTELEMETRYDIR",
+				"GO111MODULE":    "on",
+				"GOMODCACHE":     moduleDir + "/go/pkg/mod",
+			}
+
+			// 设置所有环境变量
+			for key, value := range envVars {
+				if os.Getenv(key) == "" {
+					os.Setenv(key, value)
+					if os.Getenv("GOGOGO_VERBOSE") != "" {
+						fmt.Printf("已设置 %s=%s\n", key, value)
+					}
+				}
+			}
+
+			// 添加Go bin目录到PATH
+			currentPath := os.Getenv("PATH")
+			goBinPath := moduleDir + "/GOROOT/bin"
+			goUserBinPath := moduleDir + "/go/bin"
+			systemBinPath := moduleDir + "/system/bin"
+
+			// 检查PATH中是否已包含Go路径
+			if !strings.Contains(currentPath, goBinPath) {
+				newPath := currentPath + ":" + goBinPath
+				os.Setenv("PATH", newPath)
+				if os.Getenv("GOGOGO_VERBOSE") != "" {
+					fmt.Printf("已将 %s 添加至PATH\n", goBinPath)
+				}
+			}
+
+			if !strings.Contains(currentPath, goUserBinPath) {
+				newPath := os.Getenv("PATH") + ":" + goUserBinPath
+				os.Setenv("PATH", newPath)
+				if os.Getenv("GOGOGO_VERBOSE") != "" {
+					fmt.Printf("已将 %s 添加至PATH\n", goUserBinPath)
+				}
+			}
+
+			if !strings.Contains(currentPath, systemBinPath) {
+				newPath := os.Getenv("PATH") + ":" + systemBinPath
+				os.Setenv("PATH", newPath)
+				if os.Getenv("GOGOGO_VERBOSE") != "" {
+					fmt.Printf("已将 %s 添加至PATH\n", systemBinPath)
+				}
+			}
+
+			// 验证环境变量设置
+			if os.Getenv("GOGOGO_VERBOSE") != "" {
+				fmt.Printf("Go环境变量已设置:\n")
+				fmt.Printf("  GOROOT=%s\n", os.Getenv("GOROOT"))
+				fmt.Printf("  GOPATH=%s\n", os.Getenv("GOPATH"))
+				fmt.Printf("  PATH=%s\n", os.Getenv("PATH"))
+			}
+		}
+	}
+
 	// 检查go命令是否可用
 	_, err := exec.LookPath("go")
 	if err != nil {
 		fmt.Printf("%s❌ 错误：未找到 Go 编译器!%s\n\n", Red+Bold, Reset)
 
-		// 检测是否在Android设备上运行
-		if _, err := os.Stat("/data/adb"); err == nil {
+		if isAndroid {
 			fmt.Printf("%s提示：您似乎在Android设备上运行，请安装 GoGogo Magisk模块%s\n", Yellow+Bold, Reset)
-			fmt.Printf("      可以在Magisk模块仓库或GitHub搜索 'GoGogo Module'\n\n")
-			fmt.Printf("      安装后重启设备即可使用\n\n")
+			fmt.Printf("      可以在Magisk模块仓库或GitHub搜索 'GoGogo Module'\n")
+			fmt.Printf("      安装后重启设备，或手动加载环境变量:\n")
+			fmt.Printf("      $ source /data/adb/modules/gogogo/gogogo_env.sh\n\n")
+
+			// 检查常见问题
+			checkAndroidCommonIssues()
 		} else {
 			fmt.Printf("%s提示：请安装Go编译器并确保已添加到PATH环境变量中%s\n", Yellow+Bold, Reset)
 			fmt.Printf("      下载地址: https://golang.org/dl/\n")
@@ -669,20 +795,37 @@ func checkGoEnvironment() bool {
 		return false
 	}
 
-	// 检测是否为Android设备
-	if _, err := os.Stat("/data/adb/modules/gogogo"); err == nil {
-		// 如果是Android设备，且已安装gogogo模块，设置必要的环境变量
-		goenvPath := "/data/adb/modules/gogogo/gogogo.env"
-		fmt.Printf("%s检测到Android环境，自动配置Go环境变量...%s\n", Cyan+Bold, Reset)
+	return true
+}
 
-		// 设置GOENV环境变量，这是最重要的
-		if os.Getenv("GOENV") == "" {
-			os.Setenv("GOENV", goenvPath)
-			fmt.Printf("已设置 GOENV=%s\n", goenvPath)
+// 检查Android设备上的常见问题
+func checkAndroidCommonIssues() {
+	moduleDir := "/data/adb/modules/gogogo"
+
+	// 检查模块是否已安装
+	if _, err := os.Stat(moduleDir); err != nil {
+		fmt.Printf("%s警告：未找到GoGogo模块目录%s\n", Yellow, Reset)
+		return
+	}
+
+	// 检查Go可执行文件是否存在
+	goBin := moduleDir + "/GOROOT/bin/go"
+	if _, err := os.Stat(goBin); err != nil {
+		systemGoBin := "/system/bin/go"
+		if _, err := os.Stat(systemGoBin); err != nil {
+			fmt.Printf("%s警告：未找到Go可执行文件%s\n", Yellow, Reset)
+			fmt.Printf("      请确保模块正确安装并重启设备\n")
 		}
 	}
 
-	return true
+	// 检查环境变量脚本是否存在
+	envScript := moduleDir + "/gogogo_env.sh"
+	if _, err := os.Stat(envScript); err != nil {
+		fmt.Printf("%s警告：未找到环境变量脚本%s\n", Yellow, Reset)
+	} else {
+		fmt.Printf("%s提示：找到环境变量脚本，可以尝试手动加载:%s\n", Green+Bold, Reset)
+		fmt.Printf("      source %s\n", envScript)
+	}
 }
 
 // parsePlatforms 解析平台字符串，支持平台组合
@@ -1295,10 +1438,11 @@ func confirmBuild(builder *Builder) bool {
 		fmt.Printf("  9) 切换CGO跳过模式\n")
 		fmt.Printf("  a) 修改链接器标志\n")
 		fmt.Printf("  0) 取消构建\n")
-
 		fmt.Printf("\n请选择 (0-9,a, 默认1): ")
 		choice, _ := reader.ReadString('\n')
 		choice = strings.TrimSpace(choice)
+		// 转换成小写以支持大小写无关的输入
+		choice = strings.ToLower(choice)
 		switch choice {
 		case "", "1":
 			return true
@@ -1330,7 +1474,8 @@ func confirmBuild(builder *Builder) bool {
 			platformChoice, _ := reader.ReadString('\n')
 			platformChoice = strings.TrimSpace(platformChoice)
 
-			var platformStr string
+			var platformStr string // 转换成小写以支持大小写无关的输入
+			platformChoice = strings.ToLower(platformChoice)
 			switch platformChoice {
 			case "0":
 				platformStr = "all"
@@ -1352,7 +1497,11 @@ func confirmBuild(builder *Builder) bool {
 				platformStr = "darwin"
 			case "9":
 				platformStr = "bsd"
-			case "c", "C":
+			case "a":
+				platformStr = "android"
+			case "b":
+				platformStr = "ios"
+			case "c":
 				fmt.Printf("输入自定义平台 (如: windows/amd64,linux/amd64): ")
 				platformStr, _ = reader.ReadString('\n')
 				platformStr = strings.TrimSpace(platformStr)
@@ -1409,7 +1558,7 @@ func confirmBuild(builder *Builder) bool {
 		case "9":
 			builder.SkipCGO = !builder.SkipCGO
 			printSuccess(fmt.Sprintf("CGO跳过模式已%s", map[bool]string{true: "启用", false: "禁用"}[builder.SkipCGO]))
-		case "a", "A":
+		case "a":
 			fmt.Printf("输入链接器标志 (当前: %s): ", builder.LdFlags)
 			newLdFlags, _ := reader.ReadString('\n')
 			newLdFlags = strings.TrimSpace(newLdFlags)

@@ -78,45 +78,8 @@ else
   ui_print "  ❌ 未找到Go语言压缩包: $GO_TAR"
 fi
 
-# 移动bin
-mv "$MODPATH/GOROOT/bin/go" "$MODPATH/system/bin/go"
-mv "$MODPATH/GOROOT/bin/gofmt" "$MODPATH/system/bin/gofmt"
-
 # 移除刚刚的压缩包
 rm -f "$GO_TAR"
-
-
-# 设置环境变量配置文件
-cat > "$MODPATH/gogogo.env" << 'EOF'
-# GoGogo 模块环境变量配置
-# export GOENV=/data/adb/modules/gogogo/gogogo.env
-# author LIghtJUNction
-# license MIT
-
-GOPROXY=https://goproxy.cn,direct
-GOSUMDB=sum.golang.google.cn
-GOTOOLCHAIN=auto
-GOROOT=/data/adb/modules/gogogo/GOROOT
-GOCACHE=/data/adb/modules/gogogo/GOCACHE
-GOTELEMETRYDIR=/data/adb/modules/gogogo/GOTELEMETRYDIR
-GO111MODULE=on
-GOPATH=/data/adb/modules/gogogo/go
-GOENV=/data/adb/modules/gogogo/gogogo.env
-GOMODCACHE=/data/adb/modules/gogogo/go/pkg/mod
-EOF
-
-# 设置环境变量持久化
-# 创建全局环境变量配置
-ui_print "- 配置全局环境变量..."
-mkdir -p "$MODPATH/system/etc/profile.d"
-cat > "$MODPATH/system/etc/profile.d/gogogo.sh" << 'EOF'
-# GoGogo 模块环境变量设置
-export GOENV=/data/adb/modules/gogogo/gogogo.env
-export GOROOT=/data/adb/modules/gogogo/GOROOT
-export GOPATH=/data/adb/modules/gogogo/go
-export PATH=$PATH:/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/system/bin
-EOF
-chmod 644 "$MODPATH/system/etc/profile.d/gogogo.sh"
 
 ui_print "模块目录: $MODPATH "
 ui_print "给你3秒,请记住模块安装目录"
@@ -144,16 +107,6 @@ ui_print "  GOENV=/data/adb/modules/gogogo/gogogo.env"
 ui_print "  GOROOT=/data/adb/modules/gogogo/GOROOT"
 ui_print "  可以在任意终端中使用Go和gogogo命令"
 
-# 设置目录权限
-# 设置目录权限
-ui_print "- 设置目录和文件权限..."
-
-# 设置环境变量文件权限
-set_perm "$MODPATH/gogogo.env" 0 0 0644
-
-# 使service.sh可执行
-set_perm "$MODPATH/service.sh" 0 0 0755
-
-ui_print "- 权限设置完成"
-ui_print "- 安装完成！请重启设备以激活模块"
-
+set_perm "$MODPATH/gogogo/bin/gogogo" 0 0 0755
+set_perm "$MODPATH/GOROOT/bin/go" 0 0 0755
+set_perm "$MODPATH/GOROOT/bin/gofmt" 0 0 0755
