@@ -1,7 +1,7 @@
 id=gogogo
 name=gogogo
-version=0.1.3
-versionCode=2025060204
+version=0.1.5
+versionCode=2025060206
 author=LIghtJUNction
 description=配置好go运行环境，自带一个多平台/多架构构建CLI程序。
 updateJson=http://raw.githubusercontent.com/LIghtJUNction/RootManage-Module-Model/gogogo/update.json
