@@ -136,21 +136,10 @@ ui_print "  可以在任意终端中使用Go和gogogo命令"
 # 设置目录权限
 ui_print "- 设置目录和文件权限..."
 
-# 设置GOROOT目录权限
-set_perm_recursive "$MODPATH/GOROOT" 0 0 0755 0755
-
-# 设置GOCACHE、GOTELEMETRYDIR和go目录权限
-set_perm_recursive "$MODPATH/GOCACHE" 0 0 0755 0755
-set_perm_recursive "$MODPATH/GOTELEMETRYDIR" 0 0 0755 0755
-set_perm_recursive "$MODPATH/go" 0 0 0755 0755
 
 # 设置环境变量文件权限
 set_perm "$MODPATH/gogogo.env" 0 0 0644
 
-# 设置二进制文件权限
-if [ -f "$MODPATH/system/bin/gogogo" ]; then
-  set_perm "$MODPATH/system/bin/gogogo" 0 0 0755
-fi
 
 # 使service.sh可执行
 set_perm "$MODPATH/service.sh" 0 0 0755
