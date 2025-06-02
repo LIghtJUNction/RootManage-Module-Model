@@ -45,6 +45,67 @@ else
 fi
 # 应该很少有人同时安装两个吧
 
+# 解压Go语言压缩包到GOROOT目录
+ui_print "- 正在解压Go语言环境..."
+GO_TAR="$MODPATH/go1.24.3.linux-arm64.tar.gz"
+GOROOT_DIR="$MODPATH/GOROOT"
+
+if [ -f "$GO_TAR" ]; then
+  # 确保GOROOT目录存在
+  mkdir -p "$GOROOT_DIR"
+  
+  # 解压缩文件到GOROOT目录
+  tar -xzf "$GO_TAR" -C "$MODPATH"
+  
+  # 由于解压出来的是go目录，我们需要将内容移动到GOROOT
+  if [ -d "$MODPATH/go" ]; then
+    mv "$MODPATH/go"/* "$GOROOT_DIR/"
+    rm -rf "$MODPATH/go"
+    ui_print "  Go语言环境解压完成！"
+  else
+    ui_print "  ❌ 解压后未找到go目录，请检查压缩包"
+  fi
+else
+  ui_print "  ❌ 未找到Go语言压缩包: $GO_TAR"
+fi
+
+# 创建必要的目录结构
+mkdir -p "$MODPATH/GOCACHE"
+mkdir -p "$MODPATH/GOTELEMETRYDIR"
+mkdir -p "$MODPATH/go/pkg/mod"
+
+# 设置环境变量配置文件
+cat > "$MODPATH/gogogo.env" << 'EOF'
+# GoGogo 模块环境变量配置
+# export GOENV=/data/adb/modules/gogogo/gogogo.env
+# author LIghtJUNction
+# license MIT
+
+GOPROXY=https://goproxy.cn,direct
+GOSUMDB=sum.golang.google.cn
+GOTOOLCHAIN=auto
+GOROOT=/data/adb/modules/gogogo/GOROOT
+GOCACHE=/data/adb/modules/gogogo/GOCACHE
+GOTELEMETRYDIR=/data/adb/modules/gogogo/GOTELEMETRYDIR
+GO111MODULE=on
+GOPATH=/data/adb/modules/gogogo/go
+GOENV=/data/adb/modules/gogogo/gogogo.env
+GOMODCACHE=/data/adb/modules/gogogo/go/pkg/mod
+EOF
+
+# 设置环境变量持久化
+# 创建全局环境变量配置
+ui_print "- 配置全局环境变量..."
+mkdir -p "$MODPATH/system/etc/profile.d"
+cat > "$MODPATH/system/etc/profile.d/gogogo.sh" << 'EOF'
+# GoGogo 模块环境变量设置
+export GOENV=/data/adb/modules/gogogo/gogogo.env
+export GOROOT=/data/adb/modules/gogogo/GOROOT
+export GOPATH=/data/adb/modules/gogogo/go
+export PATH=$PATH:/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/system/bin
+EOF
+chmod 644 "$MODPATH/system/etc/profile.d/gogogo.sh"
+
 ui_print "模块目录: $MODPATH "
 ui_print "给你3秒,请记住模块安装目录"
 sleep 3
@@ -63,9 +124,10 @@ ui_print "gogogo -s '/data/adb/modules/gogogo/gogogo.go' -p 'android/arm64' -o '
 
 ui_print "移动到system/bin目录下 mv /data/adb/modules/gogogo/build/gogogo_android_arm64 /system/bin/gogogo"
 
-
-
 ui_print "五：使用gogogo命令进行交互式构建（推荐）"
-ui_print "gogogo -s 'xxx.go' -i" 
+ui_print "gogogo -s 'xxx.go' -i"
 
-ui_print "六：gogogo"
+ui_print "六：环境变量已自动配置"
+ui_print "  GOENV=/data/adb/modules/gogogo/gogogo.env"
+ui_print "  GOROOT=/data/adb/modules/gogogo/GOROOT"
+ui_print "  可以在任意终端中使用Go和gogogo命令"
