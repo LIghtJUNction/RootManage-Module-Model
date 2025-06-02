@@ -50,13 +50,12 @@ mkdir -p "$MODPATH/GOCACHE"
 mkdir -p "$MODPATH/GOTELEMETRYDIR"
 mkdir -p "$MODPATH/go/pkg/mod"
 mkdir -p "$MODPATH/go/bin"
-
 mkdir -p "$MODPATH/system/bin"
 
 
 # 解压Go语言压缩包到GOROOT目录
 ui_print "- 正在解压Go语言环境..."
-GO_TAR="$MODPATH/go1.24.3.linux-arm64.tar.gz"
+GO_TAR="$MODPATH/go.tar.gz"
 GOROOT_DIR="$MODPATH/GOROOT"
 
 if [ -f "$GO_TAR" ]; then
