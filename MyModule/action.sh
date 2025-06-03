@@ -45,11 +45,8 @@ build_from_src() {
     exit 0
 }
 
-
-
 if [ "$choice" = "0" ]; then
     build_from_src || echo "构建失败！PATH: $PATH"
-
 
 elif [ "$choice" = "1" ]; then
     echo "当前Go版本:"

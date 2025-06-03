@@ -133,141 +133,15 @@ GOTOOLCHAIN=auto
 
 EOF
 
-# 创建gogogorc文件 (会被go命令源文件调用)
-cat > "$MODPATH/gogogorc" << 'EOF'
-#!/system/bin/sh
-MODDIR=${0%/*}
-# lience MIT
-# Magisk GoGogo 模块环境变量配置文件
-# 该文件由 Magisk 模块安卓脚本生成
-# 作者 : $LIghtJUNction
-
-echo "正在加载 必需 环境变量..."
-export GOROOT=$MODDIR/GOROOT
-export GOPATH=$MODDIR/go
-export GOCACHE=$MODDIR/GOCACHE
-export GOENV=$MODDIR/gogogo.env
-export GOTELEMETRYDIR=$MODDIR/GOTELEMETRYDIR
-export GOTMPDIR=$MODDIR/tmp
-export GOMODCACHE=$MODDIR/go/pkg/mod
-export GO111MODULE=on
-echo "原始PATH: $PATH"
-
-setup_path() {
-    local old_path="$1"
-    local add_paths="$2"
-    local new_path=""
-    local seen_paths=""
-    local system_bin_path=""
-    local zero_paths=""
-    local normal_paths=""
-    
-    # 分割PATH为数组并处理
-    IFS=':'
-    for p in ${old_path}; do
-        # 跳过空路径
-        [ -z "$p" ] && continue
-        
-        # 检查是否已存在此路径
-        echo "$seen_paths" | grep -q ":$p:"
-        if [ $? -ne 0 ]; then
-            # 将路径添加到已见列表
-            seen_paths="$seen_paths:$p:"
-            
-            # 分类处理路径
-            if [ "$p" = "/system/bin" ]; then
-                system_bin_path="/system/bin"
-            elif echo "$p" | grep -q "/0/"; then
-                zero_paths="$zero_paths:$p"
-            else
-                normal_paths="$normal_paths:$p"
-            fi
-        else
-            echo "跳过重复路径: $p"
-        fi
-    done
-    
-    # 添加新路径并检查重复
-    for p in ${add_paths//:/ }; do
-        echo "$seen_paths" | grep -q ":$p:"
-        if [ $? -ne 0 ]; then
-            seen_paths="$seen_paths:$p:"
-            normal_paths="$normal_paths:$p"
-        else
-            echo "跳过重复的新路径: $p"
-        fi
-    done
-    
-    # 构建新PATH - 优先/system/bin
-    if [ -n "$system_bin_path" ]; then
-        new_path="/system/bin"
-    fi
-    
-    # 添加普通路径
-    for p in ${normal_paths//:/ }; do
-        [ -n "$p" ] && new_path="$new_path:$p"
-    done
-    
-    # 添加包含/0/的路径到末尾
-    for p in ${zero_paths//:/ }; do
-        [ -n "$p" ] && new_path="$new_path:$p"
-    done
-    
-    # 移除开头的冒号(如果有)
-    new_path="${new_path#:}"
-    
-    echo "$new_path"
-}
-
-# 添加Go相关路径
-GO_PATHS="$MODDIR/GOROOT/bin:$MODDIR/go/bin"
-echo "正在设置PATH..."
-export PATH=$(setup_path "$PATH" "$GO_PATHS")
-echo "优化后PATH: $PATH"
-EOF
-
-# 自举构建需要/system/bin/提前。不然会报错
-
-# 创建/system/bin/go脚本
-cat > "$MODPATH/system/bin/go" << 'EOF'
-#!/system/bin/sh
-# 加载环境变量
-. /data/adb/modules/gogogo/gogogorc 
-# 执行真正的go命令
-exec /data/adb/modules/gogogo/GOROOT/bin/go "$@"
-EOF
-
-# 创建/system/bin/gofmt脚本
-cat > "$MODPATH/system/bin/gofmt" << 'EOF'
-#!/system/bin/sh
-# 加载环境变量
-. /data/adb/modules/gogogo/gogogorc
-# 执行gofmt命令
-exec /data/adb/modules/gogogo/GOROOT/bin/gofmt "$@"
-EOF
-
-
-# 创建/system/bin/gogogo脚本
-cat > "$MODPATH/system/bin/gogogo" << 'EOF'
-#!/system/bin/sh
-# 加载环境变量
-. /data/adb/modules/gogogo/gogogorc
-# 执行gogogo命令
-exec /data/adb/modules/gogogo/gogogo/bin/gogogo "$@"
-EOF
-
 
 # 设置权限
 ui_print "- 设置文件权限..."
-chmod 755 "$MODPATH/system/bin/go"
-chmod 755 "$MODPATH/system/bin/gogogo"
 chmod 644 "$MODPATH/gogogo.env"
-chmod 755 "$MODPATH/gogogorc"
 
 # 设置二进制文件权限
-set_perm "$MODPATH/gogogorc" 0 0 0755
 set_perm_recursive "$MODPATH/GOROOT/bin" 0 0 0755 0755
 set_perm_recursive "$MODPATH/go/bin" 0 0 0755 0755
+set_perm_recursive "$MODPATH/dist" 0 0 0755 0755
 
 # 备份PATH 
 echo $PATH > $MODPATH/PATH.bak
