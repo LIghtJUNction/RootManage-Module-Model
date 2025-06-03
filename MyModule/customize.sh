@@ -5,7 +5,9 @@ ui_print "========================================"
 ui_print "           GoGogo 模块安装程序           "
 ui_print "========================================"
 ui_print "模块ID: $MODID"
-ui_print "模块路径: $MODPATH"
+ui_print "模块路径: /data/adb/modules/$MODID"
+# $MODPATH ： modules_update/$MODID
+# MODID: gogogo
 
 # 检查设备架构
 ui_print "- 检查设备架构..."
@@ -119,7 +121,6 @@ CURRENT_TIME=$(date +"%Y-%m-%d %H:%M:%S")
 # 创建环境变量配置文件
 ui_print "- 创建环境变量配置..."
 cat > "$MODPATH/gogogo.env" << EOF
-#!/system/bin/sh
 # lience MIT
 # Magisk GoGogo 模块环境变量配置文件
 # 该文件由 Magisk 模块安卓脚本生成
@@ -129,33 +130,26 @@ cat > "$MODPATH/gogogo.env" << EOF
 GOPROXY=https://goproxy.cn,direct
 GOSUMDB=sum.golang.google.cn
 GOTOOLCHAIN=auto
-GOROOT=$MODPATH/GOROOT
-GOCACHE=$MODPATH/GOCACHE
-GOTELEMETRYDIR=$MODPATH/GOTELEMETRYDIR
-GO111MODULE=on
-GOPATH=$MODPATH/go
-GOENV=$MODPATH/gogogo.env
-GOMODCACHE=$MODPATH/go/pkg/mod
+
 EOF
 
 # 创建gogogorc文件 (会被go命令源文件调用)
-cat > "$MODPATH/gogogorc" << EOF
+cat > "$MODPATH/gogogorc" << 'EOF'
 #!/system/bin/sh
+MODDIR=${0%/*}
 # lience MIT
 # Magisk GoGogo 模块环境变量配置文件
 # 该文件由 Magisk 模块安卓脚本生成
-# 时间 : $CURRENT_TIME
-# 版本 : $VERSION
-# 作者 : $AUTHOR
+# 作者 : $LIghtJUNction
 
 echo "正在加载 必需 环境变量..."
-export GOROOT=$MODPATH/GOROOT
-export GOPATH=$MODPATH/go
-export GOCACHE=$MODPATH/GOCACHE
-export GOENV=$MODPATH/gogogo.env
-export GOTELEMETRYDIR=$MODPATH/GOTELEMETRYDIR
-export GOTMPDIR=$MODPATH/tmp
-export GOMODCACHE=$MODPATH/go/pkg/mod
+export GOROOT=$MODDIR/GOROOT
+export GOPATH=$MODDIR/go
+export GOCACHE=$MODDIR/GOCACHE
+export GOENV=$MODDIR/gogogo.env
+export GOTELEMETRYDIR=$MODDIR/GOTELEMETRYDIR
+export GOTMPDIR=$MODDIR/tmp
+export GOMODCACHE=$MODDIR/go/pkg/mod
 export GO111MODULE=on
 echo "原始PATH: $PATH"
 
@@ -226,7 +220,7 @@ setup_path() {
 }
 
 # 添加Go相关路径
-GO_PATHS="$MODPATH/GOROOT/bin:$MODPATH/go/bin"
+GO_PATHS="$MODDIR/GOROOT/bin:$MODDIR/go/bin"
 echo "正在设置PATH..."
 export PATH=$(setup_path "$PATH" "$GO_PATHS")
 echo "优化后PATH: $PATH"
@@ -238,18 +232,18 @@ EOF
 cat > "$MODPATH/system/bin/go" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. $MODPATH/gogogorc
+. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
 # 执行真正的go命令
-exec $MODPATH/GOROOT/bin/go "$@"
+exec ../../GOROOT/bin/go "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/GOROOT/bin/go "$@"
 EOF
 
 # 创建/system/bin/gofmt脚本
 cat > "$MODPATH/system/bin/gofmt" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. $MODPATH/gogogorc
+. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
 # 执行gofmt命令
-exec $MODPATH/GOROOT/bin/gofmt "$@"
+exec ../../GOROOT/bin/gofmt "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/GOROOT/bin/gofmt "$@"
 EOF
 
 
@@ -257,9 +251,9 @@ EOF
 cat > "$MODPATH/system/bin/gogogo" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. $MODPATH/gogogorc
+. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
 # 执行gogogo命令
-exec $MODPATH/go/bin/gogogo "$@"
+exec ../../gogogo/bin/gogogo "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/gogogo/bin/gogogo "$@"
 EOF
 
 
@@ -283,24 +277,31 @@ ui_print "已备份当前系统环境变量：$PATH"
 ui_print "========================================"
 ui_print "            使用说明                    "
 ui_print "========================================"
-ui_print "模块目录: $MODPATH"
-ui_print "给你3秒钟记住模块安装目录"
-sleep 3
+ui_print "模块目录: /data/adb/modules/$MODID"
+ui_print "MODPATH: $MODPATH"
+ui_print "MODID: $MODID"
+
 
 ui_print "新增CLI命令: gogogo -- 一键构建为多平台/架构"
+ui_print "新增CLI命令: go -- Go编译器命令"
+ui_print "新增CLI命令: gofmt -- Go代码格式化工具"
+
 ui_print "运行 gogogo -h 查看帮助"
 
 ui_print "使用教程:"
 ui_print "1. 新建项目: go mod init github.com/user_name/repo_name" 
+sleep 0.2
 ui_print "2. 编写go代码"
+sleep 0.3
 ui_print "3. 使用gogogo命令进行快捷编译，支持39种平台/架构"
+sleep 0.4
 ui_print "   (ios amd/arm 暂不支持. android amd 暂不支持)"
 ui_print ""
 sleep 2
 ui_print "4. 从源代码构建gogogo并替换现有命令示例:"
-ui_print "   gogogo -s '$MODPATH/gogogo.go' -p 'android/arm64' -o '$MODPATH/build'"
-sleep 2
-ui_print "   移动: mv $MODPATH/build/gogogo_android_arm64 /system/bin/gogogo"
+ui_print "   gogogo -s '/data/adb/modules/$MODID/gogogo.go' -p 'android/arm64' -o '/data/adb/modules/$MODID/build'"
+sleep 1
+ui_print "   移动: mv /data/adb/modules/$MODID/build/gogogo_android_arm64 /system/bin/gogogo"
 sleep 2
 ui_print ""
 ui_print "5. 使用交互式构建（推荐）:"
@@ -308,11 +309,12 @@ ui_print "   gogogo -s 'xxx.go' -i"
 sleep 4
 ui_print ""
 ui_print "6. 环境变量已自动配置:"
-ui_print "   GOENV=$MODPATH/gogogo.env"
-ui_print "   GOROOT=$MODPATH/GOROOT"
+ui_print "   GOENV=/data/adb/modules/$MODID/gogogo.env"
+ui_print "   GOROOT=/data/adb/modules/$MODID/GOROOT"
+sleep 0.2
 ui_print "   ..."
-
 ui_print "   可以在任意终端中使用Go和gogogo命令"
 ui_print ""
+ui_print "更新GO,运行action.sh即可，如果使用新版管理器，你会看到一个按钮"
 ui_print "安装完成！请重启设备以激活所有功能"
 ui_print "========================================"
