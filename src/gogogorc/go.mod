@@ -1,3 +1,3 @@
-module github.com/LIghtJUNction/RooTManager-Module-Model/gogogo/gogogorc
+module github.com/lightjunction/rootmanager-module-model/gogogorc
 
 go 1.24.3
