@@ -1,0 +1,8 @@
+#!/system/bin/sh 
+if [ "$GOGOGO_ENV_LOADED" = "1" ]; then 
+    [ "$0" = "$BASH_SOURCE" ] && exit 0 || return 0 2>/dev/null 
+fi 
+ 
+# 要求 gogogorc-core 输出 "export VAR=value" 格式 
+eval "$(/data/adb/modules/gogogo/dist/gogogorc-core)"
+export GOGOGO_ENV_LOADED=1 

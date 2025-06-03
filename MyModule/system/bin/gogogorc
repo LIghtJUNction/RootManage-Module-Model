@@ -4,5 +4,5 @@ if [ "$GOGOGO_ENV_LOADED" = "1" ]; then
 fi 
  
 # 要求 gogogorc-core 输出 "export VAR=value" 格式 
-eval "$(/data/adb/modules/gogogo/dist/gogogorc-core)"
+eval "$(/data/adb/modules/gogogo/dist/android/arm64/gogogorc-core)"
 export GOGOGO_ENV_LOADED=1 

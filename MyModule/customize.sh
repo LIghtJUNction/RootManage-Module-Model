@@ -1,4 +1,4 @@
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 AUTHOR = "LIghtJUNction"
 
 ui_print "========================================"
@@ -130,9 +130,7 @@ cat > "$MODPATH/gogogo.env" << EOF
 GOPROXY=https://goproxy.cn,direct
 GOSUMDB=sum.golang.google.cn
 GOTOOLCHAIN=auto
-
 EOF
-
 
 # 设置权限
 ui_print "- 设置文件权限..."
