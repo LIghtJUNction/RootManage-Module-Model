@@ -232,18 +232,18 @@ EOF
 cat > "$MODPATH/system/bin/go" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
+. /data/adb/modules/gogogo/gogogorc 
 # 执行真正的go命令
-exec ../../GOROOT/bin/go "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/GOROOT/bin/go "$@"
+exec /data/adb/modules/gogogo/GOROOT/bin/go "$@"
 EOF
 
 # 创建/system/bin/gofmt脚本
 cat > "$MODPATH/system/bin/gofmt" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
+. /data/adb/modules/gogogo/gogogorc
 # 执行gofmt命令
-exec ../../GOROOT/bin/gofmt "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/GOROOT/bin/gofmt "$@"
+exec /data/adb/modules/gogogo/GOROOT/bin/gofmt "$@"
 EOF
 
 
@@ -251,9 +251,9 @@ EOF
 cat > "$MODPATH/system/bin/gogogo" << 'EOF'
 #!/system/bin/sh
 # 加载环境变量
-. ../../gogogorc || echo "备用加载路径" && . /data/adb/modules/gogogo/gogogorc 
+. /data/adb/modules/gogogo/gogogorc
 # 执行gogogo命令
-exec ../../gogogo/bin/gogogo "$@" || echo "备用加载路径" && exec /data/adb/modules/gogogo/gogogo/bin/gogogo "$@"
+exec /data/adb/modules/gogogo/gogogo/bin/gogogo "$@"
 EOF
 
 
