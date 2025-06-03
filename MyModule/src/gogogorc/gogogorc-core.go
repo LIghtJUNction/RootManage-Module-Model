@@ -10,30 +10,27 @@ func main() {
 	// 检查环境变量是否已设置，避免重复执行
 	if os.Getenv("GOGOGO_ENV_LOADED") == "1" {
 		// 环境已加载，直接返回
-		// Go无法完全模拟shell的return，但可以通过os.Exit(0)来退出
 		os.Exit(0)
 	}
 
-	fmt.Println("正在加载 必需 环境变量...")
+	// 输出 export 语句供 shell 脚本使用
+	fmt.Printf("export GOROOT='%s'\n", "/data/adb/modules/gogogo/GOROOT")
+	fmt.Printf("export GOPATH='%s'\n", "/data/adb/modules/gogogo/go")
+	fmt.Printf("export GOCACHE='%s'\n", "/data/adb/modules/gogogo/GOCACHE")
+	fmt.Printf("export GOENV='%s'\n", "/data/adb/modules/gogogo/gogogo.env")
+	fmt.Printf("export GOTELEMETRYDIR='%s'\n", "/data/adb/modules/gogogo/GOTELEMETRYDIR")
+	fmt.Printf("export GOTMPDIR='%s'\n", "/data/adb/modules/gogogo/tmp")
+	fmt.Printf("export GOMODCACHE='%s'\n", "/data/adb/modules/gogogo/go/pkg/mod")
+	fmt.Printf("export GO111MODULE='%s'\n", "on")
 
-	// Go 环境变量设置
-	os.Setenv("GOROOT", "/data/adb/modules/gogogo/GOROOT")
-	os.Setenv("GOPATH", "/data/adb/modules/gogogo/go")
-	os.Setenv("GOCACHE", "/data/adb/modules/gogogo/GOCACHE")
-	os.Setenv("GOENV", "/data/adb/modules/gogogo/gogogo.env")
-	os.Setenv("GOTELEMETRYDIR", "/data/adb/modules/gogogo/GOTELEMETRYDIR")
-	os.Setenv("GOTMPDIR", "/data/adb/modules/gogogo/tmp")
-	os.Setenv("GOMODCACHE", "/data/adb/modules/gogogo/go/pkg/mod")
-	os.Setenv("GO111MODULE", "on")
-
-	// 添加Go相关路径到PATH
+	// 计算新的 PATH
 	oldPath := os.Getenv("PATH")
 	addPaths := "/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/go/bin"
 	newPath := setupPath(oldPath, addPaths)
-	os.Setenv("PATH", newPath)
+	fmt.Printf("export PATH='%s'\n", newPath)
 
 	// 设置标志表明环境已加载
-	os.Setenv("GOGOGO_ENV_LOADED", "1")
+	fmt.Printf("export GOGOGO_ENV_LOADED='%s'\n", "1")
 }
 
 // 高效的 PATH 设置函数 - 等效于shell脚本中的setup_path
@@ -44,7 +41,7 @@ func setupPath(oldPath, addPaths string) string {
 	pathsWithSep := ":" + oldPath + ":"
 
 	// 1. 优先添加 /system/bin (如存在)
-	if !strings.Contains(pathsWithSep, ":/system/bin:") == false {
+	if strings.Contains(pathsWithSep, ":/system/bin:") {
 		newPath = "/system/bin"
 		// 在已处理列表中标记
 		pathsWithSep = strings.Replace(pathsWithSep, ":/system/bin:", ":DONE:", 1)
@@ -57,7 +54,7 @@ func setupPath(oldPath, addPaths string) string {
 		if p == "" {
 			continue
 		}
-		if strings.Contains(pathsWithSep, ":"+p+":") == false {
+		if !strings.Contains(pathsWithSep, ":"+p+":") {
 			continue
 		}
 
@@ -82,13 +79,13 @@ func setupPath(oldPath, addPaths string) string {
 		if p == "" {
 			continue
 		}
-		if strings.Contains(pathsWithSep, ":"+p+":") == true {
+		if !strings.Contains(pathsWithSep, ":"+p+":") {
 			if newPath == "" {
 				newPath = p
 			} else {
 				newPath = newPath + ":" + p
 			}
-			pathsWithSep = pathsWithSep + p + ":DONE:"
+			pathsWithSep = pathsWithSep + ":" + p + ":"
 		}
 	}
 
@@ -99,7 +96,7 @@ func setupPath(oldPath, addPaths string) string {
 		}
 		if strings.Contains(p, "/0/") {
 			// 检查是否未处理
-			if strings.Contains(pathsWithSep, ":"+p+":") == false && strings.Contains(pathsWithSep, ":DONE:") == false {
+			if strings.Contains(pathsWithSep, ":"+p+":") && !strings.Contains(pathsWithSep, ":DONE:") {
 				if newPath == "" {
 					newPath = p
 				} else {

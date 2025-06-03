@@ -1,23 +1,8 @@
-#!/system/bin/sh
-# lience MIT
-# Magisk GoGogo 模块环境变量配置文件
-# 该文件由 Magisk 模块安卓脚本生成
-# 作者 : $LIghtJUNction
-
-# 检查环境变量是否已设置，避免重复执行
-if [ "$GOGOGO_ENV_LOADED" = "1" ]; then
-    # 环境已加载，直接返回
-    return 0 2>/dev/null || exit 0
-fi
-
-# 使用Go实现的高性能核心程序计算环境变量
-# 并立即导出这些变量到当前shell
-while IFS= read -r line; do
-    # 将每一行拆分为变量名和值
-    var_name="${line%%=*}"
-    var_value="${line#*=}"
-    export "$var_name"="$var_value"
-done < <(/data/adb/modules/gogogo/dist/gogogorc-core)
-
-# 设置标志表明环境已加载
-export GOGOGO_ENV_LOADED=1
+#!/system/bin/sh 
+if [ "$GOGOGO_ENV_LOADED" = "1" ]; then 
+    [ "$0" = "$BASH_SOURCE" ] && exit 0 || return 0 2>/dev/null 
+fi 
+ 
+# 要求 gogogorc-core 输出 "export VAR=value" 格式 
+eval "$(/data/adb/modules/gogogo/dist/gogogorc-core)"
+export GOGOGO_ENV_LOADED=1 
