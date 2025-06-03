@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -158,7 +157,7 @@ func detectNDKType(ndkPath string) string {
 	toolchainsPath := filepath.Join(ndkPath, "toolchains", "llvm", "prebuilt")
 	if _, err := os.Stat(toolchainsPath); os.IsNotExist(err) {
 		// 尝试查找旧的NDK目录结构
-		files, err := ioutil.ReadDir(ndkPath)
+		files, err := os.ReadDir(ndkPath)
 		if err != nil {
 			return ""
 		}
@@ -180,9 +179,8 @@ func detectNDKType(ndkPath string) string {
 		}
 		return ""
 	}
-
 	// 检查现代NDK结构
-	files, err := ioutil.ReadDir(toolchainsPath)
+	files, err := os.ReadDir(toolchainsPath)
 	if err != nil {
 		return ""
 	}
@@ -213,8 +211,7 @@ func getNDKPrebuiltPath(ndkPath string, ndkType string) string {
 	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
 		return ""
 	}
-
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := os.ReadDir(baseDir)
 	if err != nil {
 		return ""
 	}
@@ -300,13 +297,19 @@ func setupNDKEnvironment(ndkPath string, arch string, cmdEnv *[]string) error {
 			// 非Mac NDK在Mac上使用
 			colorWarning.Printf("⚠️  在macOS上使用非macOS NDK可能会有兼容性问题\n")
 		}
-	}
-
-	// 为特定架构设置额外的环境变量
+	} // 为特定架构设置额外的环境变量
 	if arch == "arm64" {
 		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "aarch64-linux-android21-clang"))
+		*cmdEnv = append(*cmdEnv, "CXX="+filepath.Join(prebuiltPath, "bin", "aarch64-linux-android21-clang++"))
 	} else if arch == "arm" {
 		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "armv7a-linux-androideabi21-clang"))
+		*cmdEnv = append(*cmdEnv, "CXX="+filepath.Join(prebuiltPath, "bin", "armv7a-linux-androideabi21-clang++"))
+	} else if arch == "amd64" {
+		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "x86_64-linux-android21-clang"))
+		*cmdEnv = append(*cmdEnv, "CXX="+filepath.Join(prebuiltPath, "bin", "x86_64-linux-android21-clang++"))
+	} else if arch == "386" {
+		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "i686-linux-android21-clang"))
+		*cmdEnv = append(*cmdEnv, "CXX="+filepath.Join(prebuiltPath, "bin", "i686-linux-android21-clang++"))
 	}
 
 	return nil
@@ -557,19 +560,52 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 			}
 		}
 
-		// 检查是否安装了Xcode (仅在macOS上)
-		if runtime.GOOS == "darwin" {
-			if _, err := exec.LookPath("xcodebuild"); err != nil {
-				return fmt.Errorf("iOS编译需要安装Xcode和Command Line Tools")
+		// 处理iOS平台的CGO设置
+		if config.NoCGO {
+			if config.Verbose >= 1 {
+				colorInfo.Printf("💡 使用--no-cgo标志，禁用iOS的CGO编译\n")
 			}
-		}
+			cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
+		} else {
+			// 启用CGO并尝试配置clang环境
+			cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
 
-		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
-		if config.Verbose >= 1 {
-			colorWarning.Printf("⚠️  iOS平台需要Xcode和iOS SDK，建议使用gomobile工具\n")
-			colorInfo.Printf("💡 安装gomobile: go install golang.org/x/mobile/cmd/gomobile@latest\n")
-			colorInfo.Printf("💡 初始化gomobile: gomobile init\n")
-			colorInfo.Printf("💡 构建iOS应用: gomobile build -target=ios .\n")
+			// 查找系统中的clang安装
+			clangInstallations := findSystemClang()
+			bestClang := getBestClangForTarget(target, clangInstallations)
+
+			if bestClang != nil {
+				// 使用找到的clang配置编译环境
+				if err := setupClangEnvironment(*bestClang, target, &cmd.Env); err != nil {
+					if config.Verbose >= 1 {
+						colorWarning.Printf("⚠️  配置clang环境失败: %v\n", err)
+					}
+				} else if config.Verbose >= 1 {
+					colorSuccess.Printf("✓ 使用clang: %s (%s)\n", bestClang.Path, bestClang.Type)
+				}
+			} else {
+				// 未找到clang，尝试传统方式
+				if runtime.GOOS == "darwin" {
+					if _, err := exec.LookPath("xcodebuild"); err != nil {
+						colorWarning.Printf("⚠️  未找到clang安装，且Xcode不可用: %v\n", err)
+						if config.Verbose >= 1 {
+							colorInfo.Printf("💡 建议安装Xcode Command Line Tools: xcode-select --install\n")
+						}
+					}
+				} else {
+					colorWarning.Printf("⚠️  未找到适用的clang安装\n")
+				}
+			}
+
+			if config.Verbose >= 1 {
+				colorInfo.Printf("💡 iOS编译提示:\n")
+				colorInfo.Printf("   • 推荐使用gomobile: go install golang.org/x/mobile/cmd/gomobile@latest\n")
+				colorInfo.Printf("   • 初始化gomobile: gomobile init\n")
+				colorInfo.Printf("   • 构建iOS应用: gomobile build -target=ios .\n")
+				if runtime.GOOS != "darwin" {
+					colorInfo.Printf("   • 跨平台iOS编译需要合适的clang工具链\n")
+				}
+			}
 		}
 	} else if target.GOOS == "android" {
 		// #region Android平台处理
@@ -602,6 +638,34 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 				ndkHome = os.Getenv("ANDROID_NDK_HOME")
 				if ndkHome == "" {
 					ndkHome = os.Getenv("ANDROID_NDK_ROOT")
+				}
+				if ndkHome == "" {
+					ndkHome = os.Getenv("NDK_ROOT")
+				}
+
+				// 如果环境变量都没有设置，尝试自动查找系统NDK
+				if ndkHome == "" {
+					if config.Verbose >= 1 {
+						colorInfo.Printf("💡 未设置NDK环境变量，尝试自动查找系统NDK...\n")
+					}
+					ndkHome = findSystemNDK()
+					if ndkHome != "" {
+						colorSuccess.Printf("✓ 自动找到NDK路径: %s\n", ndkHome)
+
+						// 显示如何永久设置环境变量的提示
+						if config.Verbose >= 1 {
+							colorInfo.Printf("💡 建议设置环境变量以避免每次自动搜索:\n")
+							switch runtime.GOOS {
+							case "windows":
+								colorInfo.Printf("  • PowerShell: $env:ANDROID_NDK_HOME = \"%s\"\n", ndkHome)
+								colorInfo.Printf("  • CMD: set ANDROID_NDK_HOME=%s\n", ndkHome)
+								colorInfo.Printf("  • 系统环境变量: 右键\"此电脑\" -> 属性 -> 高级系统设置 -> 环境变量\n")
+							default:
+								colorInfo.Printf("  • Bash/Zsh: export ANDROID_NDK_HOME=\"%s\"\n", ndkHome)
+								colorInfo.Printf("  • 永久配置: 添加到 ~/.bashrc 或 ~/.zshrc 文件\n")
+							}
+						}
+					}
 				}
 			}
 
@@ -1283,6 +1347,780 @@ func runInteractive() error {
 	return nil
 }
 
+// getUserHomeDir 获取用户主目录
+func getUserHomeDir() (string, error) {
+	// 优先使用Go标准库的方法
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		return homeDir, nil
+	}
+
+	// 回退到环境变量
+	switch runtime.GOOS {
+	case "windows":
+		if home := os.Getenv("USERPROFILE"); home != "" {
+			return home, nil
+		}
+		return "", fmt.Errorf("无法获取用户主目录")
+	default:
+		if home := os.Getenv("HOME"); home != "" {
+			return home, nil
+		}
+		return "", fmt.Errorf("无法获取用户主目录")
+	}
+}
+
+// findSystemNDK 自动查找系统中的NDK安装路径
+func findSystemNDK() string {
+	if config.Verbose >= 2 {
+		colorInfo.Printf("🔍 自动搜索系统NDK安装路径...\n")
+	}
+
+	var searchPaths []string
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows平台常见的NDK安装位置
+		homeDir, err := getUserHomeDir()
+		if err == nil {
+			// 用户目录下的Android SDK
+			searchPaths = append(searchPaths,
+				filepath.Join(homeDir, "AppData", "Local", "Android", "sdk", "ndk"),
+				filepath.Join(homeDir, "Android", "Sdk", "ndk"),
+			)
+		}
+
+		// 系统级安装路径
+		searchPaths = append(searchPaths,
+			"C:\\Android\\sdk\\ndk",
+			"C:\\Users\\Public\\Android\\sdk\\ndk",
+			"C:\\Program Files\\Android\\Android Studio\\sdk\\ndk",
+			"C:\\Program Files (x86)\\Android\\Android Studio\\sdk\\ndk",
+		)
+
+		// 检查环境变量中的Android SDK路径
+		if androidHome := os.Getenv("ANDROID_HOME"); androidHome != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidHome, "ndk"))
+		}
+		if androidSdkRoot := os.Getenv("ANDROID_SDK_ROOT"); androidSdkRoot != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidSdkRoot, "ndk"))
+		}
+
+	case "linux":
+		// Linux平台常见的NDK安装位置
+		homeDir, err := getUserHomeDir()
+		if err == nil {
+			searchPaths = append(searchPaths,
+				filepath.Join(homeDir, "Android", "Sdk", "ndk"),
+				filepath.Join(homeDir, "android-sdk", "ndk"),
+				filepath.Join(homeDir, ".android", "sdk", "ndk"),
+			)
+		}
+
+		// 系统级安装路径
+		searchPaths = append(searchPaths,
+			"/opt/android-sdk/ndk",
+			"/usr/local/android-sdk/ndk",
+			"/usr/share/android-sdk/ndk",
+			"/snap/android-studio/current/android-studio/sdk/ndk",
+		)
+
+		// 检查环境变量
+		if androidHome := os.Getenv("ANDROID_HOME"); androidHome != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidHome, "ndk"))
+		}
+		if androidSdkRoot := os.Getenv("ANDROID_SDK_ROOT"); androidSdkRoot != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidSdkRoot, "ndk"))
+		}
+
+	case "darwin":
+		// macOS平台常见的NDK安装位置
+		homeDir, err := getUserHomeDir()
+		if err == nil {
+			searchPaths = append(searchPaths,
+				filepath.Join(homeDir, "Library", "Android", "sdk", "ndk"),
+				filepath.Join(homeDir, "Android", "Sdk", "ndk"),
+				filepath.Join(homeDir, "android-sdk", "ndk"),
+			)
+		}
+
+		// 系统级安装路径
+		searchPaths = append(searchPaths,
+			"/usr/local/android-sdk/ndk",
+			"/opt/android-sdk/ndk",
+			"/Applications/Android Studio.app/Contents/sdk/ndk",
+		)
+
+		// 检查环境变量
+		if androidHome := os.Getenv("ANDROID_HOME"); androidHome != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidHome, "ndk"))
+		}
+		if androidSdkRoot := os.Getenv("ANDROID_SDK_ROOT"); androidSdkRoot != "" {
+			searchPaths = append(searchPaths, filepath.Join(androidSdkRoot, "ndk"))
+		}
+	}
+
+	// 搜索NDK目录
+	for _, searchPath := range searchPaths {
+		if config.Verbose >= 3 {
+			colorInfo.Printf("  检查路径: %s\n", searchPath)
+		}
+		if _, err := os.Stat(searchPath); err == nil {
+			// 检查是否是NDK目录（包含多个版本子目录）
+			files, err := os.ReadDir(searchPath)
+			if err != nil {
+				continue
+			}
+
+			// 寻找最新版本的NDK
+			var latestVersion string
+			var latestPath string
+
+			for _, file := range files {
+				if file.IsDir() {
+					versionPath := filepath.Join(searchPath, file.Name())
+					// 检查是否是有效的NDK目录
+					if isValidNDKDir(versionPath) {
+						if latestVersion == "" || file.Name() > latestVersion {
+							latestVersion = file.Name()
+							latestPath = versionPath
+						}
+					}
+				}
+			}
+
+			if latestPath != "" {
+				if config.Verbose >= 1 {
+					colorSuccess.Printf("✓ 找到NDK路径: %s (版本: %s)\n", latestPath, latestVersion)
+				}
+				return latestPath
+			}
+		}
+	}
+
+	if config.Verbose >= 2 {
+		colorWarning.Printf("⚠️  未找到系统NDK安装路径\n")
+	}
+	return ""
+}
+
+// isValidNDKDir 检查目录是否是有效的NDK根目录
+func isValidNDKDir(ndkPath string) bool {
+	// 检查NDK必需的目录
+	requiredDirs := []string{
+		"toolchains",
+		"platforms",
+	}
+
+	for _, dir := range requiredDirs {
+		if _, err := os.Stat(filepath.Join(ndkPath, dir)); os.IsNotExist(err) {
+			return false
+		}
+	}
+
+	// 检查现代NDK结构
+	modernNDKPath := filepath.Join(ndkPath, "toolchains", "llvm", "prebuilt")
+	if _, err := os.Stat(modernNDKPath); err == nil {
+		return true
+	}
+	// 检查传统NDK结构
+	if files, err := os.ReadDir(filepath.Join(ndkPath, "toolchains")); err == nil {
+		for _, file := range files {
+			if file.IsDir() && strings.Contains(file.Name(), "android") {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// #region Clang编译器路径自动发现
+
+// ClangInstallation 表示一个clang安装
+type ClangInstallation struct {
+	Path    string // clang可执行文件路径
+	Version string // clang版本
+	Type    string // 安装类型 (xcode, homebrew, system, llvm, mingw)
+}
+
+// findSystemClang 自动查找系统中的clang安装路径
+func findSystemClang() []ClangInstallation {
+	if config.Verbose >= 2 {
+		colorInfo.Printf("🔍 自动搜索系统clang安装路径...\n")
+	}
+
+	var installations []ClangInstallation
+	var searchPaths []string
+
+	switch runtime.GOOS {
+	case "windows":
+		// Windows平台常见的clang安装位置
+		// LLVM官方安装
+		searchPaths = append(searchPaths,
+			"C:\\Program Files\\LLVM\\bin\\clang.exe",
+			"C:\\Program Files (x86)\\LLVM\\bin\\clang.exe",
+		)
+
+		// MinGW-w64 clang
+		searchPaths = append(searchPaths,
+			"C:\\msys64\\mingw64\\bin\\clang.exe",
+			"C:\\msys64\\clang64\\bin\\clang.exe",
+			"C:\\mingw64\\bin\\clang.exe",
+		)
+
+		// Chocolatey安装
+		searchPaths = append(searchPaths,
+			"C:\\ProgramData\\chocolatey\\lib\\llvm\\tools\\LLVM\\bin\\clang.exe",
+		)
+
+		// Git for Windows中的clang (如果存在)
+		if gitPath := findGitForWindowsClang(); gitPath != "" {
+			searchPaths = append(searchPaths, gitPath)
+		}
+
+	case "linux":
+		// Linux平台常见的clang安装位置
+		searchPaths = append(searchPaths,
+			"/usr/bin/clang",
+			"/usr/local/bin/clang",
+			"/opt/llvm/bin/clang",
+		)
+
+		// 版本化的clang
+		for version := 18; version >= 10; version-- {
+			searchPaths = append(searchPaths,
+				fmt.Sprintf("/usr/bin/clang-%d", version),
+				fmt.Sprintf("/usr/local/bin/clang-%d", version),
+			)
+		}
+
+		// Snap安装
+		searchPaths = append(searchPaths,
+			"/snap/bin/clang",
+		)
+
+	case "darwin":
+		// macOS平台常见的clang安装位置
+
+		// Xcode Command Line Tools (优先级最高)
+		searchPaths = append(searchPaths,
+			"/usr/bin/clang",
+			"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+		)
+
+		// Homebrew安装
+		homeDir, err := getUserHomeDir()
+		if err == nil {
+			// Apple Silicon Mac
+			searchPaths = append(searchPaths,
+				"/opt/homebrew/bin/clang",
+				"/opt/homebrew/Cellar/llvm/*/bin/clang",
+			)
+			// Intel Mac
+			searchPaths = append(searchPaths,
+				"/usr/local/bin/clang",
+				"/usr/local/Cellar/llvm/*/bin/clang",
+			)
+			// 用户级Homebrew
+			searchPaths = append(searchPaths,
+				filepath.Join(homeDir, ".brew", "bin", "clang"),
+			)
+		}
+
+		// MacPorts安装
+		searchPaths = append(searchPaths,
+			"/opt/local/bin/clang",
+		)
+	}
+
+	// 检查PATH中的clang
+	if pathClang, err := exec.LookPath("clang"); err == nil {
+		searchPaths = append(searchPaths, pathClang)
+	}
+
+	// 搜索clang安装
+	for _, searchPath := range searchPaths {
+		if config.Verbose >= 3 {
+			colorInfo.Printf("  检查路径: %s\n", searchPath)
+		}
+
+		// 处理通配符路径 (主要用于Homebrew Cellar)
+		if strings.Contains(searchPath, "*") {
+			matches, err := filepath.Glob(searchPath)
+			if err == nil {
+				for _, match := range matches {
+					if installation := validateClangPath(match); installation != nil {
+						installations = append(installations, *installation)
+					}
+				}
+			}
+		} else {
+			if installation := validateClangPath(searchPath); installation != nil {
+				installations = append(installations, *installation)
+			}
+		}
+	}
+
+	// 去重并排序 (优先级: xcode > homebrew > system > llvm > mingw)
+	installations = deduplicateClangInstallations(installations)
+
+	if config.Verbose >= 2 && len(installations) > 0 {
+		colorSuccess.Printf("✓ 找到 %d 个clang安装:\n", len(installations))
+		for i, installation := range installations {
+			colorInfo.Printf("  %d. %s (%s) - %s\n", i+1, installation.Path, installation.Type, installation.Version)
+		}
+	} else if config.Verbose >= 2 {
+		colorWarning.Printf("⚠️  未找到系统clang安装\n")
+	}
+
+	return installations
+}
+
+// findGitForWindowsClang 查找Git for Windows中的clang
+func findGitForWindowsClang() string {
+	gitPaths := []string{
+		"C:\\Program Files\\Git\\mingw64\\bin\\clang.exe",
+		"C:\\Program Files (x86)\\Git\\mingw64\\bin\\clang.exe",
+	}
+
+	for _, path := range gitPaths {
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+
+	return ""
+}
+
+// validateClangPath 验证clang路径并获取安装信息
+func validateClangPath(clangPath string) *ClangInstallation {
+	if _, err := os.Stat(clangPath); os.IsNotExist(err) {
+		return nil
+	}
+
+	// 获取clang版本
+	cmd := exec.Command(clangPath, "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	version := parseClangVersion(string(output))
+	if version == "" {
+		return nil
+	}
+
+	// 确定安装类型
+	installationType := detectClangInstallationType(clangPath)
+
+	return &ClangInstallation{
+		Path:    clangPath,
+		Version: version,
+		Type:    installationType,
+	}
+}
+
+// parseClangVersion 解析clang版本号
+func parseClangVersion(versionOutput string) string {
+	lines := strings.Split(versionOutput, "\n")
+	if len(lines) == 0 {
+		return ""
+	}
+
+	// 提取版本号 (例如: "clang version 15.0.0")
+	firstLine := lines[0]
+	if strings.Contains(firstLine, "clang version") {
+		parts := strings.Fields(firstLine)
+		for i, part := range parts {
+			if part == "version" && i+1 < len(parts) {
+				return parts[i+1]
+			}
+		}
+	}
+
+	return ""
+}
+
+// detectClangInstallationType 检测clang安装类型
+func detectClangInstallationType(clangPath string) string {
+	clangPath = strings.ToLower(clangPath)
+
+	if strings.Contains(clangPath, "xcode") || strings.Contains(clangPath, "/usr/bin/clang") {
+		return "xcode"
+	}
+	if strings.Contains(clangPath, "homebrew") || strings.Contains(clangPath, "/opt/homebrew") || strings.Contains(clangPath, "/usr/local") {
+		return "homebrew"
+	}
+	if strings.Contains(clangPath, "llvm") {
+		return "llvm"
+	}
+	if strings.Contains(clangPath, "mingw") || strings.Contains(clangPath, "msys") {
+		return "mingw"
+	}
+	if strings.Contains(clangPath, "/snap/") {
+		return "snap"
+	}
+	if strings.Contains(clangPath, "/opt/local") {
+		return "macports"
+	}
+
+	return "system"
+}
+
+// deduplicateClangInstallations 去重clang安装并按优先级排序
+func deduplicateClangInstallations(installations []ClangInstallation) []ClangInstallation {
+	seen := make(map[string]bool)
+	var unique []ClangInstallation
+
+	// 定义优先级顺序
+	priorityOrder := map[string]int{
+		"xcode":    1,
+		"homebrew": 2,
+		"system":   3,
+		"llvm":     4,
+		"macports": 5,
+		"snap":     6,
+		"mingw":    7,
+	}
+
+	// 按优先级排序
+	for priority := 1; priority <= 7; priority++ {
+		for _, installation := range installations {
+			if priorityOrder[installation.Type] == priority {
+				if !seen[installation.Path] {
+					seen[installation.Path] = true
+					unique = append(unique, installation)
+				}
+			}
+		}
+	}
+
+	return unique
+}
+
+// isValidClangInstallation 检查clang安装是否有效
+func isValidClangInstallation(installation ClangInstallation) bool {
+	if installation.Path == "" {
+		return false
+	}
+
+	// 检查clang可执行文件是否存在
+	if _, err := os.Stat(installation.Path); os.IsNotExist(err) {
+		return false
+	}
+
+	// 检查clang是否可以正常执行
+	cmd := exec.Command(installation.Path, "--version")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// setupClangEnvironment 为iOS编译设置clang环境变量
+func setupClangEnvironment(installation ClangInstallation, target BuildTarget, cmdEnv *[]string) error {
+	if !isValidClangInstallation(installation) {
+		return fmt.Errorf("无效的clang安装: %s", installation.Path)
+	}
+
+	clangDir := filepath.Dir(installation.Path)
+
+	// 设置CC和CXX环境变量
+	*cmdEnv = append(*cmdEnv, "CC="+installation.Path)
+
+	// 查找clang++
+	clangxxPath := filepath.Join(clangDir, "clang++")
+	if runtime.GOOS == "windows" {
+		clangxxPath = filepath.Join(clangDir, "clang++.exe")
+	}
+
+	if _, err := os.Stat(clangxxPath); err == nil {
+		*cmdEnv = append(*cmdEnv, "CXX="+clangxxPath)
+	}
+
+	// 根据安装类型设置特定的环境变量
+	switch installation.Type {
+	case "xcode":
+		// Xcode clang需要iOS SDK路径
+		if runtime.GOOS == "darwin" {
+			// 获取iOS SDK路径
+			if sdkPath := getIOSSDKPath(); sdkPath != "" {
+				*cmdEnv = append(*cmdEnv, "CGO_CFLAGS=-isysroot "+sdkPath)
+				*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS=-isysroot "+sdkPath)
+			}
+		}
+
+	case "homebrew", "llvm":
+		// Homebrew/LLVM clang可能需要额外的包含路径
+		if runtime.GOOS == "darwin" {
+			// 添加常见的包含路径
+			homebrewInclude := "/opt/homebrew/include"
+			if _, err := os.Stat(homebrewInclude); err == nil {
+				*cmdEnv = append(*cmdEnv, "CGO_CPPFLAGS=-I"+homebrewInclude)
+			}
+		}
+
+	case "mingw":
+		// MinGW clang需要特殊的配置用于iOS交叉编译
+		if runtime.GOOS == "windows" {
+			colorWarning.Printf("⚠️  Windows上使用MinGW clang进行iOS编译可能需要额外配置\n")
+		}
+	}
+
+	// 为iOS目标架构设置特定的编译标志
+	if target.GOOS == "ios" {
+		switch target.GOARCH {
+		case "arm64":
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS="+getCGOCFlags(target, installation))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS="+getCGOLDFlags(target, installation))
+		case "amd64":
+			// iOS模拟器
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS="+getCGOCFlags(target, installation))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS="+getCGOLDFlags(target, installation))
+		}
+	}
+
+	if config.Verbose >= 2 {
+		colorSuccess.Printf("✓ 已配置clang环境: %s (%s)\n", installation.Path, installation.Type)
+	}
+
+	return nil
+}
+
+// getIOSSDKPath 获取iOS SDK路径
+func getIOSSDKPath() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+
+	// 尝试获取iOS SDK路径
+
+	cmd := exec.Command("xcrun", "--sdk", "iphoneos", "--show-sdk-path")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimSpace(string(output))
+}
+
+// getCGOCFlags 获取iOS编译的CGO_CFLAGS
+func getCGOCFlags(target BuildTarget, installation ClangInstallation) string {
+	var flags []string
+
+	if runtime.GOOS == "darwin" && installation.Type == "xcode" {
+		// 使用Xcode SDK
+		if target.GOARCH == "arm64" {
+			flags = append(flags, "-arch arm64")
+			flags = append(flags, "-mios-version-min=11.0")
+		} else if target.GOARCH == "amd64" {
+			flags = append(flags, "-arch x86_64")
+			flags = append(flags, "-mios-simulator-version-min=11.0")
+		}
+
+		// 添加iOS SDK路径
+		if sdkPath := getIOSSDKPath(); sdkPath != "" {
+			flags = append(flags, "-isysroot "+sdkPath)
+		}
+	} else {
+		// 非Xcode环境的基本配置
+		colorWarning.Printf("⚠️  非Xcode环境编译iOS可能需要手动配置SDK路径\n")
+	}
+
+	return strings.Join(flags, " ")
+}
+
+// getCGOLDFlags 获取iOS编译的CGO_LDFLAGS
+func getCGOLDFlags(target BuildTarget, installation ClangInstallation) string {
+	var flags []string
+
+	if runtime.GOOS == "darwin" && installation.Type == "xcode" {
+		// 使用Xcode SDK
+		if target.GOARCH == "arm64" {
+			flags = append(flags, "-arch arm64")
+		} else if target.GOARCH == "amd64" {
+			flags = append(flags, "-arch x86_64")
+		}
+
+		// 添加iOS SDK路径
+		if sdkPath := getIOSSDKPath(); sdkPath != "" {
+			flags = append(flags, "-isysroot "+sdkPath)
+		}
+	}
+
+	return strings.Join(flags, " ")
+}
+
+// getBestClangForTarget 为目标平台选择最佳的clang安装
+func getBestClangForTarget(target BuildTarget, installations []ClangInstallation) *ClangInstallation {
+	if len(installations) == 0 {
+		return nil
+	}
+
+	// 为iOS目标优先选择Xcode clang (在macOS上)
+	if target.GOOS == "ios" && runtime.GOOS == "darwin" {
+		for _, installation := range installations {
+			if installation.Type == "xcode" {
+				return &installation
+			}
+		}
+	}
+
+	// 其他情况返回第一个 (已按优先级排序)
+	return &installations[0]
+}
+
+// #endregion Clang编译器路径自动发现
+
+// getEnvironmentInfo 获取编译相关的环境信息
+func getEnvironmentInfo() {
+	colorTitle.Println("🔧 编译环境信息")
+	fmt.Println()
+
+	// Go环境信息
+	colorBold.Println("📋 Go环境:")
+	if goVersion, err := exec.Command("go", "version").Output(); err == nil {
+		fmt.Printf("  Go版本: %s", string(goVersion))
+	} else {
+		colorError.Printf("  Go版本: 未安装或未在PATH中\n")
+	}
+
+	if goPath := os.Getenv("GOPATH"); goPath != "" {
+		fmt.Printf("  GOPATH: %s\n", goPath)
+	} else {
+		fmt.Printf("  GOPATH: 未设置 (使用默认)\n")
+	}
+
+	if goRoot := os.Getenv("GOROOT"); goRoot != "" {
+		fmt.Printf("  GOROOT: %s\n", goRoot)
+	} else {
+		fmt.Printf("  GOROOT: 使用默认\n")
+	}
+
+	if goProxy := os.Getenv("GOPROXY"); goProxy != "" {
+		fmt.Printf("  GOPROXY: %s\n", goProxy)
+	}
+
+	fmt.Println()
+
+	// 系统环境信息
+	colorBold.Println("💻 系统环境:")
+	fmt.Printf("  操作系统: %s\n", runtime.GOOS)
+	fmt.Printf("  架构: %s\n", runtime.GOARCH)
+	fmt.Printf("  CPU核心: %d\n", runtime.NumCPU())
+
+	if userHome, err := getUserHomeDir(); err == nil {
+		fmt.Printf("  用户主目录: %s\n", userHome)
+	}
+
+	fmt.Println()
+
+	// Android相关环境
+	colorBold.Println("📱 Android环境:")
+
+	// NDK相关环境变量
+	ndkVars := []string{
+		"ANDROID_NDK_HOME",
+		"ANDROID_NDK_ROOT",
+		"NDK_ROOT",
+		"ANDROID_HOME",
+		"ANDROID_SDK_ROOT",
+	}
+
+	hasAndroidEnv := false
+	for _, envVar := range ndkVars {
+		if value := os.Getenv(envVar); value != "" {
+			fmt.Printf("  %s: %s\n", envVar, value)
+			hasAndroidEnv = true
+		}
+	}
+
+	if !hasAndroidEnv {
+		colorWarning.Printf("  未设置Android NDK环境变量\n")
+	}
+
+	// 自动搜索NDK
+	if ndkPath := findSystemNDK(); ndkPath != "" {
+		fmt.Printf("  自动检测到的NDK: %s\n", ndkPath)
+
+		// 检测NDK类型
+		if ndkType := detectNDKType(ndkPath); ndkType != "" {
+			fmt.Printf("  NDK类型: %s\n", ndkType)
+		}
+	} else {
+		colorWarning.Printf("  未找到系统NDK安装\n")
+	}
+
+	fmt.Println()
+
+	// Clang环境信息 (iOS编译支持)
+	colorBold.Println("🚀 Clang环境 (iOS编译):")
+
+	// 自动搜索clang安装
+	clangInstallations := findSystemClang()
+	if len(clangInstallations) > 0 {
+		fmt.Printf("  找到 %d 个clang安装:\n", len(clangInstallations))
+		for i, installation := range clangInstallations {
+			colorSuccess.Printf("  %d. %s\n", i+1, installation.Path)
+			fmt.Printf("     版本: %s, 类型: %s\n", installation.Version, installation.Type)
+		}
+
+		// 显示iOS编译推荐的clang
+		iOSTarget := BuildTarget{GOOS: "ios", GOARCH: "arm64"}
+		if bestClang := getBestClangForTarget(iOSTarget, clangInstallations); bestClang != nil {
+			colorInfo.Printf("  iOS编译推荐: %s (%s)\n", bestClang.Path, bestClang.Type)
+		}
+	} else {
+		colorWarning.Printf("  未找到系统clang安装\n")
+		if runtime.GOOS != "darwin" {
+			colorInfo.Printf("  💡 Windows/Linux上iOS编译需要clang支持\n")
+			colorInfo.Printf("     可考虑安装: LLVM, MinGW-w64, 或其他clang工具链\n")
+		}
+	}
+
+	fmt.Println()
+
+	// 交叉编译相关环境变量
+	colorBold.Println("🔄 交叉编译环境:")
+	crossCompileVars := []string{
+		"CC", "CXX", "AR", "STRIP",
+		"CGO_ENABLED", "CGO_CFLAGS", "CGO_CXXFLAGS", "CGO_LDFLAGS",
+		"GOOS", "GOARCH",
+	}
+
+	hasCrossCompileEnv := false
+	for _, envVar := range crossCompileVars {
+		if value := os.Getenv(envVar); value != "" {
+			fmt.Printf("  %s: %s\n", envVar, value)
+			hasCrossCompileEnv = true
+		}
+	}
+
+	if !hasCrossCompileEnv {
+		colorInfo.Printf("  当前无交叉编译环境变量设置\n")
+	}
+
+	fmt.Println()
+
+	// PATH信息
+	colorBold.Println("📂 PATH环境:")
+	if path := os.Getenv("PATH"); path != "" {
+		paths := strings.Split(path, string(os.PathListSeparator))
+		fmt.Printf("  PATH包含 %d 个目录\n", len(paths))
+
+		// 检查关键工具是否在PATH中
+		tools := []string{"go", "git", "gcc", "clang"}
+		for _, tool := range tools {
+			if _, err := exec.LookPath(tool); err == nil {
+				colorSuccess.Printf("  ✓ %s 可用\n", tool)
+			} else {
+				colorWarning.Printf("  ⚠ %s 不可用\n", tool)
+			}
+		}
+	}
+}
+
 func main() {
 	var rootCmd = &cobra.Command{
 		Use: "gogogo", Short: "Go跨平台编译工具", Long: `gogogo v2.0.0 - 一个强大的Go跨平台编译工具
@@ -1429,7 +2267,6 @@ func main() {
 			showVersion()
 		},
 	}
-
 	var examplesCmd = &cobra.Command{
 		Use:   "examples",
 		Short: "显示使用示例",
@@ -1439,8 +2276,17 @@ func main() {
 		},
 	}
 
+	var envCmd = &cobra.Command{
+		Use:   "env",
+		Short: "显示编译环境信息",
+		Long:  "显示Go编译环境、Android NDK、交叉编译等相关环境变量信息",
+		Run: func(cmd *cobra.Command, args []string) {
+			getEnvironmentInfo()
+		},
+	}
+
 	// 添加子命令到根命令
-	rootCmd.AddCommand(listCmd, groupsCmd, versionCmd, examplesCmd)
+	rootCmd.AddCommand(listCmd, groupsCmd, versionCmd, examplesCmd, envCmd)
 
 	// 添加主要的命令行参数
 	rootCmd.Flags().StringVarP(&config.SourceFile, "source", "s", "", "源Go文件路径 (必需)")

@@ -1,5 +1,8 @@
 #!system/bin/sh
-MODID=${0%/*}
+MODDIR=${0%/*}
+GOROOT_BOOTSTRAP_DIR="$MODDIR/GOROOT_BOOTSTRAP"
+GOROOT_DIR="$MODDIR/GOROOT"
+
 
 Key_monitoring() {
     while :; do
@@ -39,9 +42,32 @@ update_go() {
 
 build_from_src() {
     echo "正在从源代码构建Go..."
-    cd $MODPATH/GOROOT/src 
+    echo "这将会启用开发者模式"
+    echo "1" > $MODDIR/gogogo.dev
+
+    mkdir -p $GOROOT_BOOTSTRAP_DIR
+    export GOROOT_BOOTSTRAP=$GOROOT_BOOTSTRAP_DIR
+    # 将GOROOT 拷贝到GOROOT_BOOTSTRAP
+    cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+
+
+    cd $MODDIR/GOROOT/src
     . make.bash || exit 1
     echo "Go源代码构建完成"
+
+    choice=$(Key_monitoring)
+    echo "音量上：保持开发者模式（不删除自举拷贝） 音量下：退出开发者模式（删除自举拷贝） "
+    if [ "$choice" = "0" ]; then
+        echo "选择：保持开发者模式"
+        exit 0
+    elif [ "$choice" = "1" ]; then
+        echo "选择：退出开发者模式"
+        echo "0" > $MODDIR/gogogo.dev
+        rm -rf $GOROOT_BOOTSTRAP_DIR
+        echo "已删除自举拷贝"
+    fi
+
+
     exit 0
 }
 
@@ -53,7 +79,7 @@ elif [ "$choice" = "1" ]; then
     which go
     go version || echo "未找到Go！"
     echo "本地记录的go版本："
-    echo "$(cat $MODPATH/VERSION || echo "未记录版本")"
+    echo "$(cat $MODDIR/VERSION || echo "未记录版本")"
 
     echo "检查最新GO版本..."
     latest_go_version=$(curl -s https://go.dev/VERSION?m=text)
@@ -63,11 +89,10 @@ elif [ "$choice" = "1" ]; then
     if [ "$(go version | awk '{print $3}')" != "$latest_go_version" ]; then
         echo "有新版本可用，正在更新..."
         if update_go; then
-            echo "$latest_go_version" > "$MODPATH/VERSION"
+            echo "$latest_go_version" > "$MODDIR/VERSION"
             echo "更新成功，已记录版本：$latest_go_version"
         else
-            build_choice=$(Key_monitoring)
-
+            echo "更新失败，请检查网络连接或手动更新"
         fi
     else
         echo "已是最新版本"

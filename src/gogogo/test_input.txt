@@ -1,0 +1,14 @@
+test.go
+./build
+testapp
+8
+android/arm64
+y
+n
+n
+n
+1
+
+
+n
+y

@@ -8,53 +8,61 @@ ui_print "模块ID: $MODID"
 ui_print "模块路径: /data/adb/modules/$MODID"
 # $MODPATH ： modules_update/$MODID
 # MODID: gogogo
+GO_TAR="$MODPATH/go.tar.gz"
+GOROOT_DIR="$MODPATH/GOROOT"
+GOROOT_BOOTSTRAP_DIR="$MODPATH/GOROOT_BOOTSTRAP"
 
-# 检查设备架构
-ui_print "- 检查设备架构..."
-case "$ARCH" in
-    "arm")
-        ui_print "设备架构为 ARM 32位"
-        abort "不支持32位设备架构: $ARCH"
-        ;;
-    "arm64")
-        ui_print "✅ 设备架构为 ARM 64位，支持"
-        ;;
-    "x86")
-        ui_print "设备架构为 x86 32位"
-        abort "不支持32位设备架构: $ARCH"
-        ;;
-    "x64")
-        ui_print "✅ 设备架构为 x86 64位，支持"
-        ;;
-    *)
-        ui_print "未知架构: $ARCH"
-        abort "不支持的设备架构: $ARCH"
-        ;;
-esac
 
-ui_print "- Android API 版本: $API"
+basic_check(){
+    # 检查设备架构
+    ui_print "- 检查设备架构..."
+    case "$ARCH" in
+        "arm")
+            ui_print "设备架构为 ARM 32位"
+            abort "不支持32位设备架构: $ARCH"
+            ;;
+        "arm64")
+            ui_print "✅ 设备架构为 ARM 64位，支持"
+            ;;
+        "x86")
+            ui_print "设备架构为 x86 32位"
+            abort "不支持32位设备架构: $ARCH"
+            ;;
+        "x64")
+            ui_print "✅ 设备架构为 x86 64位，支持"
+            ;;
+        *)
+            ui_print "未知架构: $ARCH"
+            abort "不支持的设备架构: $ARCH"
+            ;;
+    esac
 
-# 检测ROOT方案
-ui_print "- 检测ROOT环境..."
-if [ "$KSU" = "true" ]; then
-    ui_print "检测到 KernelSU: v$KSU_VER ($KSU_VER_CODE)"
-    touch $MODPATH/ksu
-    echo $KSU_VER > $MODPATH/ksu
+    ui_print "- Android API 版本: $API"
 
-elif [ "$APATCH" = "true" ]; then
-    APATCH_VER=$(cat "/data/adb/ap/version")
-    ui_print "检测到 APatch: v$APATCH_VER"
-    ui_print "  KERNEL_VERSION: $KERNEL_VERSION"
-    ui_print "  KERNELPATCH_VERSION: $KERNELPATCH_VERSION"
-    touch $MODPATH/apatch
-    echo $APATCH_VER > $MODPATH/apatch
+    # 检测ROOT方案
+    ui_print "- 检测ROOT环境..."
+    if [ "$KSU" = "true" ]; then
+        ui_print "检测到 KernelSU: v$KSU_VER ($KSU_VER_CODE)"
+        touch $MODPATH/ksu
+        echo $KSU_VER > $MODPATH/ksu
 
-else
-    ui_print "检测到 Magisk: v$MAGISK_VER ($MAGISK_VER_CODE)"
-    mv $MODPATH/boot-completed.sh $MODPATH/service.sh
-    touch $MODPATH/magisk
-    echo $MAGISK_VER > $MODPATH/magisk
-fi
+    elif [ "$APATCH" = "true" ]; then
+        APATCH_VER=$(cat "/data/adb/ap/version")
+        ui_print "检测到 APatch: v$APATCH_VER"
+        ui_print "  KERNEL_VERSION: $KERNEL_VERSION"
+        ui_print "  KERNELPATCH_VERSION: $KERNELPATCH_VERSION"
+        touch $MODPATH/apatch
+        echo $APATCH_VER > $MODPATH/apatch
+
+    else
+        ui_print "检测到 Magisk: v$MAGISK_VER ($MAGISK_VER_CODE)"
+        mv $MODPATH/boot-completed.sh $MODPATH/service.sh
+        touch $MODPATH/magisk
+        echo $MAGISK_VER > $MODPATH/magisk
+    fi
+}
+
+basic_check
 
 #  ..%%%%....%%%%....%%%%....%%%%....%%%%....%%%%..
 # .%%......%%..%%..%%......%%..%%..%%......%%..%%.
@@ -66,24 +74,32 @@ fi
 
 # 创建必要的目录结构
 ui_print "- 创建目录结构..."
+mkdir -p "$MODPATH/dist"
+
 mkdir -p "$MODPATH/GOCACHE"
 mkdir -p "$MODPATH/GOTELEMETRYDIR"
 mkdir -p "$MODPATH/go/pkg/mod"
 mkdir -p "$MODPATH/go/bin"
 mkdir -p "$MODPATH/system/bin"
-mkdir -p "$MODPATH/system/etc/profile.d"
+
+
+mkdir -p "$GOROOT_DIR" # 当前Go
+# mkdir -p "$GOROOT_BOOTSTRAP_DIR" # 开发者用于自举编译新版 用到的旧版或者拷贝的Go  
+mkdir -p "$MODPATH/temp_go"
+# 设置权限
+ui_print "- 设置文件权限..."
+chmod 644 "$MODPATH/gogogo.env"
+
+# 设置二进制文件权限
+set_perm_recursive "$MODPATH/GOROOT/bin" 0 0 0755 0755
+set_perm_recursive "$MODPATH/go/bin" 0 0 0755 0755
+set_perm_recursive "$MODPATH/dist" 0 0 0755 0755
+
 
 # 解压Go语言压缩包到GOROOT和GOROOT_BOOTSTRAP目录
 ui_print "- 正在解压Go语言环境..."
-GO_TAR="$MODPATH/go.tar.gz"
-GOROOT_DIR="$MODPATH/GOROOT"
-GOROOT_BOOTSTRAP_DIR="$MODPATH/GOROOT_BOOTSTRAP"
-
 if [ -f "$GO_TAR" ]; then
     # 创建目标目录
-    mkdir -p "$GOROOT_DIR"
-    mkdir -p "$GOROOT_BOOTSTRAP_DIR"
-    mkdir -p "$MODPATH/temp_go"
   
     # 解压到临时目录
     ui_print "  解压缩中，请稍候..."
@@ -94,9 +110,9 @@ if [ -f "$GO_TAR" ]; then
         ui_print "  复制到GOROOT目录..."
         cp -rf "$MODPATH/temp_go/go"/* "$GOROOT_DIR/"
     
-        # 复制到GOROOT_BOOTSTRAP
-        ui_print "  复制到GOROOT_BOOTSTRAP目录..."
-        cp -rf "$MODPATH/temp_go/go"/* "$GOROOT_BOOTSTRAP_DIR/"
+        # # 复制到GOROOT_BOOTSTRAP # 开发者可选
+        # ui_print "  复制到GOROOT_BOOTSTRAP目录..."
+        # cp -rf "$MODPATH/temp_go/go"/* "$GOROOT_BOOTSTRAP_DIR/"
     
         ui_print "移动版本文件"
         cp -f "$MODPATH/temp_go/go/VERSION" "$MODPATH/VERSION"
@@ -132,14 +148,7 @@ GOSUMDB=sum.golang.google.cn
 GOTOOLCHAIN=auto
 EOF
 
-# 设置权限
-ui_print "- 设置文件权限..."
-chmod 644 "$MODPATH/gogogo.env"
 
-# 设置二进制文件权限
-set_perm_recursive "$MODPATH/GOROOT/bin" 0 0 0755 0755
-set_perm_recursive "$MODPATH/go/bin" 0 0 0755 0755
-set_perm_recursive "$MODPATH/dist" 0 0 0755 0755
 
 # 备份PATH 
 echo $PATH > $MODPATH/PATH.bak
