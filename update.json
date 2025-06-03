@@ -1,7 +1,7 @@
 {
   "version": "test",
-  "versionCode": "2025060303",
-  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/test/SystemlessShaker-test-2025060303-byLIghtJUNction.zip",
+  "versionCode": "2025060306",
+  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/test/SystemlessShaker-test-2025060306-byLIghtJUNction.zip",
   "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/raw/main/CHANGELOG.md",
   "description": "基于ZygiskNext 修改加速度传感器数据实现模拟摇动"
 }
