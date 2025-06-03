@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,12 +31,17 @@ type BuildTarget struct {
 	Name   string
 }
 
+// #region 基础配置结构
 // Config 配置结构
 type Config struct {
+	// #region 基本编译参数
 	SourceFile  string
 	OutputDir   string
 	BinaryName  string
 	Platforms   []string
+	// #endregion
+
+	// #region 编译控制选项
 	Verbose     int
 	Parallel    bool
 	Compress    bool
@@ -52,6 +58,12 @@ type Config struct {
 	All         bool // 编译指定OS的所有架构（否则仅编译本机架构）
 	Interactive bool // 交互式模式
 	NoCGO       bool // 完全禁用CGO（无论是否是CGO相关平台）
+	// #endregion
+	
+	// #region Android平台特有配置
+	NDKPath     string // Android NDK路径，优先级高于环境变量
+	// #endregion
+}
 }
 
 // PlatformGroups 预设平台组合
@@ -399,9 +411,8 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 			colorInfo.Printf("💡 安装gomobile: go install golang.org/x/mobile/cmd/gomobile@latest\n")
 			colorInfo.Printf("💡 初始化gomobile: gomobile init\n")
 			colorInfo.Printf("💡 构建iOS应用: gomobile build -target=ios .\n")
-		}
-	} else if target.GOOS == "android" {
-		// Android平台处理
+		}	} else if target.GOOS == "android" {
+		// #region Android平台处理
 		if config.Verbose >= 1 {
 			colorWarning.Printf("⚠️  Android平台建议使用gomobile工具进行构建\n")
 			colorInfo.Printf("💡 安装gomobile: go install golang.org/x/mobile/cmd/gomobile@latest\n")
@@ -420,17 +431,25 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 			cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
 			// 不再提前返回，让编译继续进行
 		} else if runtime.GOOS != "android" { // 仅在交叉编译时检查NDK环境
-			// 检查是否配置了Android NDK环境
-			ndkHome = os.Getenv("ANDROID_NDK_HOME")
-			if ndkHome == "" {
-				ndkHome = os.Getenv("ANDROID_NDK_ROOT")
+			// 优先使用命令行指定的NDK路径
+			if config.NDKPath != "" {
+				ndkHome = config.NDKPath
+				if config.Verbose >= 1 {
+					colorInfo.Printf("💡 使用命令行指定的NDK路径: %s\n", ndkHome)
+				}
+			} else {
+				// 其次检查是否配置了Android NDK环境变量
+				ndkHome = os.Getenv("ANDROID_NDK_HOME")
+				if ndkHome == "" {
+					ndkHome = os.Getenv("ANDROID_NDK_ROOT")
+				}
 			}
 
 			if ndkHome == "" {
 				if !config.Force && !config.NoPrompt {
 					if config.Verbose >= 1 {
 						colorError.Printf("⚠️  编译Android平台需要设置Android NDK环境\n")
-						colorInfo.Printf("💡 未检测到ANDROID_NDK_HOME或ANDROID_NDK_ROOT环境变量\n")
+						colorInfo.Printf("💡 未检测到NDK路径或环境变量\n")
 
 						// 询问用户是否要提供NDK路径
 						if askUserConfirm("是否手动提供Android NDK路径?") {
@@ -487,28 +506,35 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 							}
 						} else {
 							colorInfo.Printf("💡 跳过Android编译。您可以使用以下选项之一:\n")
-							colorInfo.Printf("  1. 设置ANDROID_NDK_HOME环境变量指向NDK根目录\n")
-							colorInfo.Printf("  2. 使用 --force 参数强制尝试编译\n")
-							colorInfo.Printf("  3. 使用 --no-cgo 参数禁用CGO编译（仅适用于纯Go代码）\n")
+							colorInfo.Printf("  1. 使用 --ndk-path 参数指定NDK路径\n")
+							colorInfo.Printf("  2. 设置ANDROID_NDK_HOME环境变量指向NDK根目录\n")
+							colorInfo.Printf("  3. 使用 --force 参数强制尝试编译\n")
+							colorInfo.Printf("  4. 使用 --no-cgo 参数禁用CGO编译（仅适用于纯Go代码）\n")
 							return ErrSkipped
 						}
 					} else {
 						return ErrSkipped
 					}
 				} else if config.Force {
-					colorError.Printf("⚠️  警告: 未设置NDK环境变量，强制尝试编译可能会失败！\n")
+					colorError.Printf("⚠️  警告: 未设置NDK路径，强制尝试编译可能会失败！\n")
 				} else {
 					// 静默模式，没有force标志，直接跳过
 					return ErrSkipped
 				}
 			} else {
-				if config.Verbose >= 2 {
-					colorInfo.Printf("✓ 检测到Android NDK路径: %s\n", ndkHome)
+				// 使用智能环境变量设置
+				if err := setupNDKEnvironment(ndkHome, target.GOARCH, &cmd.Env); err != nil {
+					if config.Verbose >= 1 {
+						colorWarning.Printf("⚠️  设置NDK环境变量失败: %v\n", err)
+						colorInfo.Printf("💡 将使用传统方式设置NDK环境\n")
+					}
+					// 如果智能设置失败，回退到简单的环境变量设置
+					cmd.Env = append(cmd.Env,
+						"ANDROID_NDK_HOME="+ndkHome,
+						"CGO_CFLAGS=-I"+filepath.Join(ndkHome, "toolchains", "llvm", "prebuilt", runtime.GOOS+"-x86_64", "sysroot", "usr", "include"))
+				} else if config.Verbose >= 2 {
+					colorSuccess.Printf("✓ 已根据NDK类型和宿主系统智能配置环境变量\n")
 				}
-				// 如果找到NDK，设置相关环境变量
-				cmd.Env = append(cmd.Env,
-					"ANDROID_NDK_HOME="+ndkHome,
-					"CGO_CFLAGS=-I"+filepath.Join(ndkHome, "toolchains", "llvm", "prebuilt", runtime.GOOS+"-x86_64", "sysroot", "usr", "include"))
 			}
 		}
 
@@ -517,6 +543,7 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 		if config.Verbose >= 1 && runtime.GOOS == "windows" {
 			colorInfo.Printf("💡 Windows上可以直接编译Android/arm64平台\n")
 		}
+		// #endregion
 
 		// 为Android设置编译标志，尝试静态链接
 		if config.LDFlags == "" {
@@ -812,11 +839,11 @@ func showExamples() {
 		{"编译单个OS的本机架构", "gogogo -s main.go -p illumos"},
 		{"编译单个OS的所有架构", "gogogo -s main.go -p illumos --all"},
 		{"在Android设备上编译", "gogogo -s main.go -p android/arm64,android/arm"},
-		{"强制编译iOS（在Windows上）", "gogogo -s main.go -p ios/arm64 --force"},
-		{"跳过所有确认提示", "gogogo -s main.go -p mobile --no-prompt"},
+		{"强制编译iOS（在Windows上）", "gogogo -s main.go -p ios/arm64 --force"},		{"跳过所有确认提示", "gogogo -s main.go -p mobile --no-prompt"},
 		{"安静模式编译", "gogogo -s main.go -v 0"},
 		{"使用自定义ldflags", "gogogo -s main.go --ldflags \"-s -w\""},
 		{"跳过CGO平台", "gogogo -s main.go -p all --skip-cgo"},
+		{"指定NDK路径", "gogogo -s main.go -p android/arm64 --ndk-path \"C:\\Android\\sdk\\ndk\\25.2.9519653\""},
 	}
 
 	for _, example := range examples {
@@ -992,10 +1019,48 @@ func runInteractive() error {
 			}
 		}
 	}
-
 	// 高级选项
 	fmt.Println()
 	colorTitle.Println("⚙️ 高级选项:")
+	
+	// #region Android NDK路径
+	colorBold.Printf("Android NDK路径 (留空使用环境变量): ")
+	if scanner.Scan() {
+		ndkPath := strings.TrimSpace(scanner.Text())
+		if ndkPath != "" {
+			// 验证NDK路径
+			if _, err := os.Stat(ndkPath); os.IsNotExist(err) {
+				colorWarning.Printf("⚠️  警告: 指定的NDK路径不存在: %s\n", ndkPath)
+				if askUserConfirm("是否仍然使用此路径?") {
+					config.NDKPath = ndkPath
+				}
+			} else {
+				// 检查NDK目录结构
+				possibleDirs := []string{"toolchains", "platforms", "sources", "sysroot"}
+				validNDK := false
+				for _, dir := range possibleDirs {
+					if _, err := os.Stat(filepath.Join(ndkPath, dir)); !os.IsNotExist(err) {
+						validNDK = true
+						break
+					}
+				}
+
+				if !validNDK {
+					colorWarning.Printf("⚠️  警告: 指定的路径可能不是有效的NDK根目录，缺少关键文件夹\n")
+					if askUserConfirm("是否仍然使用此路径?") {
+						config.NDKPath = ndkPath
+					}
+				} else {
+					config.NDKPath = ndkPath
+					ndkType := detectNDKType(ndkPath)
+					if ndkType != "" {
+						colorSuccess.Printf("✓ 检测到NDK类型: %s\n", ndkType)
+					}
+				}
+			}
+		}
+	}
+	// #endregion
 
 	// 链接器标志
 	colorBold.Printf("链接器标志 (如 -s -w): ")
@@ -1019,7 +1084,6 @@ func runInteractive() error {
 			config.Force = (response == "y" || response == "yes")
 		}
 	}
-
 	// 确认配置
 	fmt.Println()
 	colorTitle.Println("📝 配置摘要:")
@@ -1032,6 +1096,9 @@ func runInteractive() error {
 	fmt.Printf("  • 清理输出目录: %v\n", config.Clean)
 	fmt.Printf("  • 跳过CGO平台: %v\n", config.SkipCGO)
 	fmt.Printf("  • 详细程度: %d\n", config.Verbose)
+	if config.NDKPath != "" {
+		fmt.Printf("  • Android NDK路径: %s\n", config.NDKPath)
+	}
 	if config.LDFlags != "" {
 		fmt.Printf("  • 链接器标志: %s\n", config.LDFlags)
 	}
@@ -1227,8 +1294,7 @@ func main() {
 	rootCmd.Flags().BoolVar(&config.Clean, "clean", false, "编译前清理输出目录")
 	rootCmd.Flags().BoolVar(&config.Retry, "retry", true, "失败时重试")
 	rootCmd.Flags().IntVar(&config.MaxRetries, "max-retries", 2, "最大重试次数")
-	rootCmd.Flags().BoolVar(&config.Progress, "progress", true, "显示进度条")
-	rootCmd.Flags().BoolVar(&config.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）") // 高级选项
+	rootCmd.Flags().BoolVar(&config.Progress, "progress", true, "显示进度条")	rootCmd.Flags().BoolVar(&config.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）") // 高级选项
 	rootCmd.Flags().StringVar(&config.LDFlags, "ldflags", "", "链接器标志 (如: \"-s -w\")")
 	rootCmd.Flags().StringVar(&config.Tags, "tags", "", "构建标签")
 	rootCmd.Flags().BoolVar(&config.SkipTests, "skip-tests", false, "跳过测试")
@@ -1237,6 +1303,7 @@ func main() {
 	rootCmd.Flags().BoolVar(&config.NoPrompt, "no-prompt", false, "跳过所有用户确认提示")
 	rootCmd.Flags().BoolVarP(&config.Interactive, "interactive", "i", false, "交互式模式")
 	rootCmd.Flags().BoolVar(&config.NoCGO, "no-cgo", false, "完全禁用CGO（无论是否是CGO相关平台）")
+	rootCmd.Flags().StringVar(&config.NDKPath, "ndk-path", "", "Android NDK路径（优先级高于环境变量）")
 
 	// 设置帮助模板
 	rootCmd.SetHelpTemplate(`{{.Long}}
