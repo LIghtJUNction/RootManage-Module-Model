@@ -1,7 +1,0 @@
-export GOENV=/data/adb/modules/gogogo/gogogo.env
-export GOROOT=/data/adb/modules/gogogo/GOROOT
-export GOPATH=/data/adb/modules/gogogo/go
-export GOCACHE=/data/adb/modules/gogogo/GOCACHE
-export GOTELEMETRYDIR=/data/adb/modules/gogogo/GOTELEMETRYDIR
-export GO111MODULE=on
-export GOMODCACHE=/data/adb/modules/gogogo/go/pkg/mod
