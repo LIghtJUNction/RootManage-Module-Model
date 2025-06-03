@@ -35,10 +35,10 @@ type BuildTarget struct {
 // Config 配置结构
 type Config struct {
 	// #region 基本编译参数
-	SourceFile  string
-	OutputDir   string
-	BinaryName  string
-	Platforms   []string
+	SourceFile string
+	OutputDir  string
+	BinaryName string
+	Platforms  []string
 	// #endregion
 
 	// #region 编译控制选项
@@ -59,11 +59,10 @@ type Config struct {
 	Interactive bool // 交互式模式
 	NoCGO       bool // 完全禁用CGO（无论是否是CGO相关平台）
 	// #endregion
-	
+
 	// #region Android平台特有配置
-	NDKPath     string // Android NDK路径，优先级高于环境变量
+	NDKPath string // Android NDK路径，优先级高于环境变量
 	// #endregion
-}
 }
 
 // PlatformGroups 预设平台组合
@@ -150,6 +149,166 @@ func checkGoEnvironment() error {
 		return fmt.Errorf("无法获取Go版本: %v", err)
 	}
 	colorSuccess.Printf(" ✓ %s\n", strings.TrimSpace(string(output)))
+	return nil
+}
+
+// detectNDKType 检测NDK的类型 (Windows/Linux/Mac)
+func detectNDKType(ndkPath string) string {
+	// 检查toolchains目录下的预编译工具目录
+	toolchainsPath := filepath.Join(ndkPath, "toolchains", "llvm", "prebuilt")
+	if _, err := os.Stat(toolchainsPath); os.IsNotExist(err) {
+		// 尝试查找旧的NDK目录结构
+		files, err := ioutil.ReadDir(ndkPath)
+		if err != nil {
+			return ""
+		}
+
+		// 查找含有"windows"、"linux"或"darwin"的目录名
+		for _, f := range files {
+			if f.IsDir() {
+				name := strings.ToLower(f.Name())
+				if strings.Contains(name, "windows") {
+					return "windows"
+				}
+				if strings.Contains(name, "linux") {
+					return "linux"
+				}
+				if strings.Contains(name, "darwin") || strings.Contains(name, "mac") {
+					return "darwin"
+				}
+			}
+		}
+		return ""
+	}
+
+	// 检查现代NDK结构
+	files, err := ioutil.ReadDir(toolchainsPath)
+	if err != nil {
+		return ""
+	}
+
+	// 查找预编译目录
+	for _, f := range files {
+		if f.IsDir() {
+			name := strings.ToLower(f.Name())
+			if strings.Contains(name, "windows") {
+				return "windows"
+			}
+			if strings.Contains(name, "linux") {
+				return "linux"
+			}
+			if strings.Contains(name, "darwin") || strings.Contains(name, "mac") {
+				return "darwin"
+			}
+		}
+	}
+
+	return ""
+}
+
+// getNDKPrebuiltPath 获取NDK预编译工具的路径
+func getNDKPrebuiltPath(ndkPath string, ndkType string) string {
+	// 标准路径结构: toolchains/llvm/prebuilt/OS-ARCH
+	baseDir := filepath.Join(ndkPath, "toolchains", "llvm", "prebuilt")
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		return ""
+	}
+
+	files, err := ioutil.ReadDir(baseDir)
+	if err != nil {
+		return ""
+	}
+
+	// 首先尝试查找完全匹配的目录
+	for _, f := range files {
+		if f.IsDir() {
+			name := strings.ToLower(f.Name())
+			if strings.HasPrefix(name, ndkType) {
+				return filepath.Join(baseDir, f.Name())
+			}
+		}
+	}
+
+	// 如果没有完全匹配，返回任意一个目录
+	if len(files) > 0 {
+		for _, f := range files {
+			if f.IsDir() {
+				return filepath.Join(baseDir, f.Name())
+			}
+		}
+	}
+
+	return ""
+}
+
+// setupNDKEnvironment 为Android NDK设置环境变量
+func setupNDKEnvironment(ndkPath string, arch string, cmdEnv *[]string) error {
+	// 检测NDK类型
+	ndkType := detectNDKType(ndkPath)
+	if ndkType == "" {
+		return fmt.Errorf("无法确定NDK类型")
+	}
+
+	// 根据宿主系统类型和NDK类型设置不同的环境变量
+	hostOS := runtime.GOOS
+	if config.Verbose >= 2 {
+		colorInfo.Printf("✓ 检测到NDK类型: %s, 宿主系统: %s\n", ndkType, hostOS)
+	}
+
+	prebuiltPath := getNDKPrebuiltPath(ndkPath, ndkType)
+	if prebuiltPath == "" {
+		return fmt.Errorf("无法找到NDK预编译工具路径")
+	}
+
+	// NDK基本环境变量
+	*cmdEnv = append(*cmdEnv, "ANDROID_NDK_HOME="+ndkPath)
+	*cmdEnv = append(*cmdEnv, "ANDROID_NDK_ROOT="+ndkPath)
+
+	// 为不同的宿主系统和NDK类型设置特定的环境变量
+	if hostOS == "windows" {
+		// Windows宿主
+		if ndkType == "windows" {
+			// Windows NDK
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS=-I"+filepath.Join(prebuiltPath, "sysroot", "usr", "include"))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS=-L"+filepath.Join(prebuiltPath, "sysroot", "usr", "lib"))
+		} else {
+			// 非Windows NDK在Windows上使用
+			colorWarning.Printf("⚠️  在Windows上使用非Windows NDK可能会有兼容性问题\n")
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS=-I"+filepath.Join(prebuiltPath, "sysroot", "usr", "include"))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS=-L"+filepath.Join(prebuiltPath, "sysroot", "usr", "lib"))
+		}
+	} else if hostOS == "linux" {
+		// Linux宿主
+		if ndkType == "linux" {
+			// Linux NDK
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS=-I"+filepath.Join(prebuiltPath, "sysroot", "usr", "include"))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS=-L"+filepath.Join(prebuiltPath, "sysroot", "usr", "lib"))
+		} else {
+			// 非Linux NDK在Linux上使用
+			colorWarning.Printf("⚠️  在Linux上使用非Linux NDK可能需要额外的兼容层\n")
+			if ndkType == "windows" {
+				colorInfo.Printf("💡 在Linux上使用Windows NDK可能需要Wine支持\n")
+			}
+		}
+	} else if hostOS == "darwin" {
+		// Mac宿主
+		if ndkType == "darwin" {
+			// Mac NDK
+			*cmdEnv = append(*cmdEnv, "CGO_CFLAGS=-I"+filepath.Join(prebuiltPath, "sysroot", "usr", "include"))
+			*cmdEnv = append(*cmdEnv, "CGO_LDFLAGS=-L"+filepath.Join(prebuiltPath, "sysroot", "usr", "lib"))
+		} else {
+			// 非Mac NDK在Mac上使用
+			colorWarning.Printf("⚠️  在macOS上使用非macOS NDK可能会有兼容性问题\n")
+		}
+	}
+
+	// 为特定架构设置额外的环境变量
+	if arch == "arm64" {
+		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "aarch64-linux-android21-clang"))
+	} else if arch == "arm" {
+		*cmdEnv = append(*cmdEnv, "CC="+filepath.Join(prebuiltPath, "bin", "armv7a-linux-androideabi21-clang"))
+	}
+
 	return nil
 }
 
@@ -411,7 +570,8 @@ func buildSingle(target BuildTarget, sourceFile, outputDir, binaryName string) e
 			colorInfo.Printf("💡 安装gomobile: go install golang.org/x/mobile/cmd/gomobile@latest\n")
 			colorInfo.Printf("💡 初始化gomobile: gomobile init\n")
 			colorInfo.Printf("💡 构建iOS应用: gomobile build -target=ios .\n")
-		}	} else if target.GOOS == "android" {
+		}
+	} else if target.GOOS == "android" {
 		// #region Android平台处理
 		if config.Verbose >= 1 {
 			colorWarning.Printf("⚠️  Android平台建议使用gomobile工具进行构建\n")
@@ -839,7 +999,7 @@ func showExamples() {
 		{"编译单个OS的本机架构", "gogogo -s main.go -p illumos"},
 		{"编译单个OS的所有架构", "gogogo -s main.go -p illumos --all"},
 		{"在Android设备上编译", "gogogo -s main.go -p android/arm64,android/arm"},
-		{"强制编译iOS（在Windows上）", "gogogo -s main.go -p ios/arm64 --force"},		{"跳过所有确认提示", "gogogo -s main.go -p mobile --no-prompt"},
+		{"强制编译iOS（在Windows上）", "gogogo -s main.go -p ios/arm64 --force"}, {"跳过所有确认提示", "gogogo -s main.go -p mobile --no-prompt"},
 		{"安静模式编译", "gogogo -s main.go -v 0"},
 		{"使用自定义ldflags", "gogogo -s main.go --ldflags \"-s -w\""},
 		{"跳过CGO平台", "gogogo -s main.go -p all --skip-cgo"},
@@ -1022,7 +1182,7 @@ func runInteractive() error {
 	// 高级选项
 	fmt.Println()
 	colorTitle.Println("⚙️ 高级选项:")
-	
+
 	// #region Android NDK路径
 	colorBold.Printf("Android NDK路径 (留空使用环境变量): ")
 	if scanner.Scan() {
@@ -1294,7 +1454,8 @@ func main() {
 	rootCmd.Flags().BoolVar(&config.Clean, "clean", false, "编译前清理输出目录")
 	rootCmd.Flags().BoolVar(&config.Retry, "retry", true, "失败时重试")
 	rootCmd.Flags().IntVar(&config.MaxRetries, "max-retries", 2, "最大重试次数")
-	rootCmd.Flags().BoolVar(&config.Progress, "progress", true, "显示进度条")	rootCmd.Flags().BoolVar(&config.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）") // 高级选项
+	rootCmd.Flags().BoolVar(&config.Progress, "progress", true, "显示进度条")
+	rootCmd.Flags().BoolVar(&config.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）") // 高级选项
 	rootCmd.Flags().StringVar(&config.LDFlags, "ldflags", "", "链接器标志 (如: \"-s -w\")")
 	rootCmd.Flags().StringVar(&config.Tags, "tags", "", "构建标签")
 	rootCmd.Flags().BoolVar(&config.SkipTests, "skip-tests", false, "跳过测试")
