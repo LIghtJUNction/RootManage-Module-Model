@@ -365,22 +365,30 @@ jobs:
   update_release_with_proxies:
     runs-on: ubuntu-latest
     steps:
-      # 获取代理节点列表
+      # Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Fetch proxy list
       - name: Fetch proxy list
         run: |
           curl -s -o proxies.json https://api.akams.cn/github
-      # 提取代理 URL
+
+      # Extract proxy URLs
       - name: Extract proxy URLs
         run: |
           jq -r '.data[].url' proxies.json > proxy_urls.txt
-      # 生成加速链接
+
+      # Generate accelerated links
       - name: Generate accelerated links
         run: |
-          ORIGINAL_URL="https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/1.0.0/MagicSub-1.0.0-2025060205-byLIghtJUNction.zip"
+          ORIGINAL_URL="https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/1.0.0ówczas
+
           while IFS= read -r proxy; do
             echo "${proxy}/${ORIGINAL_URL}" >> accelerated_links.txt
           done < proxy_urls.txt
-      # 创建加速链接的 Markdown 部分
+
+      # Create accelerated links section
       - name: Create accelerated links section
         run: |
           echo "## 加速下载链接" > accelerated_section.md
@@ -388,7 +396,8 @@ jobs:
           cat accelerated_links.txt | while read -r link; do
             echo "- [${link}](${link})" >> accelerated_section.md
           done
-      # 更新 release 说明
+
+      # Update release notes
       - name: Update release note
         run: |
           gh release view 1.0.0 --json body -q .body > current_body.md
