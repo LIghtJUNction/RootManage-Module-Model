@@ -1,7 +1,7 @@
 id=SystemlessShaker
 name=SystemlessShaker
 version=test
-versionCode=2025060306
+versionCode=2025060307
 author=LIghtJUNction
 description=基于ZygiskNext 修改加速度传感器数据实现模拟摇动
 updateJson=http://raw.githubusercontent.com/LIghtJUNction/RootManage-Module-Model/main/update.json
