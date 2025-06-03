@@ -1,7 +1,7 @@
 {
-  "version": "TEST",
-  "versionCode": "2025060304",
-  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/TEST/gogogo-TEST-2025060304-byLIghtJUNction.zip",
+  "version": "0.5.0",
+  "versionCode": "2025060305",
+  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/0.5.0/gogogo-0.5.0-2025060305-byLIghtJUNction.zip",
   "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/raw/gogogo/CHANGELOG.md",
   "description": "配置好go运行环境，自带一个多平台/多架构构建CLI程序。"
 }
