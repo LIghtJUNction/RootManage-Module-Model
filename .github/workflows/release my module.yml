@@ -361,3 +361,45 @@ jobs:
 
 
 
+  update_release_note:
+      runs-on: ubuntu-latest
+      needs: build  # 假设 build job 中创建了 Release
+      steps:
+        - name: Install dependencies
+          run: |
+            sudo apt-get update
+            sudo apt-get install -y curl jq
+      
+        - name: Get proxy nodes
+          run: |
+            # 假设从 https://github.akams.cn/ 获取代理节点列表
+            # 这里需要具体的抓取逻辑
+            # 例如：
+            curl -s https://github.akams.cn/ | grep -oP '(?<=<a href=")[^"]*' | grep -E '^https?://' > proxies.txt
+            # 假设 proxies.txt 中每行是一个代理节点地址
+      
+        - name: Generate accelerated links
+          run: |
+            # 获取上传的文件名
+            FILENAME="${{ env.name }}-${{ env.version }}-${{ env.versionCode }}-by${{ env.author }}.zip"
+            ORIGINAL_URL="https://github.com/${{ github.repository }}/releases/download/${{ env.version }}/$FILENAME"
+            
+            # 读取代理节点
+            while read -r proxy; do
+              ACCELERATED_URL="${proxy}${ORIGINAL_URL}"
+              echo "- [$proxy]($ACCELERATED_URL)" >> accelerated_links.md
+            done < proxies.txt
+      
+        - name: Update Release Note
+          run: |
+            # 获取当前的 Release Note
+            CURRENT_BODY=$(gh release view ${{ env.version }} --json body -q .body)
+            
+            # 添加加速链接部分
+            echo -e "\n## 加速下载链接\n" >> accelerated_links.md
+            cat accelerated_links.md >> release_note.md
+            
+            # 更新 Release Note
+            gh release edit ${{ env.version }} --notes-file release_note.md
+          env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
