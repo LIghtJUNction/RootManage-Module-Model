@@ -30,6 +30,7 @@ func main() {
 		if strings.TrimSpace(string(envPath)) == "1" {
 			fmt.Printf("export GOGOGO_DEV='%s'\n", "1")
 			fmt.Printf("export GOROOT_BOOTSTRAP='%s'\n", "/data/adb/modules/gogogo/GOROOT_BOOTSTRAP")
+			// export GOROOT_BOOTSTRAP="/data/adb/modules/gogogo/GOROOT_BOOTSTRAP"
 			addPaths := "/data/adb/modules/gogogo/GOXBIN:/data/adb/modules/gogogo/GOXBIN" // 开发者专属路径
 			newPath := setupPath(oldPath, addPaths)
 			fmt.Printf("export PATH='%s'\n", newPath)

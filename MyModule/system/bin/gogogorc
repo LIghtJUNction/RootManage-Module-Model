@@ -4,5 +4,5 @@ if [ "$GOGOGO_ENV_LOADED" = "1" ]; then
 fi 
  
 # 要求 gogogorc-core 输出 "export VAR=value" 格式 
-eval "$(/data/adb/modules/gogogo/GOBIN/gogogorc-core)"
+eval "$(/data/adb/modules/gogogo/GOBIN/gogogorc-core)" || echo "请输入su，以root权限运行！"
 export GOGOGO_ENV_LOADED=1 
