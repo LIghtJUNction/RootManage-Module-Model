@@ -3,7 +3,6 @@ MODDIR=${0%/*}
 GOROOT_BOOTSTRAP_DIR="$MODDIR/GOROOT_BOOTSTRAP"
 GOROOT_DIR="$MODDIR/GOROOT"
 
-
 Key_monitoring() {
     while :; do
         event_info=$(getevent -qlc 1)
