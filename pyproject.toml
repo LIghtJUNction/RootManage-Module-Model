@@ -1,0 +1,17 @@
+[project]
+name = "RMM"
+version = "0.1.0"
+description = "用来新建和管理,开发magisk模块的工具集"
+readme = "README.md"
+authors = [
+    { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+rmm = "rmm.cli.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

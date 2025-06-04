@@ -1,0 +1,20 @@
+name: RMM BUILD
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: '建议使用v1.0.0-moduleid格式:版本标签'
+                required: true
+            
+
+
+jobs:
+    RMM_BUILD:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4.2.2 # 最新版
+              with:
+                lfs: true
+                
