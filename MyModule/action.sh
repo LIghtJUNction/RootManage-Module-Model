@@ -3,6 +3,9 @@ MODDIR=${0%/*}
 GOROOT_BOOTSTRAP_DIR="$MODDIR/GOROOT_BOOTSTRAP"
 GOROOT_DIR="$MODDIR/GOROOT"
 
+MAKEBASH="$GOROOT_DIR/src/make.bash"
+
+
 whoami
 
 Key_monitoring() {
@@ -67,12 +70,12 @@ build_from_src() {
     if [ ! -s "$GOROOT_BOOTSTRAP_DIR" ]; then
         echo "错误: GOROOT_BOOTSTRAP目录为空或不存在,正在复制GOROOT。"
         cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+        chmod -R 755 $GOROOT_BOOTSTRAP_DIR/bin/
     fi
 
 
     echo "开始构建Go源代码..." # 重定向到标准输出
-    cd $MODDIR/GOROOT/src
-    ./make.bash | tee -a build.log 2>&1
+    $MAKEBASH | tee -a $MODDIR/build.log 2>&1
     echo "Go源代码构建完成"
     echo "音量上：保持开发者模式（不删除自举拷贝） 音量下：退出开发者模式（删除自举拷贝） "
     
