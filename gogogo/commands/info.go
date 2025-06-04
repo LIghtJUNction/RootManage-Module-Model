@@ -12,7 +12,7 @@ func ShowVersion() {
 	colorTitle := color.New(color.FgHiCyan, color.Bold)
 	colorBold := color.New(color.Bold)
 
-	fmt.Printf(`%s%sgogogo v2.0.0 - Go跨平台编译工具%s
+	fmt.Printf(`%sgogogo v3.0.0 - Go跨平台编译工具%s
 
 %s特性:%s
   ✓ 支持多平台并行编译
@@ -28,9 +28,9 @@ func ShowVersion() {
   CPU核心: %d
 
 `,
-		colorTitle.Sprint(""), colorBold.Sprint(""), color.Reset,
-		colorBold.Sprint(""), color.Reset,
-		colorBold.Sprint(""), color.Reset,
+		colorTitle.Sprint(""), "\033[0m",
+		colorBold.Sprint(""), "\033[0m",
+		colorBold.Sprint(""), "\033[0m",
 		runtime.Version(),
 		runtime.GOOS, runtime.GOARCH,
 		runtime.NumCPU(),

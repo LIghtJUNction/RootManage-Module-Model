@@ -1,123 +1,42 @@
-	package main
+package main
 
-	import (
-		"bufio"
-		"errors"
-		"fmt"
-		"log/slog"
-		"os"
-		"os/exec"
-		"path/filepath"
-		"runtime"
-		"strconv"
-		"strings"
+import (
+	"fmt"
+	"log/slog"
+	"os"
+	"strings"
 
-		"github.com/fatih/color"
-		"github.com/lightjunction/rootmanager-module-model/gogogo/build"
-		"github.com/lightjunction/rootmanager-module-model/gogogo/utils"
-		"github.com/lightjunction/rootmanager-module-model/gogogo/commands"
-		"github.com/spf13/cobra"
-	)
+	"github.com/lightjunction/rootmanager-module-model/gogogo/build"
+	"github.com/lightjunction/rootmanager-module-model/gogogo/commands"
+	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
+	"github.com/lightjunction/rootmanager-module-model/gogogo/utils"
+	"github.com/spf13/cobra"
+)
 
-	// 特殊错误类型
-	var ErrSkipped = errors.New("跳过编译")
+func init() {
+	// 获取配置对象
+	cfg := config.GetConfig()
 
-	// 全局变量
-	var (
-		config Config
-		logger *slog.Logger
-
-		// 颜色定义
-		colorTitle   = color.New(color.FgHiCyan, color.Bold)
-		colorSuccess = color.New(color.FgHiGreen)
-		colorError   = color.New(color.FgHiRed)
-		colorWarning = color.New(color.FgHiYellow)
-		colorInfo    = color.New(color.FgHiBlue)
-		colorBold    = color.New(color.Bold)
-	)
-
-	// Config 主配置结构
-	type Config struct {
-		// 基本编译参数
-		SourceFile string
-		OutputDir  string
-		BinaryName string
-		Platforms  []string
-
-		// 编译控制选项
-		Verbose     int
-		Parallel    bool
-		Compress    bool
-		Clean       bool
-		Retry       bool
-		MaxRetries  int
-		Progress    bool
-		LDFlags     string
-		Tags        string
-		SkipTests   bool
-		SkipCGO     bool
-		Force       bool
-		NoPrompt    bool
-		All         bool // 编译指定OS的所有架构（否则仅编译本机架构）
-		Interactive bool // 交互式模式
-		NoCGO       bool // 完全禁用CGO（无论是否是CGO相关平台）
-
-		// Android平台特有配置
-		NDKPath string // Android NDK路径，优先级高于环境变量
+	// 设置默认配置
+	*cfg = config.Config{
+		OutputDir:   "./build",
+		Parallel:    true,
+		Progress:    true,
+		Verbose:     1,
+		MaxRetries:  3,
+		Retry:       true,
+		Interactive: false,
 	}
 
-	// PlatformGroups 预设平台组合
-	var PlatformGroups = map[string][]string{
-		"default": {
-			"windows/amd64", "windows/386", "windows/arm64",
-			"linux/amd64", "linux/386", "linux/arm64", "linux/arm",
-			"darwin/amd64", "darwin/arm64",
-			"android/arm64", // 只包含最主要的Android平台
-		},
-		"desktop": {
-			"windows/amd64", "windows/386", "windows/arm64",
-			"linux/amd64", "linux/386", "linux/arm64", "linux/arm",
-			"darwin/amd64", "darwin/arm64",
-		},
-		"server": {
-			"linux/amd64", "linux/arm64",
-			"freebsd/amd64", "freebsd/arm64",
-		},
-		"mobile": {
-			"android/arm64", "android/arm",
-			"ios/amd64", "ios/arm64",
-		},
-		"web": {
-			"js/wasm",
-		},
-		"embedded": {
-			"linux/arm", "linux/arm64",
-			"linux/mips", "linux/mips64",
-			"linux/riscv64",
-		},
-		// "all" 组合将通过 getAllSupportedPlatforms() 动态获取
-	}
+	// 初始化日志
+	handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	config.SetLogger(slog.New(handler))
 
-	func init() {
-		// 设置默认配置
-		config = Config{
-			OutputDir:   "./build",
-			Parallel:    true,
-			Progress:    true,
-			Verbose:     1,
-			MaxRetries:  3,
-			Retry:       true,
-			Interactive: false,
-		}
-
-		// 初始化日志
-		handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		})
-		logger = slog.New(handler)
-
-		// 检查Android环境
-		utils.CheckAndroidEnvironment(logger)	}
+	// 检查Android环境
+	utils.CheckAndroidEnvironment(config.GetLogger())
+}
 
 func main() {
 	var rootCmd = &cobra.Command{
@@ -169,22 +88,26 @@ func main() {
   gogogo -s main.go -v 2 -c
 
   # 编译所有平台，清理输出目录
-  gogogo -s main.go -p all --clean`,		RunE: func(cmd *cobra.Command, args []string) error {
+  gogogo -s main.go -p all --clean`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := config.GetConfig()
+			logger := config.GetLogger()
+
 			// 如果是交互式模式，运行交互式编译
-			if config.Interactive {
-				if err := commands.RunInteractive(&config); err != nil {
+			if cfg.Interactive {
+				if err := commands.RunInteractive(cfg); err != nil {
 					return err
 				}
 			}
 
 			// 检查必需参数
-			if config.SourceFile == "" {
+			if cfg.SourceFile == "" {
 				return fmt.Errorf("请指定源文件 (-s)，使用 'gogogo --help' 查看帮助")
 			}
 
 			// 设置日志级别
 			var logLevel slog.Level
-			switch config.Verbose {
+			switch cfg.Verbose {
 			case 0:
 				logLevel = slog.LevelError
 			case 1:
@@ -198,56 +121,63 @@ func main() {
 			handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 				Level: logLevel,
 			})
-			logger = slog.New(handler)
+			config.SetLogger(slog.New(handler))
+			logger = config.GetLogger()
 
 			// 检查Go环境
 			if err := utils.CheckGoEnvironment(); err != nil {
 				return err
-			}			// 创建输出目录
-			if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+			}
+
+			// 创建输出目录
+			if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
 				return fmt.Errorf("创建输出目录失败: %v", err)
 			}
 
 			// 清理输出目录
-			if config.Clean {
-				if err := utils.CleanOutputDir(config.OutputDir, config.Verbose, logger); err != nil {
+			if cfg.Clean {
+				if err := utils.CleanOutputDir(cfg.OutputDir, cfg.Verbose, logger); err != nil {
 					return fmt.Errorf("清理输出目录失败: %v", err)
 				}
-			}			// 构建配置
+			}
+
+			// 构建配置
 			buildConfig := build.BuildConfig{
-				SkipCGO:  config.SkipCGO,
-				Verbose:  config.Verbose,
-				LDFlags:  config.LDFlags,
-				Tags:     config.Tags,
-				Force:    config.Force,
-				NoPrompt: config.NoPrompt,
-				NoCGO:    config.NoCGO,
-				NDKPath:  config.NDKPath,
-				Compress: config.Compress,
+				SkipCGO:  cfg.SkipCGO,
+				Verbose:  cfg.Verbose,
+				LDFlags:  cfg.LDFlags,
+				Tags:     cfg.Tags,
+				Force:    cfg.Force,
+				NoPrompt: cfg.NoPrompt,
+				NoCGO:    cfg.NoCGO,
+				NDKPath:  cfg.NDKPath,
+				Compress: cfg.Compress,
 			}
 
 			utilsConfig := &utils.Config{
-				All:      config.All,
-				Verbose:  config.Verbose,
-				NoPrompt: config.NoPrompt,
-			}			// 解析目标平台
-			targets := utils.ParsePlatforms(strings.Join(config.Platforms, ","), *utilsConfig, logger)
+				All:      cfg.All,
+				Verbose:  cfg.Verbose,
+				NoPrompt: cfg.NoPrompt,
+			}
+
+			// 解析目标平台
+			targets := utils.ParsePlatforms(strings.Join(cfg.Platforms, ","), *utilsConfig, logger)
 			if len(targets) == 0 {
 				return fmt.Errorf("没有找到有效的目标平台")
 			}
 
 			// 执行编译
 			progressConfig := build.ProgressConfig{
-				Progress:   config.Progress,
-				Parallel:   config.Parallel,
-				Verbose:    config.Verbose,
+				Progress:   cfg.Progress,
+				Parallel:   cfg.Parallel,
+				Verbose:    cfg.Verbose,
 				MaxRetries: 1, // 设置默认重试次数
 			}
-			return build.BuildWithProgress(targets, config.SourceFile, config.OutputDir, config.BinaryName, buildConfig, progressConfig, logger)
+			return build.BuildWithProgress(targets, cfg.SourceFile, cfg.OutputDir, cfg.BinaryName, buildConfig, progressConfig, logger)
 		},
 	}
-
-	// 添加子命令	var listCmd = &cobra.Command{
+	// 添加子命令
+	var listCmd = &cobra.Command{
 		Use:   "list",
 		Short: "列出所有支持的平台",
 		Long:  "列出Go工具链支持的所有目标平台",
@@ -260,7 +190,7 @@ func main() {
 		Short: "列出所有平台组合",
 		Long:  "列出预设的平台组合，可以直接使用这些组合名称",
 		Run: func(cmd *cobra.Command, args []string) {
-			commands.ListGroups(PlatformGroups)
+			commands.ListGroups(config.PlatformGroups)
 		},
 	}
 	var versionCmd = &cobra.Command{
@@ -284,38 +214,40 @@ func main() {
 		Short: "显示编译环境信息",
 		Long:  "显示Go编译环境、Android NDK、交叉编译等相关环境变量信息",
 		Run: func(cmd *cobra.Command, args []string) {
-			commands.GetEnvironmentInfo(logger)
+			commands.GetEnvironmentInfo(config.GetLogger())
 		},
 	}
 
 	// 添加子命令到根命令
 	rootCmd.AddCommand(listCmd, groupsCmd, versionCmd, examplesCmd, envCmd)
 
+	// 获取配置对象用于flag绑定
+	cfg := config.GetConfig()
+
 	// 添加主要的命令行参数
-	rootCmd.Flags().StringVarP(&config.SourceFile, "source", "s", "", "源Go文件路径 (必需)")
-	rootCmd.Flags().StringVarP(&config.OutputDir, "output", "o", "./build", "输出目录")
-	rootCmd.Flags().StringVarP(&config.BinaryName, "name", "n", "", "二进制文件名 (默认: 源文件名)")
-	rootCmd.Flags().StringSliceVarP(&config.Platforms, "platforms", "p", []string{"default"}, "目标平台 (可使用预设组合或具体平台)")
+	rootCmd.Flags().StringVarP(&cfg.SourceFile, "source", "s", "", "源Go文件路径 (必需)")
+	rootCmd.Flags().StringVarP(&cfg.OutputDir, "output", "o", "./build", "输出目录")
+	rootCmd.Flags().StringVarP(&cfg.BinaryName, "name", "n", "", "二进制文件名 (默认: 源文件名)")
+	rootCmd.Flags().StringSliceVarP(&cfg.Platforms, "platforms", "p", []string{"default"}, "目标平台 (可使用预设组合或具体平台)")
 
 	// 构建选项
-	rootCmd.Flags().IntVarP(&config.Verbose, "verbose", "v", 1, "详细程度 (0=安静, 1=正常, 2=详细, 3=调试)")
-	rootCmd.Flags().BoolVar(&config.Parallel, "parallel", true, "并行编译")
-	rootCmd.Flags().BoolVarP(&config.Compress, "compress", "c", false, "压缩二进制文件")
-	rootCmd.Flags().BoolVar(&config.Clean, "clean", false, "编译前清理输出目录")
-	rootCmd.Flags().BoolVar(&config.Progress, "progress", true, "显示进度条")
-	rootCmd.Flags().StringVar(&config.LDFlags, "ldflags", "", "链接器标志 (如: \"-s -w\")")
-	rootCmd.Flags().StringVar(&config.Tags, "tags", "", "构建标签")
-	rootCmd.Flags().BoolVar(&config.Retry, "retry", true, "编译失败时重试")
-	rootCmd.Flags().IntVar(&config.MaxRetries, "max-retries", 3, "最大重试次数")
-	rootCmd.Flags().BoolVar(&config.SkipTests, "skip-tests", false, "跳过测试")
-	rootCmd.Flags().BoolVar(&config.SkipCGO, "skip-cgo", false, "跳过需要CGO支持的平台")
-	rootCmd.Flags().BoolVar(&config.Force, "force", false, "强制编译所有平台（包括在非macOS上编译iOS）")
-	rootCmd.Flags().BoolVar(&config.NoPrompt, "no-prompt", false, "跳过所有用户确认提示")
-	rootCmd.Flags().BoolVarP(&config.Interactive, "interactive", "i", false, "交互式模式")
-	rootCmd.Flags().BoolVar(&config.NoCGO, "no-cgo", false, "完全禁用CGO（无论是否是CGO相关平台）")
-	rootCmd.Flags().BoolVar(&config.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）")
-	rootCmd.Flags().StringVar(&config.NDKPath, "ndk-path", "", "Android NDK路径（优先级高于环境变量）")
-
+	rootCmd.Flags().IntVarP(&cfg.Verbose, "verbose", "v", 1, "详细程度 (0=安静, 1=正常, 2=详细, 3=调试)")
+	rootCmd.Flags().BoolVar(&cfg.Parallel, "parallel", true, "并行编译")
+	rootCmd.Flags().BoolVarP(&cfg.Compress, "compress", "c", false, "压缩二进制文件")
+	rootCmd.Flags().BoolVar(&cfg.Clean, "clean", false, "编译前清理输出目录")
+	rootCmd.Flags().BoolVar(&cfg.Progress, "progress", true, "显示进度条")
+	rootCmd.Flags().StringVar(&cfg.LDFlags, "ldflags", "", "链接器标志 (如: \"-s -w\")")
+	rootCmd.Flags().StringVar(&cfg.Tags, "tags", "", "构建标签")
+	rootCmd.Flags().BoolVar(&cfg.Retry, "retry", true, "编译失败时重试")
+	rootCmd.Flags().IntVar(&cfg.MaxRetries, "max-retries", 3, "最大重试次数")
+	rootCmd.Flags().BoolVar(&cfg.SkipTests, "skip-tests", false, "跳过测试")
+	rootCmd.Flags().BoolVar(&cfg.SkipCGO, "skip-cgo", false, "跳过需要CGO支持的平台")
+	rootCmd.Flags().BoolVar(&cfg.Force, "force", false, "强制编译所有平台（包括在非macOS上编译iOS）")
+	rootCmd.Flags().BoolVar(&cfg.NoPrompt, "no-prompt", false, "跳过所有用户确认提示")
+	rootCmd.Flags().BoolVarP(&cfg.Interactive, "interactive", "i", false, "交互式模式")
+	rootCmd.Flags().BoolVar(&cfg.NoCGO, "no-cgo", false, "完全禁用CGO（无论是否是CGO相关平台）")
+	rootCmd.Flags().BoolVar(&cfg.All, "all", false, "编译指定OS的所有架构（否则仅编译本机架构）")
+	rootCmd.Flags().StringVar(&cfg.NDKPath, "ndk-path", "", "Android NDK路径（优先级高于环境变量）")
 	// 设置帮助模板
 	rootCmd.SetHelpTemplate(`{{.Long}}
 
@@ -343,9 +275,9 @@ func main() {
 
 使用 "{{.CommandPath}} [command] --help" 获取更多关于命令的信息。{{end}}
 `)
-
 	// 执行命令
 	if err := rootCmd.Execute(); err != nil {
+		_, _, colorError, _, _, _ := config.GetColors()
 		colorError.Printf("❌ 错误: %v\n", err)
 		os.Exit(1)
 	}
