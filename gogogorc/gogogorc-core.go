@@ -15,17 +15,15 @@ func main() {
 
 	// 输出 export 语句供 shell 脚本使用
 	fmt.Printf("export GOROOT='%s'\n", "/data/adb/modules/gogogo/GOROOT")
-	fmt.Printf("export GOPATH='%s'\n", "/data/adb/modules/gogogo/go")
 	fmt.Printf("export GOCACHE='%s'\n", "/data/adb/modules/gogogo/GOCACHE")
 	fmt.Printf("export GOENV='%s'\n", "/data/adb/modules/gogogo/gogogo.env")
-	fmt.Printf("export GOTELEMETRYDIR='%s'\n", "/data/adb/modules/gogogo/GOTELEMETRYDIR")
-	fmt.Printf("export GOTMPDIR='%s'\n", "/data/adb/modules/gogogo/tmp")
-	fmt.Printf("export GOMODCACHE='%s'\n", "/data/adb/modules/gogogo/go/pkg/mod")
+	fmt.Printf("export GOBIN='%s'\n", "/data/adb/modules/gogogo/GOBIN")
+	fmt.Printf("export GOTMPDIR='%s'\n", "/data/adb/modules/gogogo/GOTMP")
 	fmt.Printf("export GO111MODULE='%s'\n", "on")
 
 	// 计算新的 PATH
 	oldPath := os.Getenv("PATH")
-	addPaths := "/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/go/bin"
+	addPaths := "/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/GOBIN"
 	newPath := setupPath(oldPath, addPaths)
 	fmt.Printf("export PATH='%s'\n", newPath)
 

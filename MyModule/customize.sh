@@ -9,7 +9,10 @@ ui_print "模块路径: /data/adb/modules/$MODID"
 # $MODPATH ： modules_update/$MODID
 # MODID: gogogo
 GO_TAR="$MODPATH/go.tar.gz"
-GOROOT_DIR="$MODPATH/GOROOT"
+GOROOT="$MODPATH/GOROOT"
+GOTMP_DIR="$MODPATH/GOTMP"
+GOCACHE_DIR="$MODPATH/GOCACHE"
+GOBIN="$MODPATH/GOBIN"
 GOROOT_BOOTSTRAP_DIR="$MODPATH/GOROOT_BOOTSTRAP"
 
 
@@ -75,15 +78,11 @@ basic_check
 # 创建必要的目录结构
 ui_print "- 创建目录结构..."
 mkdir -p "$MODPATH/dist"
-
-mkdir -p "$MODPATH/GOCACHE"
-mkdir -p "$MODPATH/GOTELEMETRYDIR"
-mkdir -p "$MODPATH/go/pkg/mod"
-mkdir -p "$MODPATH/go/bin"
+mkdir -p "$GOCACHE_DIR"
+mkdir -P "$GOBIN"
 mkdir -p "$MODPATH/system/bin"
-
-
-mkdir -p "$GOROOT_DIR" # 当前Go
+mkdir -p "$GOTMP_DIR" # 临时目录
+mkdir -p "$GOROOT" # 当前Go
 # mkdir -p "$GOROOT_BOOTSTRAP_DIR" # 开发者用于自举编译新版 用到的旧版或者拷贝的Go  
 mkdir -p "$MODPATH/temp_go"
 # 设置权限
@@ -91,8 +90,8 @@ ui_print "- 设置文件权限..."
 chmod 644 "$MODPATH/gogogo.env"
 
 # 设置二进制文件权限
+set_perm_recursive "$MODPATH/GOBIN" 0 0 0755 0755
 set_perm_recursive "$MODPATH/GOROOT/bin" 0 0 0755 0755
-set_perm_recursive "$MODPATH/go/bin" 0 0 0755 0755
 set_perm_recursive "$MODPATH/dist" 0 0 0755 0755
 
 
@@ -108,7 +107,7 @@ if [ -f "$GO_TAR" ]; then
     if [ -d "$MODPATH/temp_go/go" ]; then
         # 复制到GOROOT
         ui_print "  复制到GOROOT目录..."
-        cp -rf "$MODPATH/temp_go/go"/* "$GOROOT_DIR/"
+        cp -rf "$MODPATH/temp_go/go"/* "$GOROOT/"
     
         # # 复制到GOROOT_BOOTSTRAP # 开发者可选
         # ui_print "  复制到GOROOT_BOOTSTRAP目录..."
@@ -130,25 +129,6 @@ if [ -f "$GO_TAR" ]; then
 else
     ui_print "  ❌ 未找到Go语言压缩包: $GO_TAR"
 fi
-
-# 获取当前时间
-CURRENT_TIME=$(date +"%Y-%m-%d %H:%M:%S")
-
-# 创建环境变量配置文件
-ui_print "- 创建环境变量配置..."
-cat > "$MODPATH/gogogo.env" << EOF
-# lience MIT
-# Magisk GoGogo 模块环境变量配置文件
-# 该文件由 Magisk 模块安卓脚本生成
-# 时间 : $CURRENT_TIME
-# 版本 : $VERSION
-# 作者 : $AUTHOR
-GOPROXY=https://goproxy.cn,direct
-GOSUMDB=sum.golang.google.cn
-GOTOOLCHAIN=auto
-EOF
-
-
 
 # 备份PATH 
 echo $PATH > $MODPATH/PATH.bak

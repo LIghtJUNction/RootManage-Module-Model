@@ -28,7 +28,7 @@ Key_monitoring() {
 }
 
 echo "音量+ : 从源代码本地构建go"
-echo "音量- : 检查更新"
+echo "音量- : 检查更新-更新GOPROXY(代理加速)"
 echo "电源键 : 退出"    
 
 choice=$(Key_monitoring)
@@ -43,16 +43,38 @@ update_go() {
 build_from_src() {
     echo "正在从源代码构建Go..."
     echo "这将会启用开发者模式"
-    echo "1" > $MODDIR/gogogo.dev
+    
+    if [ ! -d "$MODDIR/GOROOT" ]; then
+        echo "错误：未找到Go源代码目录，请确保已正确安装Go源代码。"
+        exit 1
+    fi
 
-    mkdir -p $GOROOT_BOOTSTRAP_DIR
-    export GOROOT_BOOTSTRAP=$GOROOT_BOOTSTRAP_DIR
-    # 将GOROOT 拷贝到GOROOT_BOOTSTRAP
-    cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+    # 读取开发者模式标志
+    if [ ! -f "$MODDIR/gogogo.dev" ]; then
+        echo "错误：未找到开发者模式标志文件，请先启用开发者模式。"
+        exit 1
+    fi
+
+    if [ "$(cat $MODDIR/gogogo.dev)" != "1" ]; then
+        mkdir -p $GOROOT_BOOTSTRAP_DIR
+        export GOROOT_BOOTSTRAP=$GOROOT_BOOTSTRAP_DIR
+        # 将GOROOT 拷贝到GOROOT_BOOTSTRAP
+        cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+        echo "1" > $MODDIR/gogogo.dev
+    fi
+
+    if [ ! -s "$GOROOT_BOOTSTRAP_DIR" ]; then
+        echo "错误: GOROOT_BOOTSTRAP目录为空或不存在，该目录意外受损，请尝试删除gogogo.dev并重试。"
+        exit 1
+    fi
 
 
+    echo "开始构建Go源代码..." # 重定向到标准输出
     cd $MODDIR/GOROOT/src
-    . make.bash || exit 1
+    . make.bash > /dev/null 2>&1 || {
+        echo "构建失败，请检查错误信息。"
+        exit 1
+    }
     echo "Go源代码构建完成"
 
     choice=$(Key_monitoring)
