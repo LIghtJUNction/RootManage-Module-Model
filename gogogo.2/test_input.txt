@@ -1,5 +1,5 @@
 test.go
-./build
+build
 testapp
 8
 android/arm64

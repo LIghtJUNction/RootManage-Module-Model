@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/lightjunction/rootmanager-module-model/gogogo/commands"
@@ -16,10 +17,9 @@ import (
 func init() {
 	// 获取配置对象
 	cfg := config.GetConfig()
-
 	// 设置默认配置
 	*cfg = config.Config{
-		OutputDir:   "./build",
+		OutputDir:   "build",
 		Parallel:    true,
 		Progress:    true,
 		Verbose:     1,
@@ -103,9 +103,7 @@ func main() {
 			// 检查必需参数
 			if cfg.SourceFile == "" {
 				return fmt.Errorf("请指定源文件 (-s)，使用 'gogogo --help' 查看帮助")
-			}
-
-			// 设置日志级别
+			} // 设置日志级别
 			var logLevel slog.Level
 			switch cfg.Verbose {
 			case 0:
@@ -122,12 +120,17 @@ func main() {
 				Level: logLevel,
 			})
 			config.SetLogger(slog.New(handler))
-			logger = config.GetLogger()
-
-			// 检查Go环境
+			logger = config.GetLogger() // 检查Go环境
 			if err := utils.CheckGoEnvironment(); err != nil {
 				return err
 			}
+
+			// 将输出目录转换为绝对路径
+			absOutputDir, err := filepath.Abs(cfg.OutputDir)
+			if err != nil {
+				return fmt.Errorf("获取输出目录绝对路径失败: %v", err)
+			}
+			cfg.OutputDir = absOutputDir
 
 			// 创建输出目录
 			if err := os.MkdirAll(cfg.OutputDir, 0755); err != nil {
@@ -218,10 +221,9 @@ func main() {
 
 	// 获取配置对象用于flag绑定
 	cfg := config.GetConfig()
-
 	// 添加主要的命令行参数
 	rootCmd.Flags().StringVarP(&cfg.SourceFile, "source", "s", "", "源Go文件路径 (必需)")
-	rootCmd.Flags().StringVarP(&cfg.OutputDir, "output", "o", "./build", "输出目录")
+	rootCmd.Flags().StringVarP(&cfg.OutputDir, "output", "o", "build", "输出目录")
 	rootCmd.Flags().StringVarP(&cfg.BinaryName, "name", "n", "", "二进制文件名 (默认: 源文件名)")
 	rootCmd.Flags().StringSliceVarP(&cfg.Platforms, "platforms", "p", []string{"default"}, "目标平台 (可使用预设组合或具体平台)")
 

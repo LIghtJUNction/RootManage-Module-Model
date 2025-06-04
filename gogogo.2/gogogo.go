@@ -2283,10 +2283,9 @@ func main() {
 
 	// 添加子命令到根命令
 	rootCmd.AddCommand(listCmd, groupsCmd, versionCmd, examplesCmd, envCmd)
-
 	// 添加主要的命令行参数
 	rootCmd.Flags().StringVarP(&config.SourceFile, "source", "s", "", "源Go文件路径 (必需)")
-	rootCmd.Flags().StringVarP(&config.OutputDir, "output", "o", "./build", "输出目录")
+	rootCmd.Flags().StringVarP(&config.OutputDir, "output", "o", "build", "输出目录")
 	rootCmd.Flags().StringVarP(&config.BinaryName, "name", "n", "", "二进制文件名 (默认: 源文件名)")
 	rootCmd.Flags().StringSliceVarP(&config.Platforms, "platforms", "p", []string{"default"}, "目标平台 (可使用预设组合或具体平台)")
 	// 构建选项
