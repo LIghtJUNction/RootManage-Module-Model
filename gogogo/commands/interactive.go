@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -39,6 +40,7 @@ type Config struct {
 func RunInteractive(config *Config) error {
 	colorTitle := color.New(color.FgHiCyan, color.Bold)
 	colorBold := color.New(color.Bold)
+	colorInfo := color.New(color.FgHiBlue)
 
 	colorTitle.Println("🔍 交互式编译模式")
 	scanner := bufio.NewScanner(os.Stdin)
@@ -82,6 +84,128 @@ func RunInteractive(config *Config) error {
 		config.BinaryName = defaultName
 	}
 
+	// 选择平台
+	fmt.Println()
+	colorTitle.Println("📋 选择目标平台:")
+	fmt.Println("  1) default (默认桌面平台)")
+	fmt.Println("  2) desktop (所有桌面平台)")
+	fmt.Println("  3) server (服务器平台)")
+	fmt.Println("  4) mobile (移动平台)")
+	fmt.Println("  5) web (WebAssembly)")
+	fmt.Println("  6) embedded (嵌入式平台)")
+	fmt.Println("  7) all (所有支持的平台)")
+	fmt.Println("  8) 自定义 (手动输入)")
+
+	colorBold.Print("请选择 [1]: ")
+	if scanner.Scan() {
+		choice := strings.TrimSpace(scanner.Text())
+		if choice == "" {
+			choice = "1"
+		}
+
+		switch choice {
+		case "1":
+			config.Platforms = []string{"default"}
+		case "2":
+			config.Platforms = []string{"desktop"}
+		case "3":
+			config.Platforms = []string{"server"}
+		case "4":
+			config.Platforms = []string{"mobile"}
+		case "5":
+			config.Platforms = []string{"web"}
+		case "6":
+			config.Platforms = []string{"embedded"}
+		case "7":
+			config.Platforms = []string{"all"}
+		case "8":
+			colorBold.Print("请输入平台列表 (用逗号分隔): ")
+			if scanner.Scan() {
+				platforms := strings.TrimSpace(scanner.Text())
+				if platforms != "" {
+					config.Platforms = strings.Split(platforms, ",")
+					for i := range config.Platforms {
+						config.Platforms[i] = strings.TrimSpace(config.Platforms[i])
+					}
+				}
+			}
+		default:
+			colorInfo.Println("无效选择，使用默认平台")
+			config.Platforms = []string{"default"}
+		}
+	}
+
+	// 详细程度
+	fmt.Println()
+	colorBold.Printf("详细程度 (0=安静, 1=正常, 2=详细) [%d]: ", config.Verbose)
+	if scanner.Scan() {
+		verboseStr := strings.TrimSpace(scanner.Text())
+		if verboseStr != "" {
+			if verbose, err := strconv.Atoi(verboseStr); err == nil && verbose >= 0 && verbose <= 2 {
+				config.Verbose = verbose
+			}
+		}
+	}
+
+	// 编译选项
+	fmt.Println()
+	colorTitle.Println("🔧 编译选项:")
+
+	// 并行编译
+	defaultParallel := "y"
+	if !config.Parallel {
+		defaultParallel = "n"
+	}
+	colorBold.Printf("并行编译 (y/n) [%s]: ", defaultParallel)
+	if scanner.Scan() {
+		parallel := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if parallel == "" {
+			parallel = defaultParallel
+		}
+		config.Parallel = parallel == "y" || parallel == "yes"
+	}
+
+	// 压缩
+	defaultCompress := "n"
+	if config.Compress {
+		defaultCompress = "y"
+	}
+	colorBold.Printf("压缩二进制文件 (y/n) [%s]: ", defaultCompress)
+	if scanner.Scan() {
+		compress := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if compress == "" {
+			compress = defaultCompress
+		}
+		config.Compress = compress == "y" || compress == "yes"
+	}
+
+	// 清理
+	defaultClean := "n"
+	if config.Clean {
+		defaultClean = "y"
+	}
+	colorBold.Printf("编译前清理输出目录 (y/n) [%s]: ", defaultClean)
+	if scanner.Scan() {
+		clean := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if clean == "" {
+			clean = defaultClean
+		}
+		config.Clean = clean == "y" || clean == "yes"
+	}
+
+	// ldflags
+	colorBold.Printf("链接器标志 (如: \"-s -w\") [%s]: ", config.LDFlags)
+	if scanner.Scan() {
+		ldflags := strings.TrimSpace(scanner.Text())
+		if ldflags != "" {
+			config.LDFlags = ldflags
+		}
+	}
+
+	fmt.Println()
+	colorTitle.Println("✅ 配置完成，开始编译...")
+	config.Interactive = false // 设置为非交互模式以继续执行
+	
 	return nil
 }
 		binaryName := strings.TrimSpace(scanner.Text())
