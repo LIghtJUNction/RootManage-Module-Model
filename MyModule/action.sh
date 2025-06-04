@@ -74,8 +74,11 @@ build_from_src() {
     . make.bash
     echo"Go源代码构建完成"
 
-    choice=$(Key_monitoring)
+
     echo"音量上：保持开发者模式（不删除自举拷贝） 音量下：退出开发者模式（删除自举拷贝） "
+    
+    choice=$(Key_monitoring)
+    
     if [ "$choice" = "0" ]; then
         echo"选择：保持开发者模式"
         exit 0
