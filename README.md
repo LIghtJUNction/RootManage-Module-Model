@@ -24,6 +24,13 @@ gogogo命令可以快捷将一个go项目交叉编译为多达39种平台架构�
 直接在命令行或者脚本中使用go / gogogo / gofmt即可
 
 
+> 本模块使用说明
+> 特别提醒 ,在root权限下执行。go的本体在/data/adb/modules/gogogo/GOROOT/bin/go
+> 所以必须在root下执行
+
+
+
+
 ## 不借助本模块手动配置go指南
 
 下载源代码
@@ -39,3 +46,4 @@ GOROOT : go1.24.3.linux-arm64/go/src/
 GOCACHE: 自定义临时目录即可
 
 将go可执行文件添加至PATH即可运行
+

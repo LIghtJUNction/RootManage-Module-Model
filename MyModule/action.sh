@@ -3,6 +3,8 @@ MODDIR=${0%/*}
 GOROOT_BOOTSTRAP_DIR="$MODDIR/GOROOT_BOOTSTRAP"
 GOROOT_DIR="$MODDIR/GOROOT"
 
+whoami
+
 Key_monitoring() {
     while :; do
         event_info=$(getevent -qlc 1)
@@ -70,10 +72,8 @@ build_from_src() {
 
     echo "开始构建Go源代码..." # 重定向到标准输出
     cd $MODDIR/GOROOT/src
-    . make.bash
+    ./make.bash | tee -a build.log 2>&1
     echo "Go源代码构建完成"
-
-
     echo "音量上：保持开发者模式（不删除自举拷贝） 音量下：退出开发者模式（删除自举拷贝） "
     
     choice=$(Key_monitoring)
@@ -99,7 +99,6 @@ if [ "$choice" = "0" ]; then
 
 elif [ "$choice" = "1" ]; then
     echo "当前Go版本:"
-    which go
     go version || echo "未找到Go！"
     echo "本地记录的go版本："
     echo "$(cat $MODDIR/VERSION || echo "未记录版本")"
