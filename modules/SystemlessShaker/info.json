@@ -1,0 +1,10 @@
+{
+  "id": "SystemlessShaker",
+  "name": "SystemlessShaker",
+  "version": "v3.0.0",
+  "versionCode": "2025060401",
+  "author": "LIghtJUNction",
+  "description": "基于ZygiskNext 修改加速度传感器数据实现模拟摇动",
+  "updateTime": "2025-06-04 16:38:18",
+  "repo": "LIghtJUNction/RootManage-Module-Model"
+}
