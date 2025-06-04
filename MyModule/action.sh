@@ -51,17 +51,17 @@ build_from_src() {
 
     # 读取开发者模式标志
     if [ ! -f "$MODDIR/gogogo.dev" ]; then
-        echo "错误：未找到开发者模式标志文件，请先启用开发者模式。"
-        exit 1
-    fi
-
-    if [ "$(cat $MODDIR/gogogo.dev)" != "1" ]; then
-        mkdir -p $GOROOT_BOOTSTRAP_DIR
-        export GOROOT_BOOTSTRAP=$GOROOT_BOOTSTRAP_DIR
-        # 将GOROOT 拷贝到GOROOT_BOOTSTRAP
-        cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+        echo "开启开发者模式..."
         echo "1" > $MODDIR/gogogo.dev
     fi
+
+
+    mkdir -p $GOROOT_BOOTSTRAP_DIR
+    export GOROOT_BOOTSTRAP=$GOROOT_BOOTSTRAP_DIR
+    # 将GOROOT 拷贝到GOROOT_BOOTSTRAP
+    cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
+    echo "1" > $MODDIR/gogogo.dev
+
 
     if [ ! -s "$GOROOT_BOOTSTRAP_DIR" ]; then
         echo "错误: GOROOT_BOOTSTRAP目录为空或不存在，该目录意外受损，请尝试删除gogogo.dev并重试。"
