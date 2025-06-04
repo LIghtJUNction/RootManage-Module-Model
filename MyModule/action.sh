@@ -64,8 +64,8 @@ build_from_src() {
 
 
     if [ ! -s "$GOROOT_BOOTSTRAP_DIR" ]; then
-        echo "错误: GOROOT_BOOTSTRAP目录为空或不存在，该目录意外受损，请尝试删除gogogo.dev并重试。"
-        exit 1
+        echo "错误: GOROOT_BOOTSTRAP目录为空或不存在,正在复制GOROOT。"
+        cp -r $GOROOT_DIR/* $GOROOT_BOOTSTRAP_DIR/
     fi
 
 
