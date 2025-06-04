@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RootManage-Module-Model</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        
+        .redirect-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .redirect-info p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+        }
+        
+        .countdown {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+        
+        .auto-redirect {
+            display: none;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .loading {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 RootManage-Module-Model</h1>
+            <div class="subtitle">GitHub 仓库访问</div>
+        </div>
+        
+        <div class="redirect-info">
+            <p>由于安全策略，无法在此页面中直接嵌入 GitHub。</p>
+            <p>即将为您跳转到项目主页...</p>
+            
+            <a href="https://github.com/LIghtJUNction/RootManage-Module-Model" 
+               class="btn" 
+               target="_blank" 
+               id="redirectBtn">
+                🔗 立即访问 GitHub 仓库
+            </a>
+            
+            <div class="countdown" id="countdown">
+                <span class="loading">自动跳转中... <span id="timer">5</span> 秒</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 自动跳转倒计时
+        let countdown = 5;
+        const timerElement = document.getElementById('timer');
+        const countdownElement = document.getElementById('countdown');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            timerElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                window.open('https://github.com/LIghtJUNction/RootManage-Module-Model', '_blank');
+                countdownElement.innerHTML = '<span class="loading">已为您打开新窗口</span>';
+            }
+        }, 1000);
+        
+        // 点击按钮时清除倒计时
+        document.getElementById('redirectBtn').addEventListener('click', () => {
+            clearInterval(countdownInterval);
+            countdownElement.innerHTML = '<span>感谢访问！</span>';
+        });
+    </script>
+</body>
+</html>

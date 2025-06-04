@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lightjunction/rootmanager-module-model/gogogo/build"
 	"github.com/lightjunction/rootmanager-module-model/gogogo/commands"
 	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
+	"github.com/lightjunction/rootmanager-module-model/gogogo/gobuild"
 	"github.com/lightjunction/rootmanager-module-model/gogogo/utils"
 	"github.com/spf13/cobra"
 )
@@ -139,41 +139,36 @@ func main() {
 				if err := utils.CleanOutputDir(cfg.OutputDir, cfg.Verbose, logger); err != nil {
 					return fmt.Errorf("清理输出目录失败: %v", err)
 				}
-			}
-
-			// 构建配置
-			buildConfig := build.BuildConfig{
+			} // 构建配置
+			buildConfig := config.BuildConfig{
 				SkipCGO:  cfg.SkipCGO,
 				Verbose:  cfg.Verbose,
 				LDFlags:  cfg.LDFlags,
 				Tags:     cfg.Tags,
 				Force:    cfg.Force,
 				NoPrompt: cfg.NoPrompt,
-				NoCGO:    cfg.NoCGO,
-				NDKPath:  cfg.NDKPath,
+				NoCGO:    cfg.NoCGO, NDKPath: cfg.NDKPath,
 				Compress: cfg.Compress,
-			}
-
-			utilsConfig := &utils.Config{
-				All:      cfg.All,
-				Verbose:  cfg.Verbose,
-				NoPrompt: cfg.NoPrompt,
-			}
-
-			// 解析目标平台
-			targets := utils.ParsePlatforms(strings.Join(cfg.Platforms, ","), *utilsConfig, logger)
+			} // 解析目标平台
+			targets := utils.ParsePlatforms(strings.Join(cfg.Platforms, ","), cfg, logger)
 			if len(targets) == 0 {
 				return fmt.Errorf("没有找到有效的目标平台")
 			}
 
+			// 如果没有指定二进制文件名，从源文件名推导
+			binaryName := cfg.BinaryName
+			if binaryName == "" {
+				binaryName = utils.GetBinaryNameFromSource(cfg.SourceFile)
+			}
+
 			// 执行编译
-			progressConfig := build.ProgressConfig{
+			progressConfig := config.ProgressConfig{
 				Progress:   cfg.Progress,
 				Parallel:   cfg.Parallel,
 				Verbose:    cfg.Verbose,
 				MaxRetries: 1, // 设置默认重试次数
 			}
-			return build.BuildWithProgress(targets, cfg.SourceFile, cfg.OutputDir, cfg.BinaryName, buildConfig, progressConfig, logger)
+			return gobuild.BuildWithProgress(targets, cfg.SourceFile, cfg.OutputDir, binaryName, buildConfig, progressConfig, logger)
 		},
 	}
 	// 添加子命令

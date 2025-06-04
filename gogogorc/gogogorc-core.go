@@ -7,10 +7,10 @@ import (
 )
 
 func main() {
-	// 检查环境变量是否已设置，避免重复执行
-	if os.Getenv("GOGOGO_ENV_LOADED") == "1" {
-		// 环境已加载，直接返回
-		os.Exit(0)
+	// 检查是否以 root 权限运行
+	if os.Geteuid() != 0 {
+		fmt.Fprintln(os.Stderr, "This program must run as root")
+		os.Exit(1)
 	}
 
 	// 输出 export 语句供 shell 脚本使用
@@ -21,17 +21,33 @@ func main() {
 	fmt.Printf("export GOTMPDIR='%s'\n", "/data/adb/modules/gogogo/GOTMP")
 	fmt.Printf("export GO111MODULE='%s'\n", "on")
 
-	// 计算新的 PATH
+	// 获取当前的 PATH
 	oldPath := os.Getenv("PATH")
-	addPaths := "/data/adb/modules/gogogo/GOROOT/bin:/data/adb/modules/gogogo/GOBIN"
-	newPath := setupPath(oldPath, addPaths)
-	fmt.Printf("export PATH='%s'\n", newPath)
 
-	// 设置标志表明环境已加载
-	fmt.Printf("export GOGOGO_ENV_LOADED='%s'\n", "1")
+	// 读取 /data/adb/modules/gogogo/gogogo.dev
+	if envPath, err := os.ReadFile("/data/adb/modules/gogogo/gogogo.dev"); err == nil {
+		// 如果值为 1，则加载开发者 XBIN 路径
+		if strings.TrimSpace(string(envPath)) == "1" {
+			addPaths := "/data/adb/modules/gogogo/GOXBIN:/data/adb/modules/gogogo/GOXBIN" // 开发者专属路径
+			newPath := setupPath(oldPath, addPaths)
+			fmt.Printf("export PATH='%s'\n", newPath)
+		} else {
+			// 如果 gogogo.dev 存在但值不是 1，使用默认 PATH
+			addPaths := "/data/adb/modules/gogogo/GOBIN" // 默认路径
+			newPath := setupPath(oldPath, addPaths)
+			fmt.Printf("export PATH='%s'\n", newPath)
+		}
+	} else {
+		// 如果 gogogo.dev 文件不存在，使用默认 PATH
+		fmt.Fprintf(os.Stderr, "Error reading gogogo.dev: %v\n", err)
+		addPaths := "/data/adb/modules/gogogo/GOBIN" // 默认路径
+		newPath := setupPath(oldPath, addPaths)
+		fmt.Printf("export PATH='%s'\n", newPath)
+	}
+
 }
 
-// 高效的 PATH 设置函数 - 等效于shell脚本中的setup_path
+// 高效的 PATH 设置函数 - 等效于 shell 脚本中的 setup_path
 func setupPath(oldPath, addPaths string) string {
 	var newPath string
 
@@ -45,7 +61,7 @@ func setupPath(oldPath, addPaths string) string {
 		pathsWithSep = strings.Replace(pathsWithSep, ":/system/bin:", ":DONE:", 1)
 	}
 
-	// 2. 添加非/0/路径
+	// 2. 添加非 /0/ 路径
 	paths := strings.Split(oldPath, ":")
 	for _, p := range paths {
 		// 跳过空路径和已处理路径
@@ -56,7 +72,7 @@ func setupPath(oldPath, addPaths string) string {
 			continue
 		}
 
-		// 跳过/0/路径(稍后处理)
+		// 跳过 /0/ 路径 (稍后处理)
 		if strings.Contains(p, "/0/") {
 			continue
 		}
@@ -71,7 +87,7 @@ func setupPath(oldPath, addPaths string) string {
 		pathsWithSep = strings.Replace(pathsWithSep, ":"+p+":", ":DONE:", 1)
 	}
 
-	// 3. 添加新Go路径(如果不存在)
+	// 3. 添加新路径 (如果不存在)
 	addPathsList := strings.Split(addPaths, ":")
 	for _, p := range addPathsList {
 		if p == "" {
@@ -87,7 +103,7 @@ func setupPath(oldPath, addPaths string) string {
 		}
 	}
 
-	// 4. 最后添加/0/目录路径
+	// 4. 最后添加 /0/ 目录路径
 	for _, p := range paths {
 		if p == "" {
 			continue
@@ -104,5 +120,7 @@ func setupPath(oldPath, addPaths string) string {
 		}
 	}
 
+	// 清理多余的冒号
+	newPath = strings.Trim(newPath, ":")
 	return newPath
 }

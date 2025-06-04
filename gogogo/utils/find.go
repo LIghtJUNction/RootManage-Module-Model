@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
 )
 
 // getUserHomeDir 获取用户主目录
@@ -99,8 +101,8 @@ func FindSystemNDK(logger *slog.Logger) []string {
 }
 
 // FindSystemClang 查找系统中已安装的Clang
-func FindSystemClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func FindSystemClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	switch runtime.GOOS {
 	case "windows":
@@ -112,7 +114,7 @@ func FindSystemClang(logger *slog.Logger) []ClangInstallation {
 	}
 
 	// 过滤无效的安装
-	var validInstallations []ClangInstallation
+	var validInstallations []config.ClangInstallation
 	for _, installation := range installations {
 		if IsValidClangInstallation(installation) {
 			validInstallations = append(validInstallations, installation)
@@ -124,8 +126,8 @@ func FindSystemClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findWindowsClang 查找Windows系统中的Clang
-func findWindowsClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findWindowsClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// Visual Studio Clang
 	vsInstallations := findVisualStudioClang(logger)
@@ -147,16 +149,16 @@ func findWindowsClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findDarwinClang 查找macOS系统中的Clang
-func findDarwinClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
-
+func findDarwinClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 	// Xcode命令行工具
 	if clangPath, err := exec.LookPath("clang"); err == nil {
 		version := getClangVersion(clangPath)
-		installations = append(installations, ClangInstallation{
-			Path:    clangPath,
-			Type:    "Xcode",
-			Version: version,
+		installations = append(installations, config.ClangInstallation{
+			Path:     clangPath,
+			Type:     "Xcode",
+			Version:  version,
+			Priority: 3,
 		})
 	}
 
@@ -168,7 +170,7 @@ func findDarwinClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range homebrewPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "LLVM",
 				Version: version,
@@ -180,13 +182,13 @@ func findDarwinClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findLinuxClang 查找Linux系统中的Clang
-func findLinuxClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findLinuxClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// 系统包管理器安装的clang
 	if clangPath, err := exec.LookPath("clang"); err == nil {
 		version := getClangVersion(clangPath)
-		installations = append(installations, ClangInstallation{
+		installations = append(installations, config.ClangInstallation{
 			Path:    clangPath,
 			Type:    "System",
 			Version: version,
@@ -211,7 +213,7 @@ func findLinuxClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range commonPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "System",
 				Version: version,
@@ -223,8 +225,8 @@ func findLinuxClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findVisualStudioClang 查找Visual Studio中的Clang
-func findVisualStudioClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findVisualStudioClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// Visual Studio 2019/2022的常见路径
 	vsPaths := []string{
@@ -239,7 +241,7 @@ func findVisualStudioClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range vsPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "Visual Studio",
 				Version: version,
@@ -251,8 +253,8 @@ func findVisualStudioClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findLLVMClang 查找独立LLVM安装的Clang
-func findLLVMClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findLLVMClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// 常见的LLVM安装路径
 	llvmPaths := []string{
@@ -264,7 +266,7 @@ func findLLVMClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range llvmPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "LLVM",
 				Version: version,
@@ -276,8 +278,8 @@ func findLLVMClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findMinGWClang 查找MinGW/MSYS2中的Clang
-func findMinGWClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findMinGWClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// MinGW/MSYS2路径
 	mingwPaths := []string{
@@ -291,7 +293,7 @@ func findMinGWClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range mingwPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "MinGW",
 				Version: version,
@@ -303,8 +305,8 @@ func findMinGWClang(logger *slog.Logger) []ClangInstallation {
 }
 
 // findGitClang 查找Git for Windows中的Clang
-func findGitClang(logger *slog.Logger) []ClangInstallation {
-	var installations []ClangInstallation
+func findGitClang(logger *slog.Logger) []config.ClangInstallation {
+	var installations []config.ClangInstallation
 
 	// Git for Windows路径
 	gitPaths := []string{
@@ -315,7 +317,7 @@ func findGitClang(logger *slog.Logger) []ClangInstallation {
 	for _, path := range gitPaths {
 		if _, err := os.Stat(path); err == nil {
 			version := getClangVersion(path)
-			installations = append(installations, ClangInstallation{
+			installations = append(installations, config.ClangInstallation{
 				Path:    path,
 				Type:    "Git for Windows",
 				Version: version,
@@ -352,13 +354,13 @@ func getClangVersion(clangPath string) string {
 }
 
 // GetBestClangForTarget 为指定目标获取最佳的Clang
-func GetBestClangForTarget(target string, installations []ClangInstallation, logger *slog.Logger) ClangInstallation {
+func GetBestClangForTarget(target string, installations []config.ClangInstallation, logger *slog.Logger) config.ClangInstallation {
 	if len(installations) == 0 {
-		return ClangInstallation{}
+		return config.ClangInstallation{}
 	}
 
 	// 根据目标平台选择最佳的clang
-	var bestInstallation ClangInstallation
+	var bestInstallation config.ClangInstallation
 	bestScore := -1
 
 	for _, installation := range installations {
@@ -374,7 +376,7 @@ func GetBestClangForTarget(target string, installations []ClangInstallation, log
 }
 
 // scoreClangForTarget 为特定目标评分Clang安装
-func scoreClangForTarget(target string, installation ClangInstallation) int {
+func scoreClangForTarget(target string, installation config.ClangInstallation) int {
 	score := 0
 
 	// 基础分数
@@ -433,7 +435,7 @@ func parseVersionToFloat(version string) float64 {
 }
 
 // SetupClangEnvironment 为指定的clang设置环境变量
-func SetupClangEnvironment(installation ClangInstallation, logger *slog.Logger) error {
+func SetupClangEnvironment(installation config.ClangInstallation, logger *slog.Logger) error {
 	if installation.Path == "" {
 		return fmt.Errorf("无效的clang安装")
 	}

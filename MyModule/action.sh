@@ -27,9 +27,9 @@ Key_monitoring() {
     done
 }
 
-echo "音量+ : 从源代码本地构建go"
+echo "音量+ : 从源代码本地构建go && 启动开发者模式"
 echo "音量- : 检查更新-更新GOPROXY(代理加速)"
-echo "电源键 : 退出"    
+echo "电源键 : 按键退出 && 关闭开发者模式"    
 
 choice=$(Key_monitoring)
 
@@ -71,7 +71,7 @@ build_from_src() {
 
     echo "开始构建Go源代码..." # 重定向到标准输出
     cd $MODDIR/GOROOT/src
-    . make.bash > /dev/null 2>&1 || {
+    . make.bash | tee -a $MODDIR/build.log 2>&1 || {
         echo "构建失败，请检查错误信息。"
         exit 1
     }
@@ -87,10 +87,12 @@ build_from_src() {
         echo "0" > $MODDIR/gogogo.dev
         rm -rf $GOROOT_BOOTSTRAP_DIR
         echo "已删除自举拷贝"
+        exit 0
+    else
+        echo "无效选择，退出脚本"
+        exit 0
     fi
 
-
-    exit 0
 }
 
 if [ "$choice" = "0" ]; then
@@ -121,6 +123,7 @@ elif [ "$choice" = "1" ]; then
     fi
 
 else
-    echo "退出"
+    echo "退出 && 关闭开发者模式"
+    echo "0" > $MODDIR/gogogo.dev
     exit 0
 fi

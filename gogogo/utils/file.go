@@ -3,13 +3,11 @@ package utils
 import (
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"github.com/fatih/color"
 	"github.com/klauspost/compress/gzip"
-)
-
-var (
-	colorInfoFile = color.New(color.FgBlue)
+	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
 )
 
 // CompressFile 压缩文件
@@ -47,9 +45,24 @@ func CompressFile(filePath string) error {
 func CleanOutputDir(outputDir string, verbose int, logger *slog.Logger) error {
 	if _, err := os.Stat(outputDir); err == nil {
 		if verbose >= 1 {
-			colorInfoFile.Printf("🧹 清理输出目录: %s\n", outputDir)
+			// 获取颜色函数
+			_, _, _, _, colorInfo, _ := config.GetColors()
+			colorInfo.Printf("🧹 清理输出目录: %s\n", outputDir)
 		}
 		return os.RemoveAll(outputDir)
 	}
 	return nil
+}
+
+// GetBinaryNameFromSource 从源文件路径中提取二进制文件名
+func GetBinaryNameFromSource(sourceFile string) string {
+	// 获取文件名（不含路径）
+	filename := filepath.Base(sourceFile)
+
+	// 移除扩展名
+	if ext := filepath.Ext(filename); ext != "" {
+		filename = strings.TrimSuffix(filename, ext)
+	}
+
+	return filename
 }

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
 )
 
 // CheckAndroidEnvironment 检查Android环境并设置GOENV
@@ -40,13 +42,25 @@ func CheckGoEnvironment() error {
 
 // DetectNDKType 检测NDK的类型 (Windows/Linux/Mac)
 func DetectNDKType(ndkPath string) string {
+	// 首先确认NDK路径是否有效
+	if _, err := os.Stat(ndkPath); os.IsNotExist(err) {
+		return ""
+	}
+
+	// 默认使用当前操作系统类型
+	defaultType := runtime.GOOS
+	if defaultType == "windows" && !strings.Contains(ndkPath, "windows") {
+		// Windows上可能有Linux NDK，此时不应使用windows作为defaultType
+		defaultType = ""
+	}
+
 	// 检查toolchains目录下的预编译工具目录
 	toolchainsPath := filepath.Join(ndkPath, "toolchains", "llvm", "prebuilt")
 	if _, err := os.Stat(toolchainsPath); os.IsNotExist(err) {
 		// 尝试查找旧的NDK目录结构
 		files, err := os.ReadDir(ndkPath)
 		if err != nil {
-			return ""
+			return defaultType // 如果读取失败，使用默认值
 		}
 
 		// 查找含有"windows"、"linux"或"darwin"的目录名
@@ -64,12 +78,13 @@ func DetectNDKType(ndkPath string) string {
 				}
 			}
 		}
-		return ""
+		return defaultType // 找不到匹配的目录名，使用默认值
 	}
+
 	// 检查现代NDK结构
 	files, err := os.ReadDir(toolchainsPath)
 	if err != nil {
-		return ""
+		return defaultType // 如果读取失败，使用默认值
 	}
 
 	// 查找预编译目录
@@ -84,6 +99,10 @@ func DetectNDKType(ndkPath string) string {
 			}
 			if strings.Contains(name, "darwin") || strings.Contains(name, "mac") {
 				return "darwin"
+			}
+			// 可能是某些新版本NDK使用不同的命名方式
+			if strings.Contains(name, "x86_64") || strings.Contains(name, "x86-64") {
+				return runtime.GOOS // 使用当前操作系统类型
 			}
 		}
 	}
@@ -141,7 +160,7 @@ func IsValidNDKDir(ndkPath string) bool {
 }
 
 // IsValidClangInstallation 检查clang安装是否有效
-func IsValidClangInstallation(installation ClangInstallation) bool {
+func IsValidClangInstallation(installation config.ClangInstallation) bool {
 	// 检查clang可执行文件是否存在
 	if _, err := os.Stat(installation.Path); os.IsNotExist(err) {
 		return false

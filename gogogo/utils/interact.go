@@ -5,11 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
-)
-
-var (
-	colorWarningInteract = color.New(color.FgYellow, color.Bold)
+	"github.com/lightjunction/rootmanager-module-model/gogogo/config"
 )
 
 // AskUserConfirm 询问用户确认
@@ -18,7 +14,10 @@ func AskUserConfirm(prompt string, noPrompt bool) bool {
 		return true
 	}
 
-	colorWarningInteract.Printf("%s (y/N): ", prompt)
+	// 获取颜色函数
+	_, _, _, colorWarning, _, _ := config.GetColors()
+
+	colorWarning.Printf("%s (y/N): ", prompt)
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Scan() {
 		response := strings.ToLower(strings.TrimSpace(scanner.Text()))
