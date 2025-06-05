@@ -122,21 +122,21 @@ jobs:
                 import json
                 try:
                     from openai import OpenAI
-                    
+
                     # 使用 GitHub Token 和 AI 端点
                     token = os.environ['GITHUB_TOKEN']
-                    endpoint = 'https://models.inference.ai.azure.com'
-                    model = 'gpt-4o-mini'
-                    
+                    endpoint = "https://models.github.ai/inference"
+                    model = 'openai/gpt-4.1'
+
                     print(f'Token (前10字符): {token[:10]}...')
                     print(f'端点: {endpoint}')
                     print(f'模型: {model}')
-                    
+
                     client = OpenAI(
                         base_url=endpoint,
                         api_key=token,
                     )
-                    
+
                     print('发送测试请求...')
                     response = client.chat.completions.create(
                         messages=[
