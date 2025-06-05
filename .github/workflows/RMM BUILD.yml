@@ -122,21 +122,21 @@ jobs:
                 import json
                 try:
                     from openai import OpenAI
-
+                    
                     # 使用 GitHub Token 和 AI 端点
                     token = os.environ['GITHUB_TOKEN']
-                    endpoint = "https://models.github.ai/inference"
+                    endpoint = 'https://models.github.ai/inference'
                     model = 'openai/gpt-4.1'
-
+                    
                     print(f'Token (前10字符): {token[:10]}...')
                     print(f'端点: {endpoint}')
                     print(f'模型: {model}')
-
+                    
                     client = OpenAI(
                         base_url=endpoint,
                         api_key=token,
                     )
-
+                    
                     print('发送测试请求...')
                     response = client.chat.completions.create(
                         messages=[
@@ -153,12 +153,12 @@ jobs:
                         max_tokens=100,
                         model=model
                     )
-                          
+                    
                     print('✅ AI请求成功！')
                     print(f'响应内容: {response.choices[0].message.content}')
                     print(f'使用的模型: {response.model}')
                     print(f'Token使用量: {response.usage.total_tokens if response.usage else \"未知\"}')
-                          
+                    
                 except ImportError:
                     print('❌ OpenAI库未安装，正在安装...')
                     os.system('pip install openai')
