@@ -9,6 +9,7 @@ export GOCACHE='/data/adb/modules/gogogo/GOCACHE'
 export GOENV='/data/adb/modules/gogogo/gogogo.env'
 export GOBIN='/data/adb/modules/gogogo/GOBIN'
 export GOTMPDIR='/data/adb/modules/gogogo/GOTMP'
+export GOPATH='/data/adb/modules/gogogo/GOPATH'
 export GO111MODULE='on'
 
 # 检查是否是开发模式
