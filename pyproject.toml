@@ -1,5 +1,5 @@
 [project]
-name = "RMM"
+name = "pyrmm"
 version = "0.1.0"
 description = "用来新建和管理,开发magisk模块的工具集"
 readme = "README.md"
@@ -7,10 +7,13 @@ authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "click>=8.2.1",
+    "toml>=0.10.2",
+]
 
 [project.scripts]
-rmm = "rmm.cli.__main__:main"
+rmm = "pyrmm.cli.__main__:cli"
 
 [build-system]
 requires = ["hatchling"]
