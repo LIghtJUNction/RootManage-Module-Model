@@ -295,9 +295,6 @@ jobs:
                 path: ${{ github.workspace }}/build/*.prebuild
                 if-no-files-found: error
                 retention-days: 90
-
-
-
                 
     RMM_BUILD_windows:
         runs-on: windows-latest
@@ -384,9 +381,6 @@ jobs:
                 path: ${{ github.workspace }}/build/*.prebuild
                 if-no-files-found: error
                 retention-days: 90
-
-    
-
     # 模块 功能测试 && 安全测试
     RMM_MODULES_TEST_AND_POST_BUILD:
         runs-on: ubuntu-latest
@@ -513,7 +507,6 @@ jobs:
                 if [ -f "./RMM_BUILD/postbuild.py" ]; then
                   python ./RMM_BUILD/postbuild.py
                 fi
-
     RMM_POST_BUILD_WINDOWS:
         runs-on: windows-latest
         needs: [RMM_MODULES_TEST_AND_POST_BUILD]
@@ -563,7 +556,6 @@ jobs:
                 if (Test-Path "./RMM_BUILD/postbuild.bat") {
                     cmd /c ./RMM_BUILD/postbuild.bat
                 }
-
     RMM_RELEASE:
         runs-on: ubuntu-latest
         needs: [RMM_MODULES_TEST_AND_POST_BUILD, RMM_POST_BUILD_WINDOWS]
@@ -612,7 +604,6 @@ jobs:
           - name: Create release && upload && publish && More powerful action
             run: |
               rmm release -v $tag -d $dev -p $prerelease -u $upload -t $GITHUB_TOKEN --prebuild ${{ github.workspace }}/artifacts/*.prebuild --report ${{ github.workspace }}/reports/rmm.report --push ${{ github.event.inputs.push }} --path ${{ github.event.inputs.path }}
-
     # 不支持 build hook功能！！！ 在这里写一些编译之类的脚本就行了
     RMM_MAC:
       runs-on: macos-latest
