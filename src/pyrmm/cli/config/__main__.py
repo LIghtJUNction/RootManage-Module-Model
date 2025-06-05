@@ -1,10 +1,10 @@
 import click
 
 @click.group()
-@click.pass_context
 @click.argument('pairs', nargs=-1, required=False)
 @click.option('-r', '--read', 'read_mode', is_flag=True, help='读取模式')
 @click.option('-w', '--write', 'write_mode', is_flag=True, help='写入模式')
+@click.pass_context
 def config(ctx: click.Context, pairs: tuple[str], read_mode: bool, write_mode: bool):
     """Pyrmm Config Command group"""
     ctx.ensure_object(dict)

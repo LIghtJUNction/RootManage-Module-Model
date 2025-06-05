@@ -48,7 +48,8 @@ cli.add_command(sync)
 
 from pyrmm.cli.config import config
 cli.add_command(config)
-"""配置 Pyrmm 模块 项目
+"""
+配置 Pyrmm 模块 项目
 """
 
 
