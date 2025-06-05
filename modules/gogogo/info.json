@@ -1,0 +1,10 @@
+{
+  "id": "gogogo",
+  "name": "gogogo",
+  "version": "v3.0.2",
+  "versionCode": "2025060502",
+  "author": "LIghtJUNction",
+  "description": "配置好go运行环境，自带一个多平台/多架构构建CLI程序。",
+  "updateTime": "2025-06-05 15:13:58",
+  "repo": "LIghtJUNction/RootManage-Module-Model"
+}
