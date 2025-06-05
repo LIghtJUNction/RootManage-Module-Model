@@ -117,65 +117,39 @@ jobs:
             - name: Test GitHub AI Endpoint
               run: |
                 echo "=== 测试 GitHub AI 模型推理端点 ==="
-                pip install --upgrade pip
-                pip install openai
-                python3 -c "
-                import os
-                import json
-                try:
-                    from openai import OpenAI
-                    
-                    # 使用 GitHub Token 和 AI 端点
-                    token = os.environ['GITHUB_TOKEN']
-                    endpoint = 'https://models.github.ai/inference'
-                    model = 'openai/gpt-4.1'
-                    
-                    print(f'Token (前10字符): {token[:10]}...')
-                    print(f'端点: {endpoint}')
-                    print(f'模型: {model}')
-                    
-                    client = OpenAI(
-                        base_url=endpoint,
-                        api_key=token,
-                    )
-                    
-                    print('发送测试请求...')
-                    response = client.chat.completions.create(
-                        messages=[
-                            {
-                                'role': 'system',
-                                'content': 'You are a helpful assistant. Respond in Chinese.',
-                            },
-                            {
-                                'role': 'user',
-                                'content': '请简单介绍一下GitHub Actions的作用，限制在50字以内。',
-                            }
-                        ],
-                        temperature=0.7,
-                        max_tokens=100,
-                        model=model
-                    )
-                    
-                    print('✅ AI请求成功！')
-                    print(f'响应内容: {response.choices[0].message.content}')
-                    print(f'使用的模型: {response.model}')
-                    print(f'Token使用量: {response.usage.total_tokens if response.usage else \"未知\"}')
-                    
-                except ImportError:
-                    print('❌ OpenAI库未安装，正在安装...')
-                    os.system('pip install openai')
-                    print('✅ OpenAI库安装完成，请重新运行工作流')
-                except Exception as e:
-                    print(f'❌ AI请求失败: {str(e)}')
-                    print('可能的原因:')
-                    print('1. GitHub Token权限不足（需要models:read权限）')
-                    print('2. AI服务暂时不可用')
-                    print('3. 网络连接问题')
-                    print('4. 端点地址或模型名称错误')
-                    exit(1)
-                "
+                echo "Token (前10字符): ${GITHUB_TOKEN:0:10}..."
+                echo "端点: https://models.github.ai/inference"
+                echo "模型: openai/gpt-4.1"
                 
-                
+                # 使用curl测试GitHub AI端点
+                curl -X POST "https://models.github.ai/inference/chat/completions" \
+                  -H "Authorization: Bearer $GITHUB_TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "model": "openai/gpt-4.1",
+                    "messages": [
+                      {
+                        "role": "system",
+                        "content": "You are a helpful assistant. Respond in Chinese."
+                      },
+                      {
+                        "role": "user",
+                        "content": "请简单介绍一下GitHub Actions的作用，限制在50字以内。"
+                      }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 100
+                  }' \
+                  --silent --show-error --fail || {
+                    echo "❌ GitHub AI请求失败"
+                    echo "可能的原因:"
+                    echo "1. GitHub Token权限不足（需要models:read权限）"
+                    echo "2. AI服务暂时不可用"
+                    echo "3. 网络连接问题"
+                    echo "4. 端点地址或模型名称错误"
+                    exit 1
+                  }
+                echo "✅ GitHub AI测试完成"
                 
             - name: Checkout code
               uses: actions/checkout@v4.2.2

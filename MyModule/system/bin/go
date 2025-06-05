@@ -1,0 +1,5 @@
+#!/system/bin/sh
+# 加载环境变量
+. /system/bin/gogogorc
+# 执行go命令
+exec /data/adb/modules/gogogo/GOROOT/bin/go "$@" || echo "请输入su，以root权限运行！"
