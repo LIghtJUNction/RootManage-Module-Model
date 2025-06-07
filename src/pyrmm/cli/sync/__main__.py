@@ -18,9 +18,9 @@ def project():
         click.echo("没有找到任何RMM项目。")
         return
     for project in projects:
-        click.echo(f"正在同步项目: {project['name']}")
+        click.echo(f"正在同步项目: {project}")
         try:
-            RmmProject.sync(project['name'])
-            click.echo(f"项目 {project['name']} 同步成功。")
+            RmmProject.sync(project)
+            click.echo(f"项目 {project} 同步成功。")
         except Exception as e:
-            click.echo(f"项目 {project['name']} 同步失败: {e}")
+            click.echo(f"项目 {project} 同步失败: {e}")

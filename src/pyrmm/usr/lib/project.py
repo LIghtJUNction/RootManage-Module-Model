@@ -141,11 +141,6 @@ class RmmProject(metaclass=RmmProjectMeta):
         if not project_path.exists():
             delattr(cls, project_name)
 
-
-
-
-
-
     @classmethod
     def init_basic(cls, project_path: Path):
         """Initialize a basic RMM project."""
