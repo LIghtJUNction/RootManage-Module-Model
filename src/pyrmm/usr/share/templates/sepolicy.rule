@@ -1,9 +1,0 @@
-# SELinux 策略规则文件
-# 每一行都将被视为一个策略语句
-
-# 示例规则：
-# allow untrusted_app system_file:file read;
-# allow init kernel:system module_load;
-
-# 注意：请确保添加的规则不会破坏系统安全性
-# 建议只添加必要的最小权限

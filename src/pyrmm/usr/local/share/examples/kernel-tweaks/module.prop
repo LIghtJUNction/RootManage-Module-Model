@@ -1,7 +1,0 @@
-id=kernel-tweaks
-name=Kernel Performance Tweaks
-version=v1.2
-versionCode=20241201
-author=KernelSU Community
-description=Advanced kernel parameter tweaks for improved performance and battery life
-updateJson=

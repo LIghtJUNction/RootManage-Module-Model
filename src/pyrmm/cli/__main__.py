@@ -1,6 +1,5 @@
 import click
 from pyrmm.__about__ import __version__
-
 @click.group()
 @click.option('-p', '--profile', help='指定配置文件')
 @click.option('-t' , '--token' , envvar="GITHUB_TOKEN", help='指定GITHUB访问令牌')
@@ -21,14 +20,11 @@ def cli(ctx: click.Context, profile: str, token: str, debug: bool):
     if debug:
         click.echo(f"调试模式已启用，配置文件: {profile}")
 
-
-
 # import sub command groups
 from pyrmm.cli.build import build
 cli.add_command(build)
 """
 构建 模块
-
 """
 
 from pyrmm.cli.init import init
@@ -36,7 +32,6 @@ cli.add_command(init)
 """
 初始化 Pyrmm 模块 项目
 """
-
 
 from pyrmm.cli.sync import sync
 cli.add_command(sync)
@@ -49,7 +44,6 @@ cli.add_command(config)
 """
 配置 Pyrmm 模块 项目
 """
-
 
 if __name__ == '__main__':
     cli()

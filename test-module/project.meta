@@ -1,0 +1,20 @@
+id = "test-module"
+name = "test-module"
+requires_rmm = ">=0.1.0"
+versionCode = "C:\\Users\\light\\Documents\\GitHub\\RootManage-Module-Model\\test-module"
+updateJson = "https://raw.githubusercontent.com/username/test-module/main/update.json"
+readme = "README.MD"
+changelog = "CHANGELOG.MD"
+lecense = "LICENSE"
+[[dependencies]]
+"dep?" = "?version"
+
+[[authors]]
+name = "username"
+email = "email"
+
+[[scripts]]
+build = "rmm build"
+
+[urls]
+github = "https://github.com/username/test-module"

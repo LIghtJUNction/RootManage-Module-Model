@@ -1,6 +1,0 @@
-id=${module_id}
-name=${module_name}
-version=${module_version}
-versionCode=${module_version_code}
-author=${module_author}
-description=${module_description}

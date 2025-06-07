@@ -1,62 +1,33 @@
 from pathlib import Path
 import click
-from typing import Literal
+from pyrmm.usr.lib.project import RmmProject
 
-from pyrmm.config import Config 
-from pyrmm.__about__ import __version__
-from pyrmm.config import RmmProject
+@click.group()
+def init() -> None:
+    """Pyrmm Init Command group"""
+    pass
 
-@click.command()
-@click.argument('rpath', type=str, default='MyModule')
-@click.option('--magisk','-m', "rtype" , flag_value = "magisk" , default=True )
-@click.option('--ksu', '-k' ,'rtype', flag_value='ksu')
-@click.option('--apatch', '-a', 'rtype', flag_value='apu')
-def init(rtype: Literal["magisk","ksu","apu"], rpath: str | Path, name: str | None = None):
-    """Initialize a new RMM project"""
-    rpath = Path(rpath).resolve()
-    
-    try:
-        thisproject = RmmProject(rpath, rtype)
-    except click.Abort:
-        click.echo("Project initialization cancelled.")
-        return
-    
-    rmmconfig = Config()
-    
-    # 检查配置中的默认值并提示用户设置
-    for key in Config.DEFAULTS:
-        if Config.is_default(key):
-            current_value = Config.DEFAULTS[key]
-            click.echo(f"⚠️  {key} is using default value: {current_value}")
-            if click.confirm(f"Do you want to set a custom value for {key}?", default=False):
-                value = click.prompt(f"Enter a value for {key}", type=str, default=current_value)
-                setattr(rmmconfig, key, value)
-    
-    thisproject.new()
-    thisproject.save()
+@init.command()
+@click.option("--yes", "-y", is_flag=True, help="跳过确认提示")
+@click.option("--rpath", "-r", default=".", help="项目路径")
+@click.option("--basic","-b","rtype",flag_value="basic",default=True, help="初始化一个基本的RMM项目")
+@click.option("--lib","-l","rtype",flag_value="library",default=False, help="初始化一个RMM库项目(模块)")
+def module(yes: bool, rpath: str, rtype: str) -> None:
+    """ 初始化RMM模块 """
+    Rpath = Path(rpath).resolve()
+    match rtype:
+        case "basic":
+            RmmProject.init_basic(Rpath)
+        case "library":
+            RmmProject.init_library(Rpath)
+        case _:            click.echo("无效的模块类型。")
 
-    info = f"""
-    RMM Project initialized successfully!
-    Project Path: {thisproject.path}
-    Project Type: {thisproject.rtype}
-    Project ID: {thisproject.id}
-    Config Root: {rmmconfig.rmmroot}
-    Version: {__version__}
-    
-    You can now start working on your RMM project!
-    """
-    
-    click.echo(info)
-    # 创建项目目录结构
-
-    
+    pass 
 
 
-
-
-
-
-
-
+@init.command()
+def ravd():
+    """ 初始化RAVD: RMM ANDROID VIRTUAL DEVICE """
+    click.echo("RAVD 正在开发中...")
 
 
