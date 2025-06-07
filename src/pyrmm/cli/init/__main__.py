@@ -14,7 +14,13 @@ from pyrmm.config import RmmProject
 def init(rtype: Literal["magisk","ksu","apu"], rpath: str | Path, name: str | None = None):
     """Initialize a new RMM project"""
     rpath = Path(rpath).resolve()
-    thisproject = RmmProject(rpath, rtype)
+    
+    try:
+        thisproject = RmmProject(rpath, rtype)
+    except click.Abort:
+        click.echo("Project initialization cancelled.")
+        return
+    
     rmmconfig = Config()
     
     # 检查配置中的默认值并提示用户设置
@@ -41,6 +47,14 @@ def init(rtype: Literal["magisk","ksu","apu"], rpath: str | Path, name: str | No
     """
     
     click.echo(info)
+    # 创建项目目录结构
+
+    
+
+
+
+
+
 
 
 

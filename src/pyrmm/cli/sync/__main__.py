@@ -6,8 +6,8 @@ from pyrmm.config import Config as RmmConfig, RmmProject
 pass_config = click.make_pass_decorator(RmmConfig, ensure=True)
 
 @click.group()
-@pass_config
-def sync(rmmc: RmmConfig):
+@pass_config  
+def sync(rmmc: RmmConfig) -> None:
     """Pyrmm 同步命令组 - 同步和刷新项目配置"""
     pass
 
@@ -176,7 +176,6 @@ def all(rmmc: RmmConfig, path: Path | None, auto: bool, verify_only: bool):
     3. 清理无效配置
     """
     click.echo("🚀 开始完整同步操作...")
-    
     # Step 1: 同步配置
     click.echo("\n📋 步骤 1: 同步配置文件")
     ctx = click.get_current_context()

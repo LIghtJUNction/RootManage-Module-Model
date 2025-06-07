@@ -6,6 +6,17 @@ from pyrmm.__about__ import __version__
 import os
 import toml
 import shutil
+import time
+import re
+import random
+
+try:
+    from github import Github
+    github_available = True
+except ImportError:
+    Github = None
+    github_available = False
+
 
 class Config:
     """
@@ -326,9 +337,12 @@ class RmmProject:
     """
     Configuration class for RMM projects.
     Uses Config to manage project information.
+    其实还能初始化项目结构
     """
     #region RMMP
     
+    _instance: RmmProject | None = None
+
     @staticmethod
     def is_rmmp(rpath: str | Path) -> bool:
         """
@@ -346,13 +360,173 @@ class RmmProject:
             rpath = Path(rpath).resolve()
         if not rpath.exists():
             raise FileNotFoundError(f"Path '{rpath}' does not exist.")
-
         rmmp_projects: list[tuple[str, Path | str]] = []
         for item in rpath.iterdir():
             if item.is_dir() and RmmProject.is_rmmp(item):
                 rmmp_projects.append((item.name, item))
         return rmmp_projects
+    
+    def getVersion(self, version: str | None = None) -> str:
+        """
+        Convert a version code to a version string.
+        If version is None, return the current version.
+        All versions are normalized to v0.1.0-xxx format with unique suffix.
+        Suffix includes GitHub commit info if logged in, or mysterious text otherwise.
+        """
+        
+        def get_github_suffix() -> str:
+            """获取GitHub相关的后缀"""
+            if not github_available or Github is None:
+                return "mystic"
+            
+            try:
+                # 尝试从环境变量获取GitHub token
+                github_token = os.getenv('GITHUB_TOKEN')
+                if not github_token:
+                    return "enigma"
+                
+                # 创建GitHub实例
+                g = Github(github_token)
+                
+                # 获取当前用户信息
+                user = g.get_user()
+                username = user.login[:8]  # 取用户名前8位
+                
+                # 获取用户的仓库信息
+                try:
+                    repos = list(user.get_repos(type='owner', sort='updated'))
+                    if repos:
+                        # 获取最新更新的仓库的最新提交
+                        latest_repo = repos[0]
+                        commits = list(latest_repo.get_commits())
+                        if commits:
+                            commit_sha = commits[0].sha[:7]
+                            return f"{username}_{commit_sha}"
+                except:
+                    pass
+                
+                return f"{username}_gh"
+                
+            except Exception:                # 如果GitHub API调用失败，返回神秘文本
+                mysterious_texts = [
+                    "shadow", "cipher", "phantom", "mystic", "arcane", 
+                    "stellar", "cosmic", "nexus", "vortex", "quantum"
+                ]
+                return random.choice(mysterious_texts)
+        
+        if version is None:
+            # 生成带特殊后缀的默认版本
+            timestamp = int(time.time() * 1000) % 10000  # 4位时间戳
+            github_suffix = get_github_suffix()
+            return f"v0.1.0-{github_suffix}_{timestamp}"
+          # 移除 'v' 前缀（如果存在）
+        clean_version = version.lstrip('v')
+        
+        # 使用正则表达式解析版本号
+        # 匹配格式：主版本.次版本.修订版本[-预发布标识符]
+        version_pattern = r'^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$'
+        match = re.match(version_pattern, clean_version)
+        
+        if match:
+            # 如果是标准版本格式，保留原有的预发布标识符
+            _, _, _, prerelease = match.groups()
+            base_suffix = prerelease if prerelease else ""
+        else:
+            # 如果不是标准格式，将整个字符串作为后缀
+            base_suffix = clean_version.replace('.', '_').replace('-', '_')
+        
+        # 生成唯一后缀：结合GitHub信息、原后缀、时间戳和随机数
+        timestamp = int(time.time() * 1000) % 10000  # 4位时间戳
+        random_num = random.randint(100, 999)  # 3位随机数
+        
+        # 获取GitHub或神秘文本后缀
+        special_suffix = get_github_suffix()
+        if base_suffix:
+            unique_suffix = f"{base_suffix}_{special_suffix}_{timestamp}_{random_num}"
+        else:
+            unique_suffix = f"{special_suffix}_{timestamp}_{random_num}"
+        
+        return f"v0.1.0-{unique_suffix}"
+    
+    def getVersionCode(self, version: str) -> int:
+        """
+        Convert a version string to a version code.
+        Returns an 8-digit version code with format: MMNNPPXXX
+        MM = major version (00-99)
+        NN = minor version (00-99)
+        PP = patch version (00-99)
+        XXX = sequence number (000-999)
+        """
+        # 移除 'v' 前缀（如果存在）
+        clean_version = version.lstrip('v')
+        
+        # 使用正则表达式解析版本号
+        version_pattern = r'^(\d+)\.(\d+)\.(\d+)'
+        match = re.match(version_pattern, clean_version)
+        
+        if match:
+            major, minor, patch = match.groups()
+            # 限制版本号范围以确保适合8位数字格式
+            major = min(int(major), 99)
+            minor = min(int(minor), 99)
+            patch = min(int(patch), 99)
+        else:
+            # 如果无法解析，使用默认版本号
+            major, minor, patch = 1, 0, 0
+        
+        # 生成序列号（基于时间戳的最后3位，000-999）
+        sequence = int(time.time() * 1000) % 1000
+        
+        # 生成8位版本代码：MMNNPPXXX
+        # 格式：主版本(2位) + 次版本(2位) + 修订版本(2位) + 序列号(3位) = 9位
+        # 为了确保8位，我们调整格式为：MM + NN + PP + XX (序列号取前2位)
+        # 或者使用 MMNNPPXX 格式，序列号使用2位（00-99）
+        sequence_2digit = sequence % 100  # 限制为2位（00-99）
+        
+        # 生成8位版本代码：MMNNPPXX
+        version_code = major * 1000000 + minor * 10000 + patch * 100 + sequence_2digit
+          # 确保是8位数字（范围：10000000-99999999）
+        if version_code < 10000000:
+            version_code += 10000000
+        elif version_code > 99999999:
+            version_code = version_code % 100000000
+            if version_code < 10000000:
+                version_code += 10000000
+            
+        return version_code
 
+    def getDescription(self) -> str:
+        """
+        Get the project description.
+        """
+        return self.description if hasattr(self, 'description') else "Add description for your rmmproject here."
+
+    def getAuthor(self) -> str:
+        """
+        把项目的Authors 拼接为一个字符串
+        """
+        if hasattr(self, 'authors') and len(self.authors) > 1 :
+            return '& '.join(author.get('name', 'Unknown') for author in self.authors)
+        else:
+            if hasattr(self, 'authors') and self.authors:
+                return self.authors[0].get('name', 'Unknown Author')
+            return "Unknown Author"
+    
+
+    def getUpdateJson(self) -> str:
+        """
+        获取updateJson文件下载地址
+        http://raw.githubusercontent.com/username/repo/update.json 静态，因此可以自己改
+        """
+        if hasattr(self, 'updateJson') and self.updateJson:
+            return str(self.updateJson)
+        return ""
+
+
+
+
+
+    #region RMMP Project Management
 
     @staticmethod
     def sync(scan_path: str | Path | None = None) -> dict[str, str]:
@@ -455,11 +629,13 @@ class RmmProject:
             self._rpath = Path(rpath).resolve()
         else:
             self._rpath = Path(rpath).resolve()
-            
-        # 检查目录是否不为空（修复逻辑错误）
+              # 检查目录是否不为空（修复逻辑错误）
         if self._rpath.exists() and any(self._rpath.iterdir()):
             if click.confirm(f"The directory '{self._rpath}' is not empty. Do you want to continue?", default=True):
                 click.echo(f"Continuing with the existing directory: {self._rpath}")
+            else:
+                click.echo("Project initialization cancelled by user.")
+                raise click.Abort("Directory is not empty and user chose not to continue.")
 
         # 使用 object.__setattr__ 直接设置属性，避免触发 __getattr__
         object.__setattr__(self, 'id', self._rpath.name)
@@ -522,27 +698,51 @@ class RmmProject:
             # 手动保存配置，因为字典内容修改不会触发 __setattr__
             self._config.projects["last"] = self.id  # 设置最后使用的项目
             self._config.save()
-            
-            # 确保项目目录存在
+              # 确保项目目录存在
             self._rpath.mkdir(parents=True, exist_ok=True)
 
             # 设置项目根路径
             object.__setattr__(self, '_rmmproot', self._rpath)
-
+            
+            self.version = self.getVersion()  # 初始版本号
+            self.versionCode = self.getVersionCode(self.version)  # 获取版本代码
             self.requires_rmm = f">{__version__}"
-            self.description = f"Add description for project {self.id} here."            
+            self.description = f"Add description for project {self.id} here."
+            
             self.authors = [
                 {
                     "name": self._config.username if hasattr(self._config, 'username') else "Your Name",
                     "email": self._config.email if hasattr(self._config, 'email') else "Your Email",               
                 }
             ]
+            self.updateJson = "https://raw.githubusercontent.com/username/repo/update.json"  # 静态地址，用户可以修改
             self.license = "license"  # 文件名
             self.readme = "README.MD"  # 文件名
             self.changelog = "CHANGELOG.MD"
             self.dependencies: list[str] = []  # 依赖列表
             self.scripts: list[str] = []  # 脚本列表
             self.save()  # 保存配置
+
+            # 新建项目结构
+            rmodule_prop : Path = self._rpath / 'module.prop'
+            rmodule_prop.touch(exist_ok=True)  # 创建 module.prop 文件
+
+            rmodule_prop_content = {
+                "id": self.id,
+                "name": self.id,
+                "version":self.version, # 初始版本号
+                "versionCode": self.getVersionCode(self.version), 
+                "author": self.getAuthor(),
+                "description": self.getDescription(),
+                "updateJson": self.getUpdateJson(),
+            }
+            with open(rmodule_prop, 'w', encoding='utf-8') as f:
+                toml.dump(rmodule_prop_content, f)
+            
+            # 创建重要标记文件
+            rmm_version: Path = self._rpath / '.rmm_version'
+            rmm_version.touch(exist_ok=True)
+            rmm_version.write_text(__version__, encoding='utf-8')
 
     def load(self, rpath: str | Path | None = None):
         #region 加载项目
@@ -686,4 +886,3 @@ class RmmProject:
         click.echo(f"Project '{name}' has been deleted from configuration.")
         click.echo("Synchronizing project configuration with file system...")
         RmmProject.sync()
-
