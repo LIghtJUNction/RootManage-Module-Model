@@ -1,0 +1,265 @@
+#!/bin/bash
+# KernelSU Module Deployment Tool
+# 用于快速部署模块到设备
+
+set -euo pipefail
+
+VERSION="1.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+USR_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+
+# 默认配置
+DEFAULT_ADB_PATH="adb"
+DEFAULT_TEMP_PATH="/data/local/tmp"
+DEFAULT_MODULE_PATH="/data/adb/modules"
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+show_help() {
+    cat << EOF
+KernelSU Module Deployment Tool v${VERSION}
+
+Usage: $(basename "$0") [options] <module.zip>
+
+Options:
+    -h, --help          显示此帮助信息
+    -d, --device DEVICE 指定设备ID (adb devices)
+    -a, --adb PATH      指定ADB路径 (默认: adb)
+    -t, --temp PATH     设备临时目录 (默认: /data/local/tmp)
+    -m, --modules PATH  模块安装目录 (默认: /data/adb/modules)
+    -r, --reboot        安装后重启设备
+    -f, --force         强制覆盖已存在的模块
+    -v, --verbose       详细输出
+
+Examples:
+    $(basename "$0") mymodule.zip
+    $(basename "$0") -d device_id -r mymodule.zip
+    $(basename "$0") --adb /path/to/adb --force mymodule.zip
+EOF
+}
+
+log() {
+    echo -e "${GREEN}[INFO]${NC} $*"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $*"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $*"
+    exit 1
+}
+
+debug() {
+    if [[ "${VERBOSE:-}" == "true" ]]; then
+        echo -e "${BLUE}[DEBUG]${NC} $*"
+    fi
+}
+
+check_dependencies() {
+    if ! command -v "${ADB_PATH}" &> /dev/null; then
+        error "ADB not found at: ${ADB_PATH}"
+    fi
+    
+    if ! "${ADB_PATH}" devices | grep -q "device$"; then
+        error "No Android device connected or authorized"
+    fi
+}
+
+check_root() {
+    local device_arg=""
+    if [[ -n "${DEVICE_ID:-}" ]]; then
+        device_arg="-s ${DEVICE_ID}"
+    fi
+    
+    if ! "${ADB_PATH}" ${device_arg} shell "su -c 'id'" 2>/dev/null | grep -q "uid=0"; then
+        error "Root access not available on device"
+    fi
+}
+
+check_kernelsu() {
+    local device_arg=""
+    if [[ -n "${DEVICE_ID:-}" ]]; then
+        device_arg="-s ${DEVICE_ID}"
+    fi
+    
+    if ! "${ADB_PATH}" ${device_arg} shell "ls /data/adb/ksu" &>/dev/null; then
+        error "KernelSU not found on device"
+    fi
+}
+
+extract_module_info() {
+    local module_zip="$1"
+    
+    if ! command -v unzip &> /dev/null; then
+        error "unzip command not found"
+    fi
+    
+    # 提取module.prop
+    if ! unzip -p "$module_zip" module.prop > /tmp/module.prop 2>/dev/null; then
+        error "Cannot extract module.prop from $module_zip"
+    fi
+    
+    # 读取模块信息
+    MODULE_ID=$(grep "^id=" /tmp/module.prop | cut -d'=' -f2)
+    MODULE_NAME=$(grep "^name=" /tmp/module.prop | cut -d'=' -f2)
+    MODULE_VERSION=$(grep "^version=" /tmp/module.prop | cut -d'=' -f2)
+    
+    if [[ -z "$MODULE_ID" ]]; then
+        error "Module ID not found in module.prop"
+    fi
+    
+    debug "Module ID: $MODULE_ID"
+    debug "Module Name: $MODULE_NAME"
+    debug "Module Version: $MODULE_VERSION"
+    
+    rm -f /tmp/module.prop
+}
+
+check_existing_module() {
+    local device_arg=""
+    if [[ -n "${DEVICE_ID:-}" ]]; then
+        device_arg="-s ${DEVICE_ID}"
+    fi
+    
+    if "${ADB_PATH}" ${device_arg} shell "su -c 'test -d ${MODULE_PATH}/${MODULE_ID}'" 2>/dev/null; then
+        if [[ "${FORCE:-}" != "true" ]]; then
+            warn "Module ${MODULE_ID} already exists"
+            read -p "Continue anyway? [y/N]: " -r
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log "Deployment cancelled"
+                exit 0
+            fi
+        fi
+    fi
+}
+
+deploy_module() {
+    local module_zip="$1"
+    local device_arg=""
+    if [[ -n "${DEVICE_ID:-}" ]]; then
+        device_arg="-s ${DEVICE_ID}"
+    fi
+    
+    local remote_zip="${TEMP_PATH}/$(basename "$module_zip")"
+    
+    log "Uploading module to device..."
+    "${ADB_PATH}" ${device_arg} push "$module_zip" "$remote_zip"
+    
+    log "Installing module..."
+    "${ADB_PATH}" ${device_arg} shell "su -c 'cd ${TEMP_PATH} && unzip -o $(basename "$module_zip") -d ${MODULE_ID}_tmp'"
+    
+    log "Moving module to modules directory..."
+    "${ADB_PATH}" ${device_arg} shell "su -c 'rm -rf ${MODULE_PATH}/${MODULE_ID}'"
+    "${ADB_PATH}" ${device_arg} shell "su -c 'mv ${TEMP_PATH}/${MODULE_ID}_tmp ${MODULE_PATH}/${MODULE_ID}'"
+    
+    log "Setting permissions..."
+    "${ADB_PATH}" ${device_arg} shell "su -c 'chown -R root:root ${MODULE_PATH}/${MODULE_ID}'"
+    "${ADB_PATH}" ${device_arg} shell "su -c 'chmod -R 755 ${MODULE_PATH}/${MODULE_ID}'"
+    
+    # 清理临时文件
+    "${ADB_PATH}" ${device_arg} shell "su -c 'rm -f $remote_zip'"
+    
+    log "Module ${MODULE_ID} deployed successfully"
+    
+    if [[ "${REBOOT:-}" == "true" ]]; then
+        log "Rebooting device..."
+        "${ADB_PATH}" ${device_arg} reboot
+    else
+        warn "Reboot required for module to take effect"
+    fi
+}
+
+main() {
+    local module_zip=""
+    
+    # 默认值
+    ADB_PATH="$DEFAULT_ADB_PATH"
+    TEMP_PATH="$DEFAULT_TEMP_PATH"
+    MODULE_PATH="$DEFAULT_MODULE_PATH"
+    
+    # 解析命令行参数
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -d|--device)
+                DEVICE_ID="$2"
+                shift 2
+                ;;
+            -a|--adb)
+                ADB_PATH="$2"
+                shift 2
+                ;;
+            -t|--temp)
+                TEMP_PATH="$2"
+                shift 2
+                ;;
+            -m|--modules)
+                MODULE_PATH="$2"
+                shift 2
+                ;;
+            -r|--reboot)
+                REBOOT="true"
+                shift
+                ;;
+            -f|--force)
+                FORCE="true"
+                shift
+                ;;
+            -v|--verbose)
+                VERBOSE="true"
+                shift
+                ;;
+            -*)
+                error "Unknown option: $1"
+                ;;
+            *)
+                if [[ -z "$module_zip" ]]; then
+                    module_zip="$1"
+                else
+                    error "Multiple module files specified"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    if [[ -z "$module_zip" ]]; then
+        error "No module file specified"
+    fi
+    
+    if [[ ! -f "$module_zip" ]]; then
+        error "Module file not found: $module_zip"
+    fi
+    
+    log "Checking dependencies..."
+    check_dependencies
+    
+    log "Checking device root access..."
+    check_root
+    
+    log "Checking KernelSU installation..."
+    check_kernelsu
+    
+    log "Extracting module information..."
+    extract_module_info "$module_zip"
+    
+    log "Checking for existing module..."
+    check_existing_module
+    
+    log "Deploying module ${MODULE_ID}..."
+    deploy_module "$module_zip"
+    
+    log "Deployment completed successfully!"
+}
+
+main "$@"

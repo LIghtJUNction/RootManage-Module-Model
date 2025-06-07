@@ -1,0 +1,125 @@
+.\" Manual page for module-builder
+.TH MODULE-BUILDER 1 "2024-01-01" "RootManage-Module-Model" "KernelSU Module Tools"
+.SH NAME
+module-builder \- KernelSU模块构建工具
+.SH SYNOPSIS
+.B module-builder
+[\fIOPTION\fR]... [\fIMODULE_ID\fR]
+.SH DESCRIPTION
+.B module-builder
+是一个高级的KernelSU模块构建工具，支持从模板创建、配置管理到完整模块生成的全流程开发。
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+显示帮助信息并退出
+.TP
+.BR \-v ", " \-\-version
+显示版本信息并退出
+.TP
+.BR \-q ", " \-\-quiet
+安静模式，减少输出信息
+.TP
+.BR \-d ", " \-\-debug
+启用调试模式，显示详细构建信息
+.TP
+.BR \-\-dry\-run
+仅模拟构建，不创建实际文件
+.TP
+.BR \-t ", " \-\-template " \fITEMPLATE\fR"
+指定模块模板 (basic|systemless|webui|service|replacement|modification|addon)
+.TP
+.BR \-o ", " \-\-output " \fIDIRECTORY\fR"
+指定输出目录 (默认: ./build)
+.TP
+.BR \-n ", " \-\-name " \fINAME\fR"
+设置模块显示名称
+.TP
+.BR \-a ", " \-\-author " \fIAUTHOR\fR"
+设置模块作者
+.TP
+.BR \-V ", " \-\-module\-version " \fIVERSION\fR"
+设置模块版本
+.TP
+.BR \-c ", " \-\-version\-code " \fICODE\fR"
+设置模块版本代码
+.TP
+.BR \-D ", " \-\-description " \fIDESC\fR"
+设置模块描述
+.TP
+.BR \-\-min\-api " \fILEVEL\fR"
+设置最低API级别 (默认: 21)
+.TP
+.BR \-\-max\-api " \fILEVEL\fR"
+设置最高API级别 (默认: 34)
+.TP
+.BR \-\-arch " \fIARCH\fR"
+指定目标架构 (arm|arm64|x86|x86_64|all)
+.TP
+.BR \-\-enable\-webui
+启用WebUI功能
+.TP
+.BR \-\-webui\-port " \fIPORT\fR"
+设置WebUI端口 (默认: 8080)
+.TP
+.BR \-\-enable\-service
+启用服务模式
+.TP
+.BR \-\-systemless
+创建无系统修改模块
+.TP
+.BR \-\-config " \fIFILE\fR"
+使用指定的配置文件
+.TP
+.BR \-\-validate
+构建后自动验证模块
+.TP
+.BR \-\-package
+构建后自动打包模块
+
+.SH EXAMPLES
+.TP
+创建基本模块：
+.B module-builder my_module --template basic --name "My Module" --author "Developer"
+.TP
+创建带WebUI的模块：
+.B module-builder webui_module --template webui --enable-webui --webui-port 8080
+.TP
+创建系统无关模块：
+.B module-builder systemless_mod --template systemless --systemless --min-api 28
+.TP
+使用配置文件构建：
+.B module-builder --config module.conf --validate --package
+
+.SH FILES
+.TP
+.I /usr/etc/module-builder.conf
+默认配置文件
+.TP
+.I ~/.module-builder.conf
+用户配置文件
+.TP
+.I /usr/share/templates/
+模板文件目录
+
+.SH EXIT STATUS
+.TP
+.B 0
+构建成功
+.TP
+.B 1
+构建失败或错误
+.TP
+.B 2
+无效的参数或配置
+
+.SH SEE ALSO
+.BR ksm-test (1),
+.BR module-packager (1),
+.BR module-validator (1)
+
+.SH AUTHOR
+RootManage-Module-Model Project
+
+.SH BUGS
+报告错误请访问: https://github.com/lightrek/RootManage-Module-Model/issues

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${module_name} - 控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 90%;
+            margin: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .status-card {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #4CAF50;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        }
+        
+        .logs {
+            background: #2d3748;
+            color: #a0aec0;
+            padding: 1rem;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .info-item {
+            background: #f1f3f4;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .info-item strong {
+            color: #333;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>${module_name}</h1>
+            <p>版本 ${module_version} | 作者: ${module_author}</p>
+        </div>
+        
+        <div class="status-card">
+            <h2>🟢 模块运行正常</h2>
+            <p>所有功能已就绪</p>
+        </div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>🔧 功能开关</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                    <span>主功能</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="mainFeature" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+                    <span>调试模式</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="debugMode">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="feature-card">
+                <h3>⚙️ 高级设置</h3>
+                <div style="margin: 10px 0;">
+                    <label for="logLevel">日志级别:</label>
+                    <select id="logLevel" style="width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ddd;">
+                        <option value="error">错误</option>
+                        <option value="warn">警告</option>
+                        <option value="info" selected>信息</option>
+                        <option value="debug">调试</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="saveSettings()">保存设置</button>
+            </div>
+            
+            <div class="feature-card">
+                <h3>🔄 模块控制</h3>
+                <button class="btn" onclick="restartModule()">重启模块</button>
+                <button class="btn" onclick="showLogs()">查看日志</button>
+                <button class="btn btn-danger" onclick="confirmReset()">重置配置</button>
+            </div>
+        </div>
+        
+        <div id="logsContainer" class="logs" style="display: none;">
+            <div id="logsContent">加载日志中...</div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <strong>模块ID</strong>
+                <span>${module_id}</span>
+            </div>
+            <div class="info-item">
+                <strong>版本代码</strong>
+                <span>${module_version_code}</span>
+            </div>
+            <div class="info-item">
+                <strong>安装时间</strong>
+                <span id="installTime">-</span>
+            </div>
+            <div class="info-item">
+                <strong>运行时间</strong>
+                <span id="uptime">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟API调用的函数
+        function callAPI(endpoint, data = {}) {
+            // 在实际模块中，这里应该调用KernelSU的WebUI API
+            console.log(`API调用: ${endpoint}`, data);
+            return new Promise((resolve) => {
+                setTimeout(() => resolve({ success: true }), 500);
+            });
+        }
+        
+        // 保存设置
+        function saveSettings() {
+            const mainFeature = document.getElementById('mainFeature').checked;
+            const debugMode = document.getElementById('debugMode').checked;
+            const logLevel = document.getElementById('logLevel').value;
+            
+            const settings = {
+                mainFeature,
+                debugMode,
+                logLevel
+            };
+            
+            callAPI('/save-settings', settings).then(() => {
+                alert('设置已保存！');
+            });
+        }
+        
+        // 重启模块
+        function restartModule() {
+            if (confirm('确定要重启模块吗？')) {
+                callAPI('/restart').then(() => {
+                    alert('模块重启成功！');
+                });
+            }
+        }
+        
+        // 显示日志
+        function showLogs() {
+            const logsContainer = document.getElementById('logsContainer');
+            const logsContent = document.getElementById('logsContent');
+            
+            if (logsContainer.style.display === 'none') {
+                logsContainer.style.display = 'block';
+                // 模拟获取日志
+                logsContent.innerHTML = `
+[INFO] ${new Date().toLocaleString()} 模块启动成功<br>
+[INFO] ${new Date().toLocaleString()} 功能初始化完成<br>
+[DEBUG] ${new Date().toLocaleString()} 系统状态检查通过<br>
+[INFO] ${new Date().toLocaleString()} WebUI服务启动<br>
+                `.trim();
+            } else {
+                logsContainer.style.display = 'none';
+            }
+        }
+        
+        // 重置配置确认
+        function confirmReset() {
+            if (confirm('确定要重置所有配置吗？此操作不可撤销！')) {
+                callAPI('/reset').then(() => {
+                    alert('配置已重置！');
+                    location.reload();
+                });
+            }
+        }
+        
+        // 更新运行时间
+        function updateUptime() {
+            const startTime = new Date(Date.now() - Math.random() * 86400000); // 模拟启动时间
+            const uptime = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            document.getElementById('uptime').textContent = `${hours}小时${minutes}分钟`;
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置安装时间（模拟）
+            document.getElementById('installTime').textContent = new Date().toLocaleDateString();
+            
+            // 更新运行时间
+            updateUptime();
+            setInterval(updateUptime, 60000); // 每分钟更新一次
+            
+            // 从API加载设置（模拟）
+            callAPI('/get-settings').then((response) => {
+                // 模拟加载设置
+                console.log('设置已加载');
+            });
+        });
+    </script>
+</body>
+</html>

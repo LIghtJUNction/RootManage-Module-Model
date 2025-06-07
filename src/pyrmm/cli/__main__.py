@@ -21,8 +21,6 @@ def cli(ctx: click.Context, profile: str, token: str, debug: bool):
     if debug:
         click.echo(f"调试模式已启用，配置文件: {profile}")
 
-    click.echo("(功能尚未实现)")
-
 
 
 # import sub command groups
@@ -51,9 +49,6 @@ cli.add_command(config)
 """
 配置 Pyrmm 模块 项目
 """
-
-
-
 
 
 if __name__ == '__main__':

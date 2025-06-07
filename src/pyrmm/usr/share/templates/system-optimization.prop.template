@@ -1,0 +1,70 @@
+# KernelSU模块专用模板 - 系统优化
+# System Optimization Module Template
+
+# 模块基本信息
+id=${MODULE_ID}
+name=${MODULE_NAME}
+version=${MODULE_VERSION}
+versionCode=${MODULE_VERSION_CODE}
+author=${MODULE_AUTHOR}
+description=${MODULE_DESCRIPTION}
+
+# 系统优化模块特定属性
+minApi=21
+maxApi=34
+minKernelSU=10940
+
+# 性能优化功能
+cpu_governor_optimization=true
+memory_management=true
+io_scheduler_optimization=true
+kernel_tweaks=true
+thermal_management=true
+
+# CPU调度优化
+cpu_boost=true
+interactive_governor=true
+performance_profiles=true
+core_control=true
+
+# 内存管理优化
+lowmemory_killer=true
+swap_optimization=true
+zram_optimization=true
+memory_compression=true
+
+# 存储优化
+f2fs_optimization=true
+ext4_optimization=true
+io_priority=true
+read_ahead_optimization=true
+
+# 网络优化
+tcp_congestion_control=true
+dns_optimization=true
+network_buffer_optimization=true
+
+# 图形优化
+gpu_frequency_scaling=true
+composition_optimization=true
+vsync_optimization=true
+
+# 系统属性修改
+build_prop_tweaks=true
+prop_substitution=true
+
+# WebUI配置 (性能监控界面)
+webui=true
+webui_port=8080
+webui_title="System Performance Monitor"
+webui_theme=performance
+
+# 模块行为
+auto_mount=true
+boot_stage=post-fs-data
+late_start=true
+systemless=true
+
+# 兼容性设置
+magisk_compatible=true
+custom_recovery_compatible=true

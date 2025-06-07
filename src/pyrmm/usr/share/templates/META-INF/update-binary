@@ -1,0 +1,150 @@
+#!/sbin/sh
+
+# KernelSU/Magisk Module Update Binary
+# by topjohnwu, modified for KernelSU compatibility
+
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null
+
+# Load utility functions
+[ -f /data/adb/magisk/util_functions.sh ] && . /data/adb/magisk/util_functions.sh
+[ -f /data/adb/ksu/util_functions.sh ] && . /data/adb/ksu/util_functions.sh
+
+# Default permissions
+umask 022
+
+# Global vars
+TMPDIR=/dev/tmp
+PERSISTDIR=/sbin/.magisk/mirror/persist
+
+rm -rf $TMPDIR 2>/dev/null
+mkdir -p $TMPDIR
+
+# echo before loading util_functions
+ui_print() {
+  echo "$1"
+}
+
+require_new_magisk() {
+  ui_print "*******************************"
+  ui_print " Please install Magisk v20.4+! "
+  ui_print "*******************************"
+  exit 1
+}
+
+##########################################################################################
+# Environment
+##########################################################################################
+
+OUTFD=$2
+ZIPFILE=$3
+
+mount /data 2>/dev/null
+
+# Load utility functions
+[ -f /data/adb/magisk/util_functions.sh ] && . /data/adb/magisk/util_functions.sh
+[ -f /data/adb/ksu/util_functions.sh ] && . /data/adb/ksu/util_functions.sh
+
+[ ! -f $TMPDIR/util_functions.sh ] && require_new_magisk
+. $TMPDIR/util_functions.sh
+[ $MAGISK_VER_CODE -gt 18100 ] || require_new_magisk
+
+# Preperation for flashable zips
+setup_flashable
+
+# Mount partitions
+mount_partitions
+
+# Detect version and architecture
+api_level_arch_detect
+
+# Setup busybox and binaries
+$BOOTMODE && boot_actions || recovery_actions
+
+##########################################################################################
+# Preparation
+##########################################################################################
+
+# Extract prop file
+unzip -o "$ZIPFILE" module.prop -d $TMPDIR >&2
+[ ! -f $TMPDIR/module.prop ] && abort "! Unable to extract zip file!"
+
+$BOOTMODE && MODDIRNAME=modules_update || MODDIRNAME=modules
+MODULEROOT=$NVBASE/$MODDIRNAME
+MODID=`grep_prop id $TMPDIR/module.prop`
+MODPATH=$MODULEROOT/$MODID
+MODNAME=`grep_prop name $TMPDIR/module.prop`
+
+# Create mod paths
+rm -rf $MODPATH 2>/dev/null
+mkdir -p $MODPATH
+
+##########################################################################################
+# Install
+##########################################################################################
+
+# Extract files
+ui_print "- Extracting module files"
+unzip -o "$ZIPFILE" -x 'META-INF/*' -d $MODPATH >&2
+
+# Default permissions
+set_perm_recursive $MODPATH 0 0 0755 0644
+
+# Load customization script
+[ -f $MODPATH/customize.sh ] && . $MODPATH/customize.sh
+
+# Handle replace folders
+for TARGET in $REPLACE; do
+  ui_print "- Replace target: $TARGET"
+  mktouch $MODPATH$TARGET/.replace
+done
+
+# Handle remove folders  
+for TARGET in $REMOVE; do
+  ui_print "- Remove target: $TARGET"
+  rm -rf $MODPATH$TARGET 2>/dev/null
+  mkdir -p $MODPATH$TARGET
+  mktouch $MODPATH$TARGET/.replace
+done
+
+# Auto Mount
+if $AUTOMOUNT; then
+  ui_print "- Setting auto mount"
+  touch $MODPATH/auto_mount
+fi
+
+# prop file
+if $PROPFILE; then
+  ui_print "- Setting system props"
+  cp -af $MODPATH/system.prop $MODPATH/system.prop.bak 2>/dev/null
+fi
+
+# Module info
+cp -af $MODPATH/module.prop $MODPATH/module.prop.bak
+if $BOOTMODE; then
+  # Update info for Magisk Manager
+  mktouch $NVBASE/modules/$MODID/update
+  cp -af $MODPATH/module.prop $NVBASE/modules/$MODID/module.prop
+fi
+
+# post-fs-data scripts
+$POSTFSDATA && cp -af $MODPATH/post-fs-data.sh $MODPATH/post-fs-data.sh.bak 2>/dev/null
+
+# service scripts
+$LATESTARTSERVICE && cp -af $MODPATH/service.sh $MODPATH/service.sh.bak 2>/dev/null
+
+ui_print "- Setting permissions"
+set_permissions
+
+##########################################################################################
+# Finalizing
+##########################################################################################
+
+cd /
+$BOOTMODE || recovery_cleanup
+rm -rf $TMPDIR
+
+ui_print "- Done"
+exit 0

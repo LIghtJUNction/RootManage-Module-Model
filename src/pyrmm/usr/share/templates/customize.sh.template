@@ -1,0 +1,128 @@
+# ${module_name} 自定义安装脚本
+# 在模块安装过程中执行的定制化逻辑
+
+# 检查设备兼容性
+check_compatibility() {
+    ui_print "- 检查设备兼容性..."
+    
+    # 检查Android版本
+    if [ "$API" -lt 21 ]; then
+        abort "! 此模块需要Android 5.0 (API 21)或更高版本"
+    fi
+    
+    # 检查架构
+    case "$ARCH" in
+        arm|arm64|x86|x64)
+            ui_print "- 支持的架构: $ARCH"
+            ;;
+        *)
+            abort "! 不支持的架构: $ARCH"
+            ;;
+    esac
+    
+    ui_print "- 设备兼容性检查通过"
+}
+
+# 根据架构选择文件
+select_arch_files() {
+    ui_print "- 根据架构选择文件..."
+    
+    # 创建架构特定的目录
+    mkdir -p $MODPATH/system/bin
+    mkdir -p $MODPATH/system/lib
+    
+    case "$ARCH" in
+        arm64)
+            # 复制ARM64文件
+            if [ -f "$TMPDIR/libs/arm64-v8a/libnative.so" ]; then
+                cp "$TMPDIR/libs/arm64-v8a/libnative.so" "$MODPATH/system/lib64/"
+            fi
+            ;;
+        arm)
+            # 复制ARM文件
+            if [ -f "$TMPDIR/libs/armeabi-v7a/libnative.so" ]; then
+                cp "$TMPDIR/libs/armeabi-v7a/libnative.so" "$MODPATH/system/lib/"
+            fi
+            ;;
+        x64)
+            # 复制X86_64文件
+            if [ -f "$TMPDIR/libs/x86_64/libnative.so" ]; then
+                cp "$TMPDIR/libs/x86_64/libnative.so" "$MODPATH/system/lib64/"
+            fi
+            ;;
+        x86)
+            # 复制X86文件
+            if [ -f "$TMPDIR/libs/x86/libnative.so" ]; then
+                cp "$TMPDIR/libs/x86/libnative.so" "$MODPATH/system/lib/"
+            fi
+            ;;
+    esac
+}
+
+# 设置权限
+set_permissions() {
+    ui_print "- 设置权限..."
+    
+    # 设置脚本权限
+    set_perm_recursive $MODPATH 0 0 0755 0644
+    set_perm $MODPATH/service.sh 0 0 0755
+    set_perm $MODPATH/post-fs-data.sh 0 0 0755
+    set_perm $MODPATH/boot-completed.sh 0 0 0755
+    set_perm $MODPATH/uninstall.sh 0 0 0755
+    
+    # 设置二进制文件权限
+    if [ -d "$MODPATH/system/bin" ]; then
+        set_perm_recursive $MODPATH/system/bin 0 2000 0755 0755
+    fi
+    
+    # 设置库文件权限
+    if [ -d "$MODPATH/system/lib" ]; then
+        set_perm_recursive $MODPATH/system/lib 0 0 0755 0644
+    fi
+    
+    if [ -d "$MODPATH/system/lib64" ]; then
+        set_perm_recursive $MODPATH/system/lib64 0 0 0755 0644
+    fi
+}
+
+# 创建配置文件
+create_config() {
+    ui_print "- 创建配置文件..."
+    
+    # 创建模块配置目录
+    mkdir -p /data/misc/${module_id}
+    
+    # 写入默认配置
+    cat > /data/misc/${module_id}/config.ini << EOF
+[general]
+enabled=true
+debug=false
+version=${module_version}
+
+[features]
+feature1=true
+feature2=false
+
+[advanced]
+log_level=info
+EOF
+    
+    # 设置配置文件权限
+    chmod 644 /data/misc/${module_id}/config.ini
+}
+
+# 主安装流程
+ui_print "******************************"
+ui_print " ${module_name}"
+ui_print " 版本: ${module_version}"
+ui_print " 作者: ${module_author}"
+ui_print "******************************"
+
+# 执行安装步骤
+check_compatibility
+select_arch_files
+set_permissions
+create_config
+
+ui_print "- 安装完成！"
+ui_print "- 重启后生效"

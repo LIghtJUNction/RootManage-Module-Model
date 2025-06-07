@@ -1,0 +1,23 @@
+# 基础KernelSU模块示例
+# Basic KernelSU Module Example
+
+id=basic_example
+name=Basic Module Example
+version=v1.0.0
+versionCode=1
+author=RootManage-Module-Model
+description=A basic example module demonstrating KernelSU module structure
+
+# 模块基本设置
+minApi=21
+maxApi=34
+minKernelSU=10940
+
+# 模块功能
+updateJson=https://example.com/update.json
+support=https://github.com/lightrek/RootManage-Module-Model
+donate=https://example.com/donate
+
+# 模块行为
+auto_mount=true
+systemless=true

@@ -1,0 +1,18 @@
+id=simple_tweaks
+name=Simple System Tweaks
+version=v1.0.0
+versionCode=1
+author=KernelSU Team
+description=A simple example module that applies basic system performance, battery, and stability tweaks. This module demonstrates best practices for KernelSU module development.
+
+# 模块要求
+# Module requirements
+minApi=21
+maxApi=34
+minKernelSU=10940
+
+# 模块标志
+# Module flags
+updateJson=https://example.com/simple-tweaks/update.json
+support=https://example.com/simple-tweaks/support
+donate=https://example.com/simple-tweaks/donate

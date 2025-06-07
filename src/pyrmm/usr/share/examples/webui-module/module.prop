@@ -1,0 +1,30 @@
+# WebUI KernelSU模块示例
+# WebUI KernelSU Module Example
+
+id=webui_example
+name=WebUI Module Example
+version=v1.0.0
+versionCode=1
+author=RootManage-Module-Model
+description=A WebUI example module demonstrating web interface capabilities
+
+# 模块基本设置
+minApi=21
+maxApi=34
+minKernelSU=10940
+
+# WebUI配置
+webui=true
+webui_port=8080
+webui_title=WebUI Example Module
+webui_theme=default
+
+# 模块功能
+updateJson=https://example.com/webui_update.json
+support=https://github.com/lightrek/RootManage-Module-Model
+donate=https://example.com/donate
+
+# 模块行为
+auto_mount=true
+systemless=true
+boot_stage=post-fs-data

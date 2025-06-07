@@ -1,0 +1,794 @@
+#!/bin/bash
+# KernelSU Module Validator - Enhanced Edition
+# 模块验证工具 - 检查模块结构、配置文件、安全性和兼容性
+
+set -e
+
+# Version information
+VERSION="2.0.0"
+SCRIPT_NAME="module-validator"
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# 验证计数器
+TOTAL_CHECKS=0
+PASSED_CHECKS=0
+WARNING_COUNT=0
+ERROR_COUNT=0
+
+# 详细模式标志
+VERBOSE=false
+QUIET=false
+SECURITY_CHECK=true
+PERFORMANCE_CHECK=true
+COMPATIBILITY_CHECK=true
+
+log_info() {
+    [[ "$QUIET" == "true" ]] && return
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    [[ "$QUIET" == "true" ]] && return
+    echo -e "${GREEN}[✓]${NC} $1"
+    ((PASSED_CHECKS++))
+}
+
+log_warning() {
+    [[ "$QUIET" == "true" ]] && return
+    echo -e "${YELLOW}[⚠]${NC} $1"
+    ((WARNING_COUNT++))
+}
+
+log_error() {
+    echo -e "${RED}[✗]${NC} $1" >&2
+    ((ERROR_COUNT++))
+}
+
+log_debug() {
+    [[ "$VERBOSE" == "true" ]] && echo -e "${CYAN}[DEBUG]${NC} $1"
+}
+
+log_security() {
+    [[ "$QUIET" == "true" ]] && return
+    echo -e "${PURPLE}[SECURITY]${NC} $1"
+}
+
+increment_check() {
+    ((TOTAL_CHECKS++))
+}
+
+show_help() {
+    cat << 'EOF'
+KernelSU模块验证工具 - 增强版
+
+用法: module-validator [选项] <模块目录>
+
+选项:
+  -h, --help           显示此帮助信息
+  -v, --verbose        详细输出模式
+  -q, --quiet          静默模式（仅显示错误）
+  -V, --version        显示版本信息
+  --no-security        跳过安全检查
+  --no-performance     跳过性能检查
+  --no-compatibility   跳过兼容性检查
+  --report-format FORMAT  报告格式 (text|json|xml)
+
+验证项目:
+  ✓ 基本文件结构验证
+  ✓ module.prop文件格式和内容验证
+  ✓ 脚本文件语法和权限验证
+  ✓ WebUI配置和文件验证
+  ✓ 安全性和权限检查
+  ✓ 性能影响评估
+  ✓ 兼容性分析
+  ✓ 依赖项检查
+  ✓ 代码质量分析
+
+示例:
+  module-validator ./my_module
+  module-validator -v ./my_module
+  module-validator --no-security ./test_module
+  module-validator --report-format json ./my_module > report.json
+
+EOF
+}
+
+show_version() {
+    echo "$SCRIPT_NAME version $VERSION"
+}
+
+# 检查必需的工具
+check_dependencies() {
+    local missing_tools=()
+    
+    # 检查基本工具
+    for tool in bash grep awk sed find; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            missing_tools+=("$tool")
+        fi
+    done
+    
+    # 检查可选工具（用于高级验证）
+    for tool in shellcheck jq xmllint; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            log_debug "Optional tool '$tool' not found (some features may be limited)"
+        fi
+    done
+    
+    if [[ ${#missing_tools[@]} -gt 0 ]]; then
+        log_error "Missing required tools: ${missing_tools[*]}"
+        return 1
+    fi
+    
+    return 0
+}
+
+# 检查module.prop文件
+check_module_prop() {
+    local module_dir="$1"
+    local prop_file="$module_dir/module.prop"
+    
+    log_info "Checking module.prop file..."
+    increment_check
+    
+    if [[ ! -f "$prop_file" ]]; then
+        log_error "module.prop file not found"
+        return 1
+    fi
+    
+    log_success "module.prop file exists"
+    
+    # 检查必需字段
+    local required_fields=("id" "name" "version" "versionCode" "author" "description")
+    local missing_fields=()
+    
+    for field in "${required_fields[@]}"; do
+        increment_check
+        if ! grep -q "^$field=" "$prop_file"; then
+            missing_fields+=("$field")
+            log_error "Required field '$field' missing in module.prop"
+        else
+            log_success "Required field '$field' found"
+        fi
+    done
+    
+    # 验证字段格式
+    increment_check
+    local id=$(grep "^id=" "$prop_file" 2>/dev/null | cut -d= -f2)
+    if [[ -n "$id" ]]; then
+        if [[ "$id" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ ]]; then
+            log_success "Module ID format is valid: $id"
+        else
+            log_error "Invalid module ID format: $id (should start with letter, contain only letters, numbers, underscore)"
+        fi
+    fi
+    
+    increment_check
+    local version_code=$(grep "^versionCode=" "$prop_file" 2>/dev/null | cut -d= -f2)
+    if [[ -n "$version_code" ]]; then
+        if [[ "$version_code" =~ ^[0-9]+$ ]]; then
+            log_success "Version code format is valid: $version_code"
+        else
+            log_error "Invalid version code format: $version_code (should be numeric)"
+        fi
+    fi
+    
+    # 检查可选字段
+    local optional_fields=("minApi" "maxApi" "minKernelSU" "updateJson" "support" "donate")
+    for field in "${optional_fields[@]}"; do
+        increment_check
+        if grep -q "^$field=" "$prop_file"; then
+            log_debug "Optional field '$field' found"
+            local value=$(grep "^$field=" "$prop_file" | cut -d= -f2)
+            
+            case "$field" in
+                "minApi"|"maxApi"|"minKernelSU")
+                    if [[ "$value" =~ ^[0-9]+$ ]]; then
+                        log_success "Field '$field' has valid numeric value: $value"
+                    else
+                        log_warning "Field '$field' should be numeric: $value"
+                    fi
+                    ;;
+                "updateJson"|"support"|"donate")
+                    if [[ "$value" =~ ^https?:// ]]; then
+                        log_success "Field '$field' has valid URL format: $value"
+                    else
+                        log_warning "Field '$field' should be a valid URL: $value"
+                    fi
+                    ;;
+            esac
+        fi
+    done
+    
+    return 0
+}
+
+# 检查文件结构
+check_file_structure() {
+    local module_dir="$1"
+    
+    log_info "Checking module file structure..."
+    
+    # 检查基本文件
+    local common_files=("customize.sh" "service.sh" "post-fs-data.sh" "uninstall.sh")
+    for file in "${common_files[@]}"; do
+        increment_check
+        if [[ -f "$module_dir/$file" ]]; then
+            log_success "Optional file '$file' found"
+            
+            # 检查脚本权限
+            if [[ -x "$module_dir/$file" ]]; then
+                log_success "File '$file' has execute permission"
+            else
+                log_warning "File '$file' should have execute permission"
+            fi
+        else
+            log_debug "Optional file '$file' not found"
+        fi
+    done
+    
+    # 检查目录结构
+    local common_dirs=("system" "vendor" "webroot" "META-INF")
+    for dir in "${common_dirs[@]}"; do
+        increment_check
+        if [[ -d "$module_dir/$dir" ]]; then
+            log_success "Directory '$dir' found"
+            
+            # 检查目录权限
+            if [[ -r "$module_dir/$dir" && -x "$module_dir/$dir" ]]; then
+                log_success "Directory '$dir' has proper permissions"
+            else
+                log_warning "Directory '$dir' may have permission issues"
+            fi
+        else
+            log_debug "Optional directory '$dir' not found"
+        fi
+    done
+    
+    return 0
+}
+
+# 检查脚本文件语法
+check_script_syntax() {
+    local module_dir="$1"
+    
+    log_info "Checking script file syntax..."
+    
+    local script_files=()
+    while IFS= read -r -d '' file; do
+        script_files+=("$file")
+    done < <(find "$module_dir" -name "*.sh" -type f -print0)
+    
+    if [[ ${#script_files[@]} -eq 0 ]]; then
+        log_warning "No shell script files found"
+        return 0
+    fi
+    
+    for script in "${script_files[@]}"; do
+        increment_check
+        local relative_path="${script#$module_dir/}"
+        
+        # 基本语法检查
+        if bash -n "$script" 2>/dev/null; then
+            log_success "Script syntax OK: $relative_path"
+        else
+            log_error "Script syntax error in: $relative_path"
+            continue
+        fi
+        
+        # 使用shellcheck进行高级检查（如果可用）
+        if command -v shellcheck >/dev/null 2>&1; then
+            increment_check
+            local shellcheck_output
+            if shellcheck_output=$(shellcheck "$script" 2>&1); then
+                log_success "ShellCheck passed: $relative_path"
+            else
+                log_warning "ShellCheck issues in $relative_path:"
+                echo "$shellcheck_output" | head -10
+            fi
+        fi
+        
+        # 检查常见的安全问题
+        increment_check
+        if grep -q "rm -rf /" "$script"; then
+            log_error "DANGEROUS: Found 'rm -rf /' in $relative_path"
+        elif grep -q "chmod 777" "$script"; then
+            log_warning "Security concern: 'chmod 777' found in $relative_path"
+        else
+            log_success "No obvious dangerous commands in $relative_path"
+        fi
+    done
+    
+    return 0
+}
+
+# 检查WebUI配置
+check_webui() {
+    local module_dir="$1"
+    local prop_file="$module_dir/module.prop"
+    
+    log_info "Checking WebUI configuration..."
+    
+    # 检查是否启用WebUI
+    increment_check
+    if grep -q "^webui=true" "$prop_file" 2>/dev/null; then
+        log_success "WebUI is enabled"
+        
+        # 检查webroot目录
+        increment_check
+        if [[ -d "$module_dir/webroot" ]]; then
+            log_success "WebUI webroot directory found"
+            
+            # 检查index文件
+            increment_check
+            local index_files=("index.html" "index.htm" "index.php")
+            local found_index=false
+            for index in "${index_files[@]}"; do
+                if [[ -f "$module_dir/webroot/$index" ]]; then
+                    log_success "WebUI index file found: $index"
+                    found_index=true
+                    break
+                fi
+            done
+            
+            if [[ "$found_index" == "false" ]]; then
+                log_warning "No WebUI index file found (index.html, index.htm, index.php)"
+            fi
+            
+            # 检查WebUI端口配置
+            increment_check
+            local webui_port=$(grep "^webui_port=" "$prop_file" 2>/dev/null | cut -d= -f2)
+            if [[ -n "$webui_port" ]]; then
+                if [[ "$webui_port" =~ ^[0-9]+$ ]] && [[ "$webui_port" -ge 1024 ]] && [[ "$webui_port" -le 65535 ]]; then
+                    log_success "WebUI port is valid: $webui_port"
+                else
+                    log_warning "WebUI port should be between 1024-65535: $webui_port"
+                fi
+            else
+                log_warning "WebUI port not specified (will use default)"
+            fi
+            
+            # 检查静态文件
+            increment_check
+            local static_files=$(find "$module_dir/webroot" -type f \( -name "*.css" -o -name "*.js" -o -name "*.png" -o -name "*.jpg" -o -name "*.ico" \) | wc -l)
+            if [[ "$static_files" -gt 0 ]]; then
+                log_success "Found $static_files static WebUI files"
+            else
+                log_warning "No static WebUI files found (CSS, JS, images)"
+            fi
+            
+        else
+            log_error "WebUI enabled but webroot directory not found"
+        fi
+    else
+        log_debug "WebUI is not enabled"
+    fi
+    
+    return 0
+}
+
+# 安全性检查
+check_security() {
+    local module_dir="$1"
+    
+    if [[ "$SECURITY_CHECK" == "false" ]]; then
+        log_debug "Security check skipped"
+        return 0
+    fi
+    
+    log_info "Performing security checks..."
+    
+    # 检查文件权限
+    increment_check
+    local world_writable=$(find "$module_dir" -type f -perm -002 2>/dev/null | wc -l)
+    if [[ "$world_writable" -eq 0 ]]; then
+        log_success "No world-writable files found"
+    else
+        log_warning "Found $world_writable world-writable files (security risk)"
+    fi
+    
+    # 检查SUID/SGID文件
+    increment_check
+    local suid_files=$(find "$module_dir" -type f \( -perm -4000 -o -perm -2000 \) 2>/dev/null | wc -l)
+    if [[ "$suid_files" -eq 0 ]]; then
+        log_success "No SUID/SGID files found"
+    else
+        log_warning "Found $suid_files SUID/SGID files (review required)"
+    fi
+    
+    # 检查可疑文件扩展名
+    increment_check
+    local suspicious_files=$(find "$module_dir" -type f \( -name "*.tmp" -o -name "*.bak" -o -name "*~" -o -name ".DS_Store" \) 2>/dev/null | wc -l)
+    if [[ "$suspicious_files" -eq 0 ]]; then
+        log_success "No suspicious temporary files found"
+    else
+        log_warning "Found $suspicious_files suspicious/temporary files"
+    fi
+    
+    # 检查硬编码密码或密钥
+    increment_check
+    local sensitive_patterns=("password=" "passwd=" "api_key=" "secret=" "token=")
+    local found_sensitive=false
+    for pattern in "${sensitive_patterns[@]}"; do
+        if grep -r -i "$pattern" "$module_dir" --include="*.sh" --include="*.prop" --include="*.ini" >/dev/null 2>&1; then
+            log_warning "Potential sensitive data found: $pattern"
+            found_sensitive=true
+        fi
+    done
+    
+    if [[ "$found_sensitive" == "false" ]]; then
+        log_success "No obvious sensitive data patterns found"
+    fi
+    
+    return 0
+}
+
+# 性能检查
+check_performance() {
+    local module_dir="$1"
+    
+    if [[ "$PERFORMANCE_CHECK" == "false" ]]; then
+        log_debug "Performance check skipped"
+        return 0
+    fi
+    
+    log_info "Performing performance checks..."
+    
+    # 检查模块大小
+    increment_check
+    local module_size=$(du -sh "$module_dir" 2>/dev/null | cut -f1)
+    log_info "Module size: $module_size"
+    
+    local size_bytes=$(du -sb "$module_dir" 2>/dev/null | cut -f1)
+    if [[ "$size_bytes" -lt 10485760 ]]; then  # 10MB
+        log_success "Module size is reasonable (< 10MB)"
+    elif [[ "$size_bytes" -lt 52428800 ]]; then  # 50MB
+        log_warning "Module size is large (10-50MB) - consider optimization"
+    else
+        log_warning "Module size is very large (> 50MB) - may impact performance"
+    fi
+    
+    # 检查文件数量
+    increment_check
+    local file_count=$(find "$module_dir" -type f | wc -l)
+    if [[ "$file_count" -lt 100 ]]; then
+        log_success "File count is reasonable ($file_count files)"
+    elif [[ "$file_count" -lt 500 ]]; then
+        log_warning "High file count ($file_count files) - may slow installation"
+    else
+        log_warning "Very high file count ($file_count files) - consider bundling"
+    fi
+    
+    # 检查启动脚本复杂性
+    increment_check
+    local startup_scripts=("service.sh" "post-fs-data.sh")
+    for script in "${startup_scripts[@]}"; do
+        if [[ -f "$module_dir/$script" ]]; then
+            local line_count=$(wc -l < "$module_dir/$script")
+            if [[ "$line_count" -lt 100 ]]; then
+                log_success "Startup script $script is concise ($line_count lines)"
+            elif [[ "$line_count" -lt 300 ]]; then
+                log_warning "Startup script $script is complex ($line_count lines)"
+            else
+                log_warning "Startup script $script is very complex ($line_count lines) - may slow boot"
+            fi
+        fi
+    done
+    
+    return 0
+}
+
+# 兼容性检查
+check_compatibility() {
+    local module_dir="$1"
+    local prop_file="$module_dir/module.prop"
+    
+    if [[ "$COMPATIBILITY_CHECK" == "false" ]]; then
+        log_debug "Compatibility check skipped"
+        return 0
+    fi
+    
+    log_info "Performing compatibility checks..."
+    
+    # 检查API级别
+    increment_check
+    local min_api=$(grep "^minApi=" "$prop_file" 2>/dev/null | cut -d= -f2)
+    local max_api=$(grep "^maxApi=" "$prop_file" 2>/dev/null | cut -d= -f2)
+    
+    if [[ -n "$min_api" ]] && [[ -n "$max_api" ]]; then
+        if [[ "$min_api" -le "$max_api" ]]; then
+            log_success "API level range is valid: $min_api-$max_api"
+        else
+            log_error "Invalid API level range: minApi ($min_api) > maxApi ($max_api)"
+        fi
+    elif [[ -n "$min_api" ]]; then
+        log_success "Minimum API level specified: $min_api"
+    else
+        log_warning "No API level restrictions specified"
+    fi
+    
+    # 检查KernelSU版本
+    increment_check
+    local min_kernelsu=$(grep "^minKernelSU=" "$prop_file" 2>/dev/null | cut -d= -f2)
+    if [[ -n "$min_kernelsu" ]]; then
+        if [[ "$min_kernelsu" =~ ^[0-9]+$ ]]; then
+            log_success "Minimum KernelSU version specified: $min_kernelsu"
+        else
+            log_error "Invalid KernelSU version format: $min_kernelsu"
+        fi
+    else
+        log_warning "No minimum KernelSU version specified"
+    fi
+    
+    # 检查Magisk兼容性
+    increment_check
+    if grep -q "^magisk_compatible=true" "$prop_file" 2>/dev/null; then
+        log_info "Module claims Magisk compatibility"
+        
+        # 检查Magisk特定文件
+        if [[ -f "$module_dir/META-INF/com/google/android/updater-script" ]]; then
+            log_success "Magisk updater-script found"
+        else
+            log_warning "Magisk compatibility claimed but no updater-script found"
+        fi
+    fi
+    
+    # 检查替换模式兼容性
+    increment_check
+    if [[ -d "$module_dir/system" ]]; then
+        log_success "System overlay detected"
+        
+        # 检查是否有replace模式文件
+        if [[ -f "$module_dir/replace.list" ]]; then
+            log_info "Replace mode list found"
+        fi
+    fi
+    
+    return 0
+}
+
+# 依赖项检查
+check_dependencies_module() {
+    local module_dir="$1"
+    
+    log_info "Checking module dependencies..."
+    
+    # 检查脚本中的外部命令
+    increment_check
+    local script_files=()
+    while IFS= read -r -d '' file; do
+        script_files+=("$file")
+    done < <(find "$module_dir" -name "*.sh" -type f -print0)
+    
+    local external_commands=()
+    for script in "${script_files[@]}"; do
+        # 查找常见的外部命令
+        local commands=(
+            "awk" "sed" "grep" "find" "xargs" "curl" "wget" 
+            "unzip" "tar" "gzip" "sqlite3" "busybox"
+            "magisk" "resetprop" "getprop" "setprop"
+        )
+        
+        for cmd in "${commands[@]}"; do
+            if grep -q "\b$cmd\b" "$script" 2>/dev/null; then
+                if [[ ! " ${external_commands[*]} " =~ " $cmd " ]]; then
+                    external_commands+=("$cmd")
+                fi
+            fi
+        done
+    done
+    
+    if [[ ${#external_commands[@]} -gt 0 ]]; then
+        log_info "External commands used: ${external_commands[*]}"
+        
+        # 检查关键命令的可用性
+        local missing_commands=()
+        for cmd in "${external_commands[@]}"; do
+            case "$cmd" in
+                "magisk"|"resetprop"|"getprop"|"setprop")
+                    # 这些是Android/KernelSU特定的，在验证环境中可能不可用
+                    log_debug "Root environment command: $cmd"
+                    ;;
+                *)
+                    if ! command -v "$cmd" >/dev/null 2>&1; then
+                        missing_commands+=("$cmd")
+                    fi
+                    ;;
+            esac
+        done
+        
+        if [[ ${#missing_commands[@]} -gt 0 ]]; then
+            log_warning "Commands not available in current environment: ${missing_commands[*]}"
+        else
+            log_success "All standard commands are available"
+        fi
+    else
+        log_success "No external command dependencies detected"
+    fi
+    
+    return 0
+}
+
+# 生成验证报告
+generate_report() {
+    local module_dir="$1"
+    local format="${2:-text}"
+    
+    case "$format" in
+        "json")
+            generate_json_report "$module_dir"
+            ;;
+        "xml")
+            generate_xml_report "$module_dir"
+            ;;
+        *)
+            generate_text_report "$module_dir"
+            ;;
+    esac
+}
+
+generate_text_report() {
+    local module_dir="$1"
+    
+    echo ""
+    echo "==================== VALIDATION REPORT ===================="
+    echo "Module Directory: $module_dir"
+    echo "Validation Time: $(date)"
+    echo "Validator Version: $VERSION"
+    echo ""
+    echo "Summary:"
+    echo "  Total Checks: $TOTAL_CHECKS"
+    echo "  Passed: $PASSED_CHECKS"
+    echo "  Warnings: $WARNING_COUNT"
+    echo "  Errors: $ERROR_COUNT"
+    echo ""
+    
+    local success_rate=$((PASSED_CHECKS * 100 / TOTAL_CHECKS))
+    echo "Success Rate: $success_rate%"
+    echo ""
+    
+    if [[ "$ERROR_COUNT" -eq 0 ]]; then
+        if [[ "$WARNING_COUNT" -eq 0 ]]; then
+            echo -e "${GREEN}✓ Module validation PASSED with no issues${NC}"
+        else
+            echo -e "${YELLOW}⚠ Module validation PASSED with $WARNING_COUNT warnings${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Module validation FAILED with $ERROR_COUNT errors${NC}"
+    fi
+    
+    echo "=========================================================="
+}
+
+generate_json_report() {
+    local module_dir="$1"
+    
+    cat << EOF
+{
+  "validation_report": {
+    "module_directory": "$module_dir",
+    "validation_time": "$(date -Iseconds)",
+    "validator_version": "$VERSION",
+    "summary": {
+      "total_checks": $TOTAL_CHECKS,
+      "passed_checks": $PASSED_CHECKS,
+      "warning_count": $WARNING_COUNT,
+      "error_count": $ERROR_COUNT,
+      "success_rate": $((PASSED_CHECKS * 100 / TOTAL_CHECKS))
+    },
+    "status": "$(if [[ $ERROR_COUNT -eq 0 ]]; then echo "PASSED"; else echo "FAILED"; fi)"
+  }
+}
+EOF
+}
+
+# 主函数
+main() {
+    local module_dir=""
+    local report_format="text"
+    
+    # 解析命令行参数
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -V|--version)
+                show_version
+                exit 0
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                shift
+                ;;
+            -q|--quiet)
+                QUIET=true
+                shift
+                ;;
+            --no-security)
+                SECURITY_CHECK=false
+                shift
+                ;;
+            --no-performance)
+                PERFORMANCE_CHECK=false
+                shift
+                ;;
+            --no-compatibility)
+                COMPATIBILITY_CHECK=false
+                shift
+                ;;
+            --report-format)
+                report_format="$2"
+                shift 2
+                ;;
+            -*)
+                log_error "Unknown option: $1"
+                echo "Use -h or --help for usage information"
+                exit 1
+                ;;
+            *)
+                if [[ -z "$module_dir" ]]; then
+                    module_dir="$1"
+                else
+                    log_error "Multiple module directories specified"
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # 检查是否提供了模块目录
+    if [[ -z "$module_dir" ]]; then
+        log_error "Module directory not specified"
+        show_help
+        exit 1
+    fi
+    
+    # 检查模块目录是否存在
+    if [[ ! -d "$module_dir" ]]; then
+        log_error "Module directory does not exist: $module_dir"
+        exit 1
+    fi
+    
+    # 检查工具依赖
+    if ! check_dependencies; then
+        exit 1
+    fi
+    
+    log_info "Starting module validation for: $module_dir"
+    log_info "Validator version: $VERSION"
+    echo ""
+    
+    # 执行所有验证检查
+    check_module_prop "$module_dir"
+    check_file_structure "$module_dir"
+    check_script_syntax "$module_dir"
+    check_webui "$module_dir"
+    check_security "$module_dir"
+    check_performance "$module_dir"
+    check_compatibility "$module_dir"
+    check_dependencies_module "$module_dir"
+    
+    # 生成报告
+    generate_report "$module_dir" "$report_format"
+    
+    # 设置退出代码
+    if [[ "$ERROR_COUNT" -gt 0 ]]; then
+        exit 1
+    else
+        exit 0
+    fi
+}
+
+# 运行主函数
+main "$@"

@@ -1,0 +1,81 @@
+# KernelSU模块专用模板 - 安全增强
+# Security Enhancement Module Template
+
+# 模块基本信息
+id=${MODULE_ID}
+name=${MODULE_NAME}
+version=${MODULE_VERSION}
+versionCode=${MODULE_VERSION_CODE}
+author=${MODULE_AUTHOR}
+description=${MODULE_DESCRIPTION}
+
+# 安全模块特定属性
+minApi=21
+maxApi=34
+minKernelSU=10940
+
+# 安全功能标志
+selinux_enhancement=true
+app_isolation=true
+root_detection_bypass=true
+anti_debugging=true
+certificate_pinning=true
+
+# SELinux策略增强
+custom_sepolicy=true
+strict_mode=true
+domain_isolation=true
+file_context_enhancement=true
+
+# 应用安全
+app_signature_verification=true
+package_verification=true
+runtime_protection=true
+anti_hooking=true
+
+# 系统安全
+kernel_protection=true
+bootloader_security=true
+dm_verity_bypass=true
+avb_bypass=true
+
+# 网络安全
+ssl_pinning_bypass=true
+certificate_transparency=true
+network_security_config=true
+proxy_detection=true
+
+# 隐私保护
+location_privacy=true
+camera_protection=true
+microphone_protection=true
+storage_encryption=true
+
+# 反检测功能
+magisk_hide_enhancement=true
+xposed_hide=true
+frida_detection_bypass=true
+emulator_detection_bypass=true
+
+# 权限管理
+permission_spoofing=true
+app_ops_modification=true
+runtime_permission_control=true
+
+# WebUI配置 (安全控制面板)
+webui=true
+webui_port=8443
+webui_ssl=true
+webui_title="Security Control Panel"
+webui_theme=security
+webui_auth=true
+
+# 模块行为
+auto_mount=true
+boot_stage=post-fs-data
+zygote_restart=true
+systemless=true
+
+# 兼容性设置
+magisk_compatible=true
+security_patch_level_bypass=true

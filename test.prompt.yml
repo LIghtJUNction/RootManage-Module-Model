@@ -1,6 +1,0 @@
-messages:
-  - role: system
-    content: ''
-  - role: user
-    content: ''
-model: openai/gpt-4o

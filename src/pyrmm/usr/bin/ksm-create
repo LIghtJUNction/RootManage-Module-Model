@@ -1,0 +1,809 @@
+#!/bin/bash
+
+# KernelSU Module Creator
+# 快速创建KernelSU模块的命令行工具
+
+set -euo pipefail
+
+# 默认配置
+DEFAULT_TEMPLATE="basic"
+CONFIG_DIR="/usr/local/etc"
+TEMPLATES_DIR="/usr/share/templates"
+EXAMPLES_DIR="/usr/local/share/examples"
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 打印帮助信息
+show_help() {
+    cat << EOF
+KernelSU Module Creator - 快速创建KernelSU模块
+
+用法: ksm-create [选项] <模块名称>
+
+选项:
+    -t, --template <type>    指定模块模板类型 (默认: basic)
+    -a, --author <name>      指定作者名称
+    -v, --version <ver>      指定模块版本 (默认: v1.0)
+    -d, --description <desc> 指定模块描述
+    -w, --webui             启用WebUI功能
+    -m, --magisk-compat     启用Magisk兼容性
+    -o, --output <dir>      指定输出目录 (默认: 当前目录)
+    -l, --list-templates    列出可用的模板类型
+    -h, --help              显示此帮助信息
+
+模板类型:
+    basic           - 基础模块模板
+    webui           - 带WebUI的模块模板
+    magisk-compat   - Magisk兼容模块模板
+    system-modifier - 系统修改模块模板
+    app-patcher     - 应用补丁模块模板
+    kernel-module   - 内核模块模板
+    audio-modifier  - 音频修改模块模板
+    performance     - 性能优化模块模板
+
+示例:
+    ksm-create MyModule
+    ksm-create -t webui -a "John Doe" -v "v2.0" MyWebUIModule
+    ksm-create --template performance --webui MyPerfModule
+    ksm-create -l
+
+EOF
+}
+
+# 列出可用模板
+list_templates() {
+    echo -e "${BLUE}可用的模块模板:${NC}"
+    echo ""
+    
+    if [ -f "$CONFIG_DIR/templates.conf" ]; then
+        grep -E '^\[.*\]$' "$CONFIG_DIR/templates.conf" | sed 's/\[//g;s/\]//g' | while read -r template; do
+            description=$(grep -A 5 "^\[$template\]" "$CONFIG_DIR/templates.conf" | grep "description=" | cut -d'=' -f2- | tr -d '"')
+            printf "  %-15s - %s\n" "$template" "$description"
+        done
+    else
+        echo "  basic           - 基础模块模板"
+        echo "  webui           - 带WebUI的模块模板"
+        echo "  magisk-compat   - Magisk兼容模块模板"
+        echo "  system-modifier - 系统修改模块模板"
+        echo "  app-patcher     - 应用补丁模块模板"
+        echo "  kernel-module   - 内核模块模板"
+        echo "  audio-modifier  - 音频修改模块模板"
+        echo "  performance     - 性能优化模块模板"
+    fi
+    echo ""
+}
+
+# 错误处理
+error_exit() {
+    echo -e "${RED}错误: $1${NC}" >&2
+    exit 1
+}
+
+# 成功信息
+success_msg() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+# 警告信息
+warning_msg() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+# 信息输出
+info_msg() {
+    echo -e "${BLUE}ℹ $1${NC}"
+}
+
+# 创建目录结构
+create_directory_structure() {
+    local module_dir="$1"
+    
+    mkdir -p "$module_dir"
+    mkdir -p "$module_dir/META-INF/com/google/android"
+    
+    success_msg "创建目录结构: $module_dir"
+}
+
+# 生成module.prop文件
+generate_module_prop() {
+    local module_dir="$1"
+    local module_name="$2"
+    local author="$3"
+    local version="$4"
+    local description="$5"
+    
+    cat > "$module_dir/module.prop" << EOF
+id=$module_name
+name=$module_name
+version=$version
+versionCode=$(date +%Y%m%d)
+author=$author
+description=$description
+updateJson=
+EOF
+    
+    success_msg "生成module.prop文件"
+}
+
+# 生成service.sh文件
+generate_service_sh() {
+    local module_dir="$1"
+    local template="$2"
+    local enable_webui="$3"
+    
+    local service_content=""
+    
+    case "$template" in
+        "webui")
+            service_content='#!/system/bin/sh
+
+# WebUI模块服务脚本
+
+# 模块根目录
+MODPATH="${0%/*}"
+
+# 启动WebUI服务
+start_webui() {
+    # 检查端口是否被占用
+    if netstat -tuln | grep -q ":8080 "; then
+        echo "端口8080已被占用，尝试使用8081"
+        WEB_PORT=8081
+    else
+        WEB_PORT=8080
+    fi
+    
+    # 启动内置HTTP服务器
+    cd "$MODPATH/webui"
+    nohup busybox httpd -p $WEB_PORT -h . > /dev/null 2>&1 &
+    
+    echo "WebUI已启动，访问地址: http://localhost:$WEB_PORT"
+}
+
+# 主要逻辑
+main() {
+    echo "启动WebUI模块服务..."
+    start_webui
+}
+
+# 执行主要逻辑
+main "$@"
+'
+            ;;
+        "performance")
+            service_content='#!/system/bin/sh
+
+# 性能优化模块服务脚本
+
+# 模块根目录
+MODPATH="${0%/*}"
+
+# 应用性能优化
+apply_performance_tweaks() {
+    # CPU调度优化
+    if [ -f /proc/sys/kernel/sched_latency_ns ]; then
+        echo "6000000" > /proc/sys/kernel/sched_latency_ns
+    fi
+    
+    # 内存管理优化
+    if [ -f /proc/sys/vm/swappiness ]; then
+        echo "10" > /proc/sys/vm/swappiness
+    fi
+    
+    # I/O调度器优化
+    for disk in /sys/block/*/queue/scheduler; do
+        if [ -f "$disk" ]; then
+            echo "deadline" > "$disk" 2>/dev/null || true
+        fi
+    done
+    
+    echo "性能优化设置已应用"
+}
+
+# 主要逻辑
+main() {
+    echo "应用性能优化..."
+    apply_performance_tweaks
+}
+
+# 执行主要逻辑
+main "$@"
+'
+            ;;
+        *)
+            service_content='#!/system/bin/sh
+
+# 模块服务脚本
+
+# 模块根目录
+MODPATH="${0%/*}"
+
+# 主要逻辑
+main() {
+    echo "模块服务已启动"
+    # 在这里添加你的模块逻辑
+}
+
+# 执行主要逻辑
+main "$@"
+'
+            ;;
+    esac
+    
+    # 如果启用WebUI但不是webui模板，添加WebUI支持
+    if [ "$enable_webui" = "true" ] && [ "$template" != "webui" ]; then
+        service_content+='
+
+# WebUI支持
+if [ -d "$MODPATH/webui" ]; then
+    echo "启动WebUI服务..."
+    cd "$MODPATH/webui"
+    nohup busybox httpd -p 8080 -h . > /dev/null 2>&1 &
+    echo "WebUI已启动，访问地址: http://localhost:8080"
+fi
+'
+    fi
+    
+    echo "$service_content" > "$module_dir/service.sh"
+    chmod +x "$module_dir/service.sh"
+    
+    success_msg "生成service.sh文件"
+}
+
+# 生成update-binary文件
+generate_update_binary() {
+    local module_dir="$1"
+    
+    cat > "$module_dir/META-INF/com/google/android/update-binary" << 'EOF'
+#!/sbin/sh
+
+# KernelSU模块安装脚本
+
+# 环境变量
+TMPDIR=/dev/tmp
+INSTALLER=$TMPDIR/install
+MODPATH=/data/adb/modules
+
+# 提取文件
+unzip -o "$3" -d $INSTALLER >&2
+
+# 获取模块信息
+. $INSTALLER/module.prop
+
+# 安装模块
+mkdir -p $MODPATH/$id
+cp -af $INSTALLER/. $MODPATH/$id/
+
+# 设置权限
+set_perm_recursive $MODPATH/$id 0 0 0755 0644
+
+# 清理
+rm -rf $TMPDIR
+
+echo "模块安装完成: $name"
+EOF
+    
+    chmod +x "$module_dir/META-INF/com/google/android/update-binary"
+    
+    success_msg "生成update-binary文件"
+}
+
+# 生成updater-script文件
+generate_updater_script() {
+    local module_dir="$1"
+    
+    echo "#MAGISK" > "$module_dir/META-INF/com/google/android/updater-script"
+    
+    success_msg "生成updater-script文件"
+}
+
+# 生成WebUI文件
+generate_webui() {
+    local module_dir="$1"
+    local module_name="$2"
+    
+    mkdir -p "$module_dir/webui"
+    
+    # 生成index.html
+    cat > "$module_dir/webui/index.html" << EOF
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$module_name - 控制面板</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>$module_name</h1>
+            <p>模块控制面板</p>
+        </header>
+        
+        <main>
+            <section class="status-section">
+                <h2>模块状态</h2>
+                <div class="status-item">
+                    <span>状态:</span>
+                    <span id="module-status" class="status-active">运行中</span>
+                </div>
+            </section>
+            
+            <section class="controls-section">
+                <h2>模块控制</h2>
+                <div class="button-group">
+                    <button onclick="toggleModule()">启用/停用</button>
+                    <button onclick="restartModule()">重启模块</button>
+                    <button onclick="viewLogs()">查看日志</button>
+                </div>
+            </section>
+            
+            <section class="logs-section">
+                <h2>日志信息</h2>
+                <div id="logs-container" class="logs-container">
+                    <pre id="logs-content">日志加载中...</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+EOF
+    
+    # 生成style.css
+    cat > "$module_dir/webui/style.css" << EOF
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+header p {
+    font-size: 1.2em;
+    opacity: 0.9;
+}
+
+main {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+section {
+    margin-bottom: 30px;
+}
+
+section h2 {
+    color: #4a5568;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f7fafc;
+    border-radius: 8px;
+    border-left: 4px solid #48bb78;
+}
+
+.status-active {
+    color: #48bb78;
+    font-weight: bold;
+}
+
+.button-group {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.logs-container {
+    background: #1a202c;
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#logs-content {
+    color: #e2e8f0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    header h1 {
+        font-size: 2em;
+    }
+    
+    main {
+        padding: 20px;
+    }
+    
+    .button-group {
+        flex-direction: column;
+    }
+    
+    button {
+        width: 100%;
+    }
+}
+EOF
+    
+    # 生成script.js
+    cat > "$module_dir/webui/script.js" << EOF
+// 模块WebUI控制脚本
+
+// 模块状态管理
+let moduleEnabled = true;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadModuleStatus();
+    loadLogs();
+    
+    // 定期刷新状态和日志
+    setInterval(loadModuleStatus, 5000);
+    setInterval(loadLogs, 10000);
+});
+
+// 加载模块状态
+function loadModuleStatus() {
+    // 这里应该调用实际的API来获取模块状态
+    // 现在使用模拟数据
+    const statusElement = document.getElementById('module-status');
+    if (moduleEnabled) {
+        statusElement.textContent = '运行中';
+        statusElement.className = 'status-active';
+        statusElement.style.color = '#48bb78';
+    } else {
+        statusElement.textContent = '已停用';
+        statusElement.className = 'status-inactive';
+        statusElement.style.color = '#e53e3e';
+    }
+}
+
+// 切换模块状态
+function toggleModule() {
+    moduleEnabled = !moduleEnabled;
+    loadModuleStatus();
+    
+    const action = moduleEnabled ? '启用' : '停用';
+    showNotification(\`模块已\${action}\`);
+    
+    // 这里应该调用实际的API来切换模块状态
+    console.log(\`模块\${action}操作\`);
+}
+
+// 重启模块
+function restartModule() {
+    showNotification('正在重启模块...');
+    
+    // 模拟重启过程
+    setTimeout(() => {
+        showNotification('模块重启完成');
+        loadModuleStatus();
+        loadLogs();
+    }, 2000);
+    
+    // 这里应该调用实际的API来重启模块
+    console.log('重启模块操作');
+}
+
+// 查看日志
+function viewLogs() {
+    loadLogs();
+    document.querySelector('.logs-section').scrollIntoView({ 
+        behavior: 'smooth' 
+    });
+}
+
+// 加载日志
+function loadLogs() {
+    const logsContent = document.getElementById('logs-content');
+    
+    // 模拟日志内容
+    const logs = [
+        \`[\${new Date().toLocaleString()}] 模块服务已启动\`,
+        \`[\${new Date(Date.now() - 60000).toLocaleString()}] 初始化配置完成\`,
+        \`[\${new Date(Date.now() - 120000).toLocaleString()}] 加载模块组件\`,
+        \`[\${new Date(Date.now() - 180000).toLocaleString()}] WebUI服务已启动\`,
+        \`[\${new Date(Date.now() - 240000).toLocaleString()}] 模块安装完成\`
+    ];
+    
+    logsContent.textContent = logs.join('\\n');
+    
+    // 这里应该调用实际的API来获取日志
+    console.log('加载日志');
+}
+
+// 显示通知
+function showNotification(message) {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.textContent = message;
+    notification.style.cssText = \`
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #48bb78;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+    \`;
+    
+    // 添加CSS动画
+    const style = document.createElement('style');
+    style.textContent = \`
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    \`;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // 3秒后移除通知
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+EOF
+    
+    success_msg "生成WebUI文件"
+}
+
+# 生成README文件
+generate_readme() {
+    local module_dir="$1"
+    local module_name="$2"
+    local description="$3"
+    local author="$4"
+    
+    cat > "$module_dir/README.md" << EOF
+# $module_name
+
+$description
+
+## 作者
+
+$author
+
+## 功能特性
+
+- 支持KernelSU
+- 模块化设计
+- 易于配置和使用
+
+## 安装方法
+
+1. 下载模块ZIP文件
+2. 在KernelSU管理器中安装
+3. 重启设备以生效
+
+## 使用说明
+
+模块安装后会自动运行，无需额外配置。
+
+## 配置选项
+
+编辑 \`service.sh\` 文件可以自定义模块行为。
+
+## 故障排除
+
+如果遇到问题，请查看日志文件：
+\`\`\`bash
+cat /data/adb/modules/$module_name/logs/*.log
+\`\`\`
+
+## 许可证
+
+本模块遵循开源许可证，具体请查看LICENSE文件。
+
+## 更新日志
+
+### v1.0
+- 初始版本发布
+- 基础功能实现
+
+## 联系方式
+
+如有问题或建议，请联系作者。
+EOF
+    
+    success_msg "生成README.md文件"
+}
+
+# 主函数
+main() {
+    local template="$DEFAULT_TEMPLATE"
+    local author="Unknown"
+    local version="v1.0"
+    local description=""
+    local output_dir="."
+    local enable_webui="false"
+    local enable_magisk="false"
+    local module_name=""
+    
+    # 解析命令行参数
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -t|--template)
+                template="$2"
+                shift 2
+                ;;
+            -a|--author)
+                author="$2"
+                shift 2
+                ;;
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -d|--description)
+                description="$2"
+                shift 2
+                ;;
+            -o|--output)
+                output_dir="$2"
+                shift 2
+                ;;
+            -w|--webui)
+                enable_webui="true"
+                shift
+                ;;
+            -m|--magisk-compat)
+                enable_magisk="true"
+                shift
+                ;;
+            -l|--list-templates)
+                list_templates
+                exit 0
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -*)
+                error_exit "未知选项: $1"
+                ;;
+            *)
+                if [ -z "$module_name" ]; then
+                    module_name="$1"
+                else
+                    error_exit "多余的参数: $1"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # 检查必需参数
+    if [ -z "$module_name" ]; then
+        error_exit "缺少模块名称参数"
+    fi
+    
+    # 设置默认描述
+    if [ -z "$description" ]; then
+        description="A KernelSU module created with ksm-create"
+    fi
+    
+    # 创建模块目录
+    local module_dir="$output_dir/$module_name"
+    
+    if [ -d "$module_dir" ]; then
+        warning_msg "目录已存在: $module_dir"
+        read -p "是否覆盖现有目录? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            info_msg "操作已取消"
+            exit 0
+        fi
+        rm -rf "$module_dir"
+    fi
+    
+    info_msg "开始创建模块: $module_name"
+    info_msg "模板类型: $template"
+    info_msg "输出目录: $module_dir"
+    
+    # 创建模块文件
+    create_directory_structure "$module_dir"
+    generate_module_prop "$module_dir" "$module_name" "$author" "$version" "$description"
+    generate_service_sh "$module_dir" "$template" "$enable_webui"
+    generate_update_binary "$module_dir"
+    generate_updater_script "$module_dir"
+    generate_readme "$module_dir" "$module_name" "$description" "$author"
+    
+    # 根据模板和选项生成额外文件
+    if [ "$template" = "webui" ] || [ "$enable_webui" = "true" ]; then
+        generate_webui "$module_dir" "$module_name"
+    fi
+    
+    success_msg "模块创建完成!"
+    info_msg "模块位置: $module_dir"
+    info_msg "请编辑相关文件以自定义你的模块功能"
+    
+    # 显示下一步提示
+    echo ""
+    echo -e "${BLUE}下一步操作:${NC}"
+    echo "1. 编辑 service.sh 文件添加你的模块逻辑"
+    echo "2. 修改 module.prop 文件的模块信息"
+    echo "3. 测试模块功能"
+    echo "4. 打包模块: cd $module_dir && zip -r $module_name.zip ."
+    echo ""
+}
+
+# 执行主函数
+main "$@"

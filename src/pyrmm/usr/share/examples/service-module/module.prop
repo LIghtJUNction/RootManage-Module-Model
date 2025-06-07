@@ -1,0 +1,21 @@
+id=service_example
+name=Service Module Example
+version=v1.0.0
+versionCode=1
+author=ServiceDev
+description=Example of a module that runs background services
+
+# Service module configuration
+auto_mount=true
+boot_stage=post-fs-data
+
+# Service settings
+enable_service=true
+service_restart=true
+service_priority=normal
+service_log_level=info
+
+# Update configuration
+updateJson=
+support=https://github.com/example/service-module
+donate=

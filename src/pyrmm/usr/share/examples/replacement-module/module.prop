@@ -1,0 +1,22 @@
+id=replacement_example
+name=System Replacement Example
+version=v1.0.0
+versionCode=1
+author=ReplacementDev
+description=Example of replacing system files and applications
+
+# Replacement module configuration
+auto_mount=true
+boot_stage=post-fs-data
+replace_example=true
+
+# Replacement settings
+enable_replacement=true
+backup_originals=true
+verify_replacements=true
+rollback_support=true
+
+# Update configuration
+updateJson=
+support=https://github.com/example/replacement-module
+donate=

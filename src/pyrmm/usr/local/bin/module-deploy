@@ -1,0 +1,224 @@
+#!/system/bin/sh
+# KernelSU模块部署工具 - 用户自定义部署脚本
+# 版本: 1.0
+# 作者: RootManage Module System
+
+# 设置颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 配置变量
+DEPLOY_CONFIG="/data/local/tmp/deploy.conf"
+REMOTE_SERVER=""
+REMOTE_PATH=""
+SSH_KEY=""
+
+# 显示帮助信息
+show_help() {
+    echo "KernelSU模块部署工具"
+    echo ""
+    echo "用法: module-deploy [选项] [模块文件]"
+    echo ""
+    echo "选项:"
+    echo "  -h, --help           显示此帮助信息"
+    echo "  -c, --config FILE    指定配置文件"
+    echo "  -s, --server HOST    远程服务器地址"
+    echo "  -p, --path PATH      远程部署路径"
+    echo "  -k, --key FILE       SSH密钥文件"
+    echo "  -l, --local          本地部署模式"
+    echo "  -r, --remote         远程部署模式"
+    echo "  -t, --test           测试部署配置"
+    echo ""
+    echo "示例:"
+    echo "  module-deploy -l module.zip"
+    echo "  module-deploy -r -s 192.168.1.100 -p /data/modules module.zip"
+    echo "  module-deploy -t"
+}
+
+# 加载配置文件
+load_config() {
+    local config_file="${1:-$DEPLOY_CONFIG}"
+    
+    if [ -f "$config_file" ]; then
+        echo -e "${BLUE}[INFO]${NC} 加载配置文件: $config_file"
+        . "$config_file"
+    else
+        echo -e "${YELLOW}[WARN]${NC} 配置文件不存在: $config_file"
+    fi
+}
+
+# 本地部署
+deploy_local() {
+    local module_file="$1"
+    local target_dir="/data/adb/modules_update"
+    
+    echo -e "${BLUE}[INFO]${NC} 开始本地部署..."
+    echo -e "${BLUE}[INFO]${NC} 模块文件: $module_file"
+    echo -e "${BLUE}[INFO]${NC} 目标目录: $target_dir"
+    
+    if [ ! -f "$module_file" ]; then
+        echo -e "${RED}[ERROR]${NC} 模块文件不存在: $module_file"
+        return 1
+    fi
+    
+    # 创建目标目录
+    mkdir -p "$target_dir"
+    
+    # 解压模块
+    local module_id=$(basename "$module_file" .zip)
+    local module_dir="$target_dir/$module_id"
+    
+    echo -e "${BLUE}[INFO]${NC} 解压模块到: $module_dir"
+    unzip -q "$module_file" -d "$module_dir"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}[SUCCESS]${NC} 本地部署完成"
+        echo -e "${BLUE}[INFO]${NC} 请重启设备以应用模块"
+    else
+        echo -e "${RED}[ERROR]${NC} 部署失败"
+        return 1
+    fi
+}
+
+# 远程部署
+deploy_remote() {
+    local module_file="$1"
+    
+    echo -e "${BLUE}[INFO]${NC} 开始远程部署..."
+    echo -e "${BLUE}[INFO]${NC} 模块文件: $module_file"
+    echo -e "${BLUE}[INFO]${NC} 远程服务器: $REMOTE_SERVER"
+    echo -e "${BLUE}[INFO]${NC} 远程路径: $REMOTE_PATH"
+    
+    if [ -z "$REMOTE_SERVER" ] || [ -z "$REMOTE_PATH" ]; then
+        echo -e "${RED}[ERROR]${NC} 远程服务器或路径未配置"
+        return 1
+    fi
+    
+    if [ ! -f "$module_file" ]; then
+        echo -e "${RED}[ERROR]${NC} 模块文件不存在: $module_file"
+        return 1
+    fi
+    
+    # 使用SCP传输文件
+    local scp_cmd="scp"
+    if [ -n "$SSH_KEY" ]; then
+        scp_cmd="$scp_cmd -i $SSH_KEY"
+    fi
+    
+    echo -e "${BLUE}[INFO]${NC} 上传模块文件..."
+    $scp_cmd "$module_file" "$REMOTE_SERVER:$REMOTE_PATH/"
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}[SUCCESS]${NC} 远程部署完成"
+    else
+        echo -e "${RED}[ERROR]${NC} 远程部署失败"
+        return 1
+    fi
+}
+
+# 测试部署配置
+test_config() {
+    echo -e "${BLUE}[INFO]${NC} 测试部署配置..."
+    
+    echo "配置信息:"
+    echo "  远程服务器: ${REMOTE_SERVER:-未配置}"
+    echo "  远程路径: ${REMOTE_PATH:-未配置}"
+    echo "  SSH密钥: ${SSH_KEY:-未配置}"
+    
+    if [ -n "$REMOTE_SERVER" ]; then
+        echo -e "${BLUE}[INFO]${NC} 测试远程连接..."
+        local ssh_cmd="ssh"
+        if [ -n "$SSH_KEY" ]; then
+            ssh_cmd="$ssh_cmd -i $SSH_KEY"
+        fi
+        
+        $ssh_cmd -o ConnectTimeout=5 "$REMOTE_SERVER" "echo '连接成功'"
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}[SUCCESS]${NC} 远程连接测试通过"
+        else
+            echo -e "${RED}[ERROR]${NC} 远程连接测试失败"
+        fi
+    fi
+}
+
+# 主函数
+main() {
+    local deploy_mode=""
+    local module_file=""
+    local config_file=""
+    
+    # 解析命令行参数
+    while [ $# -gt 0 ]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -c|--config)
+                config_file="$2"
+                shift 2
+                ;;
+            -s|--server)
+                REMOTE_SERVER="$2"
+                shift 2
+                ;;
+            -p|--path)
+                REMOTE_PATH="$2"
+                shift 2
+                ;;
+            -k|--key)
+                SSH_KEY="$2"
+                shift 2
+                ;;
+            -l|--local)
+                deploy_mode="local"
+                shift
+                ;;
+            -r|--remote)
+                deploy_mode="remote"
+                shift
+                ;;
+            -t|--test)
+                deploy_mode="test"
+                shift
+                ;;
+            -*)
+                echo -e "${RED}[ERROR]${NC} 未知选项: $1"
+                show_help
+                exit 1
+                ;;
+            *)
+                module_file="$1"
+                shift
+                ;;
+        esac
+    done
+    
+    # 加载配置
+    load_config "$config_file"
+    
+    # 执行部署
+    case "$deploy_mode" in
+        local)
+            deploy_local "$module_file"
+            ;;
+        remote)
+            deploy_remote "$module_file"
+            ;;
+        test)
+            test_config
+            ;;
+        *)
+            echo -e "${RED}[ERROR]${NC} 请指定部署模式 (-l 或 -r)"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# 执行主函数
+main "$@"

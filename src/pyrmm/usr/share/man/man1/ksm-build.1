@@ -1,0 +1,222 @@
+.TH KSM-BUILD 1 "December 2024" "KernelSU Module Tools" "User Commands"
+.SH NAME
+ksm-build \- KernelSU模块构建和打包工具
+.SH SYNOPSIS
+.B ksm-build
+[\fIOPTION\fR]... [\fITARGET\fR]
+.SH DESCRIPTION
+.B ksm-build
+是一个用于构建和打包KernelSU模块的自动化工具。它支持多种构建目标，包括代码构建、模块打包、设备安装和测试验证等功能。
+
+.SH OPTIONS
+.TP
+.BR \-c ", " \-\-config " " \fIFILE\fR
+指定构建配置文件，默认为build.conf。
+
+.TP
+.BR \-o ", " \-\-output " " \fIDIRECTORY\fR
+指定输出目录，默认为dist。
+
+.TP
+.BR \-b ", " \-\-build-dir " " \fIDIRECTORY\fR
+指定构建目录，默认为build。
+
+.TP
+.BR \-v ", " \-\-verbose
+显示详细的构建输出信息。
+
+.TP
+.BR \-h ", " \-\-help
+显示帮助信息。
+
+.TP
+.BR \-\-clean
+清理构建文件和输出目录。
+
+.TP
+.BR \-\-debug
+启用调试模式，输出更多诊断信息。
+
+.SH TARGETS
+.TP
+.B build
+构建模块（默认目标）。复制源文件、处理模板、验证文件结构。
+
+.TP
+.B package
+打包模块为ZIP文件。如果构建目录不存在，会先执行构建。
+
+.TP
+.B install
+安装模块到连接的Android设备。需要ADB和root权限。
+
+.TP
+.B test
+运行模块测试，验证文件结构和脚本语法。
+
+.TP
+.B clean
+清理所有构建文件和临时文件。
+
+.TP
+.B all
+执行完整的构建流程：构建 → 测试 → 打包。
+
+.SH CONFIGURATION FILE
+构建配置文件支持以下选项：
+
+.TP
+.B MODULE_NAME
+模块名称，必需参数。
+
+.TP
+.B MODULE_VERSION
+模块版本，默认为v1.0。
+
+.TP
+.B MODULE_AUTHOR
+模块作者，默认为Unknown。
+
+.TP
+.B MODULE_DESCRIPTION
+模块描述。
+
+.TP
+.B ENABLE_WEBUI
+是否启用WebUI功能，true或false。
+
+.TP
+.B ENABLE_COMPRESSION
+是否启用ZIP压缩，true或false。
+
+.TP
+.B EXCLUDE_PATTERNS
+构建时排除的文件模式，用逗号分隔。
+
+.TP
+.B CUSTOM_SCRIPTS
+自定义构建脚本，用逗号分隔。
+
+.SH EXAMPLES
+.TP
+构建当前目录的模块：
+.B ksm-build
+
+.TP
+打包模块：
+.B ksm-build package
+
+.TP
+使用自定义配置文件进行完整构建：
+.B ksm-build --config custom.conf --verbose all
+
+.TP
+清理构建文件：
+.B ksm-build --clean
+
+.TP
+安装模块到设备：
+.B ksm-build install
+
+.SH BUILD PROCESS
+构建过程包括以下步骤：
+
+.TP
+1. 加载配置文件
+读取build.conf或指定的配置文件，如果不存在则从module.prop获取信息。
+
+.TP
+2. 创建构建目录
+创建临时构建目录和输出目录。
+
+.TP
+3. 复制源文件
+将源文件复制到构建目录，排除指定的文件模式。
+
+.TP
+4. 处理WebUI文件
+如果启用WebUI，会压缩JavaScript和CSS文件（需要相应工具）。
+
+.TP
+5. 运行自定义脚本
+执行配置文件中指定的自定义构建脚本。
+
+.TP
+6. 验证模块
+检查必需文件是否存在，验证module.prop格式，检查脚本语法。
+
+.TP
+7. 打包模块
+创建ZIP包，可选择是否启用压缩。
+
+.SH FILES
+.TP
+.I build.conf
+构建配置文件
+
+.TP
+.I module.prop
+模块属性文件，用于获取模块信息
+
+.TP
+.I build/
+构建临时目录
+
+.TP
+.I dist/
+输出目录，包含最终的ZIP包
+
+.SH VALIDATION
+构建工具会自动验证以下内容：
+
+.TP
+• 必需文件存在性
+module.prop、update-binary、updater-script等
+
+.TP
+• module.prop格式
+检查必需属性：id、name、version、versionCode、author、description
+
+.TP
+• 脚本语法
+验证所有.sh文件的shell语法
+
+.TP
+• 文件权限
+自动设置脚本文件的执行权限
+
+.SH EXIT STATUS
+.TP
+.B 0
+构建成功
+
+.TP
+.B 1
+构建失败，如配置错误、文件缺失或验证失败
+
+.SH DEPENDENCIES
+.TP
+• rsync - 用于文件复制
+.TP
+• zip - 用于模块打包
+.TP
+• adb - 用于设备安装（可选）
+.TP
+• uglifyjs - 用于JavaScript压缩（可选）
+.TP
+• cleancss - 用于CSS压缩（可选）
+
+.SH SEE ALSO
+.BR ksm-create (1),
+.BR ksm-test (1),
+.BR zip (1),
+.BR adb (1)
+
+.SH AUTHOR
+KernelSU Community
+
+.SH COPYRIGHT
+This is free software; see the source for copying conditions.
+
+.SH BUGS
+如发现bug，请在KernelSU项目的GitHub仓库中提交issue。

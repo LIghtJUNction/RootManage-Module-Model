@@ -1,0 +1,650 @@
+#!/bin/bash
+# KernelSU Module Packager
+# 模块打包工具 - 将模块目录打包为安装包
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+USR_DIR="$(dirname "$SCRIPT_DIR")"
+LIB_DIR="$USR_DIR/lib"
+
+# 导入公共函数
+if [ -f "$LIB_DIR/common-functions.sh" ]; then
+    source "$LIB_DIR/common-functions.sh"
+fi
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# 日志函数
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_debug() {
+    if [ "${DEBUG:-0}" = "1" ]; then
+        echo -e "${PURPLE}[DEBUG]${NC} $1"
+    fi
+}
+
+log_step() {
+    echo -e "${CYAN}[STEP]${NC} $1"
+}
+
+# 默认配置
+VALIDATE_MODULE=0
+USE_MAX_COMPRESSION=0
+EXCLUDE_PATTERNS=()
+SIGN_PACKAGE=0
+OUTPUT_FORMAT="zip"
+TEMP_DIR=""
+MODULE_DIR=""
+OUTPUT_FILE=""
+
+show_help() {
+    cat << EOF
+KernelSU Module Packager - 模块打包工具
+
+用法: $0 [选项] <模块目录> [输出文件]
+
+选项:
+    -h, --help              显示此帮助信息
+    -v, --validate          打包前验证模块
+    -c, --compress          使用最大压缩比
+    -e, --exclude PATTERN   排除文件或目录模式 (可多次使用)
+    -s, --sign              对包进行签名 (如果支持)
+    -f, --format FORMAT     输出格式 (zip/tar.gz/tar.xz，默认: zip)
+    -o, --output FILE       指定输出文件名
+    --temp-dir DIR          指定临时目录
+    --no-validate           跳过验证 (即使启用了验证)
+    --debug                 启用调试输出
+    --dry-run               只显示将要执行的操作
+    --list-contents         列出将要打包的文件
+
+排除模式示例:
+    *.log                   - 排除所有日志文件
+    temp/*                  - 排除temp目录下所有文件
+    .git                    - 排除git目录
+    *.tmp                   - 排除临时文件
+    .DS_Store               - 排除macOS系统文件
+
+输出格式:
+    zip                     - ZIP压缩包 (默认)
+    tar.gz                  - GZIP压缩的TAR包
+    tar.xz                  - XZ压缩的TAR包
+
+示例:
+    $0 ./my_module
+    $0 -v -c ./my_module my_module.zip
+    $0 -e '*.log' -e 'temp/*' ./my_module
+    $0 --format tar.xz --compress ./my_module
+    $0 --validate --sign --output release.zip ./my_module
+
+环境变量:
+    MODULE_PACKAGER_TEMP    - 临时目录路径
+    MODULE_SIGN_KEY         - 签名密钥路径
+    DEBUG                   - 启用调试模式 (1/0)
+EOF
+}
+
+# 验证模块
+validate_module() {
+    local module_dir="$1"
+    
+    log_step "验证模块结构..."
+    
+    # 使用module-validator进行验证
+    local validator="$SCRIPT_DIR/module-validator"
+    if [ -x "$validator" ]; then
+        if ! "$validator" "$module_dir"; then
+            log_error "模块验证失败"
+            return 1
+        fi
+    else
+        log_warning "module-validator不可用，执行基础验证"
+        # 基础验证
+        if ! basic_validation "$module_dir"; then
+            return 1
+        fi
+    fi
+    
+    log_success "模块验证通过"
+    return 0
+}
+
+# 基础验证
+basic_validation() {
+    local module_dir="$1"
+    
+    # 检查module.prop
+    if [ ! -f "$module_dir/module.prop" ]; then
+        log_error "缺少module.prop文件"
+        return 1
+    fi
+    
+    # 检查必需字段
+    local required_fields=("id" "name" "version" "versionCode" "author")
+    for field in "${required_fields[@]}"; do
+        if ! grep -q "^$field=" "$module_dir/module.prop"; then
+            log_error "module.prop缺少必需字段: $field"
+            return 1
+        fi
+    done
+    
+    # 检查META-INF目录
+    if [ ! -d "$module_dir/META-INF/com/google/android" ]; then
+        log_error "缺少META-INF/com/google/android目录"
+        return 1
+    fi
+    
+    # 检查update-binary
+    if [ ! -f "$module_dir/META-INF/com/google/android/update-binary" ]; then
+        log_error "缺少update-binary脚本"
+        return 1
+    fi
+    
+    return 0
+}
+
+# 创建排除列表文件
+create_exclude_file() {
+    local exclude_file="$1"
+    
+    # 默认排除模式
+    cat > "$exclude_file" << EOF
+# 版本控制
+.git/
+.svn/
+.hg/
+.bzr/
+
+# 开发工具
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.orig
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 编译产物
+*.o
+*.so.debug
+*.a
+
+# 文档
+*.md
+*.txt
+README*
+CHANGELOG*
+LICENSE*
+docs/
+
+# 测试文件
+test/
+tests/
+*_test.*
+EOF
+    
+    # 添加用户指定的排除模式
+    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+        echo "$pattern" >> "$exclude_file"
+    done
+}
+
+# 获取模块信息
+get_module_info() {
+    local module_dir="$1"
+    local prop_file="$module_dir/module.prop"
+    
+    if [ ! -f "$prop_file" ]; then
+        return 1
+    fi
+    
+    MODULE_ID=$(grep "^id=" "$prop_file" | cut -d'=' -f2- | tr -d '"')
+    MODULE_NAME=$(grep "^name=" "$prop_file" | cut -d'=' -f2- | tr -d '"')
+    MODULE_VERSION=$(grep "^version=" "$prop_file" | cut -d'=' -f2- | tr -d '"')
+    MODULE_VERSION_CODE=$(grep "^versionCode=" "$prop_file" | cut -d'=' -f2- | tr -d '"')
+    
+    log_debug "模块信息:"
+    log_debug "  ID: $MODULE_ID"
+    log_debug "  名称: $MODULE_NAME"
+    log_debug "  版本: $MODULE_VERSION"
+    log_debug "  版本代码: $MODULE_VERSION_CODE"
+}
+
+# 生成输出文件名
+generate_output_filename() {
+    local module_dir="$1"
+    
+    if [ -n "$OUTPUT_FILE" ]; then
+        echo "$OUTPUT_FILE"
+        return
+    fi
+    
+    # 获取模块信息
+    get_module_info "$module_dir"
+    
+    # 生成文件名
+    local basename
+    if [ -n "$MODULE_ID" ] && [ -n "$MODULE_VERSION" ]; then
+        basename="${MODULE_ID}-${MODULE_VERSION}"
+    elif [ -n "$MODULE_NAME" ]; then
+        basename="$(echo "$MODULE_NAME" | tr ' ' '_')"
+    else
+        basename="$(basename "$module_dir")"
+    fi
+    
+    # 添加扩展名
+    case "$OUTPUT_FORMAT" in
+        zip)
+            echo "${basename}.zip"
+            ;;
+        tar.gz)
+            echo "${basename}.tar.gz"
+            ;;
+        tar.xz)
+            echo "${basename}.tar.xz"
+            ;;
+        *)
+            echo "${basename}.zip"
+            ;;
+    esac
+}
+
+# 列出将要打包的文件
+list_package_contents() {
+    local module_dir="$1"
+    local exclude_file="$2"
+    
+    log_info "将要打包的文件:"
+    
+    if [ -f "$exclude_file" ]; then
+        find "$module_dir" -type f | grep -v -f "$exclude_file" | sort
+    else
+        find "$module_dir" -type f | sort
+    fi
+}
+
+# 创建ZIP包
+create_zip_package() {
+    local module_dir="$1"
+    local output_file="$2"
+    local exclude_file="$3"
+    
+    local zip_args=("-r")
+    
+    # 设置压缩级别
+    if [ "$USE_MAX_COMPRESSION" = "1" ]; then
+        zip_args+=("-9")
+    else
+        zip_args+=("-6")
+    fi
+    
+    # 静默模式
+    if [ "${DEBUG:-0}" = "0" ]; then
+        zip_args+=("-q")
+    fi
+    
+    # 排除文件
+    if [ -f "$exclude_file" ]; then
+        zip_args+=("-x@$exclude_file")
+    fi
+    
+    # 创建包
+    if ! zip "${zip_args[@]}" "$output_file" "$module_dir"/*; then
+        log_error "ZIP包创建失败"
+        return 1
+    fi
+    
+    return 0
+}
+
+# 创建TAR包
+create_tar_package() {
+    local module_dir="$1"
+    local output_file="$2"
+    local exclude_file="$3"
+    local compression="$4"
+    
+    local tar_args=("-c")
+    
+    # 设置压缩
+    case "$compression" in
+        gzip)
+            tar_args+=("-z")
+            ;;
+        xz)
+            tar_args+=("-J")
+            ;;
+    esac
+    
+    # 设置输出文件
+    tar_args+=("-f" "$output_file")
+    
+    # 排除文件
+    if [ -f "$exclude_file" ]; then
+        while read -r pattern; do
+            # 跳过注释和空行
+            if [[ ! "$pattern" =~ ^#.*$ ]] && [ -n "$pattern" ]; then
+                tar_args+=("--exclude=$pattern")
+            fi
+        done < "$exclude_file"
+    fi
+    
+    # 设置目录
+    tar_args+=("-C" "$(dirname "$module_dir")" "$(basename "$module_dir")")
+    
+    # 创建包
+    if ! tar "${tar_args[@]}"; then
+        log_error "TAR包创建失败"
+        return 1
+    fi
+    
+    return 0
+}
+
+# 打包模块
+package_module() {
+    local module_dir="$1"
+    local output_file="$2"
+    
+    log_step "开始打包模块..."
+    
+    # 创建临时目录
+    TEMP_DIR="${MODULE_PACKAGER_TEMP:-/tmp}/module-packager-$$"
+    mkdir -p "$TEMP_DIR"
+    
+    # 创建排除列表
+    local exclude_file="$TEMP_DIR/exclude.txt"
+    create_exclude_file "$exclude_file"
+    
+    # 显示包内容 (如果需要)
+    if [ "${LIST_CONTENTS:-0}" = "1" ]; then
+        list_package_contents "$module_dir" "$exclude_file"
+        return 0
+    fi
+    
+    # 验证模块 (如果启用)
+    if [ "$VALIDATE_MODULE" = "1" ]; then
+        if ! validate_module "$module_dir"; then
+            return 1
+        fi
+    fi
+    
+    # 删除已存在的输出文件
+    if [ -f "$output_file" ]; then
+        log_info "删除已存在的文件: $output_file"
+        rm -f "$output_file"
+    fi
+    
+    # 根据格式创建包
+    case "$OUTPUT_FORMAT" in
+        zip)
+            create_zip_package "$module_dir" "$output_file" "$exclude_file"
+            ;;
+        tar.gz)
+            create_tar_package "$module_dir" "$output_file" "$exclude_file" "gzip"
+            ;;
+        tar.xz)
+            create_tar_package "$module_dir" "$output_file" "$exclude_file" "xz"
+            ;;
+        *)
+            log_error "不支持的输出格式: $OUTPUT_FORMAT"
+            return 1
+            ;;
+    esac
+    
+    if [ $? -eq 0 ]; then
+        log_success "模块打包完成: $output_file"
+        
+        # 显示文件信息
+        if command -v ls >/dev/null 2>&1; then
+            ls -lh "$output_file"
+        fi
+        
+        # 显示文件数量
+        local file_count
+        case "$OUTPUT_FORMAT" in
+            zip)
+                if command -v unzip >/dev/null 2>&1; then
+                    file_count=$(unzip -l "$output_file" | tail -n 1 | awk '{print $2}')
+                    log_info "包含文件数量: $file_count"
+                fi
+                ;;
+            tar.*)
+                if command -v tar >/dev/null 2>&1; then
+                    file_count=$(tar -tf "$output_file" | wc -l)
+                    log_info "包含文件数量: $file_count"
+                fi
+                ;;
+        esac
+        
+        return 0
+    else
+        log_error "模块打包失败"
+        return 1
+    fi
+}
+
+# 解析命令行参数
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--validate)
+                VALIDATE_MODULE=1
+                shift
+                ;;
+            -c|--compress)
+                USE_MAX_COMPRESSION=1
+                shift
+                ;;
+            -e|--exclude)
+                EXCLUDE_PATTERNS+=("$2")
+                shift 2
+                ;;
+            -s|--sign)
+                SIGN_PACKAGE=1
+                shift
+                ;;
+            -f|--format)
+                OUTPUT_FORMAT="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            --temp-dir)
+                MODULE_PACKAGER_TEMP="$2"
+                shift 2
+                ;;
+            --no-validate)
+                VALIDATE_MODULE=0
+                shift
+                ;;
+            --debug)
+                DEBUG=1
+                shift
+                ;;
+            --dry-run)
+                DRY_RUN=1
+                shift
+                ;;
+            --list-contents)
+                LIST_CONTENTS=1
+                shift
+                ;;
+            -*)
+                log_error "未知选项: $1"
+                show_help
+                exit 1
+                ;;
+            *)
+                if [ -z "$MODULE_DIR" ]; then
+                    MODULE_DIR="$1"
+                elif [ -z "$OUTPUT_FILE" ]; then
+                    OUTPUT_FILE="$1"
+                else
+                    log_error "多余的参数: $1"
+                    exit 1
+                fi
+                shift
+                ;;
+        esac
+    done
+}
+
+# 验证参数
+validate_arguments() {
+    # 检查模块目录
+    if [ -z "$MODULE_DIR" ]; then
+        log_error "缺少模块目录参数"
+        return 1
+    fi
+    
+    if [ ! -d "$MODULE_DIR" ]; then
+        log_error "模块目录不存在: $MODULE_DIR"
+        return 1
+    fi
+    
+    # 验证输出格式
+    case "$OUTPUT_FORMAT" in
+        zip|tar.gz|tar.xz)
+            ;;
+        *)
+            log_error "不支持的输出格式: $OUTPUT_FORMAT"
+            log_error "支持的格式: zip, tar.gz, tar.xz"
+            return 1
+            ;;
+    esac
+    
+    # 检查工具可用性
+    case "$OUTPUT_FORMAT" in
+        zip)
+            if ! command -v zip >/dev/null 2>&1; then
+                log_error "zip工具不可用"
+                return 1
+            fi
+            ;;
+        tar.*)
+            if ! command -v tar >/dev/null 2>&1; then
+                log_error "tar工具不可用"
+                return 1
+            fi
+            ;;
+    esac
+    
+    # 生成输出文件名
+    if [ -z "$OUTPUT_FILE" ]; then
+        OUTPUT_FILE=$(generate_output_filename "$MODULE_DIR")
+    fi
+    
+    # 转换为绝对路径
+    MODULE_DIR=$(cd "$MODULE_DIR" && pwd)
+    OUTPUT_FILE=$(realpath "$OUTPUT_FILE" 2>/dev/null || echo "$OUTPUT_FILE")
+    
+    return 0
+}
+
+# 错误处理
+error_exit() {
+    log_error "$1"
+    cleanup
+    exit 1
+}
+
+# 清理函数
+cleanup() {
+    if [ -n "${TEMP_DIR:-}" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
+    fi
+}
+
+# 设置信号处理
+trap cleanup EXIT INT TERM
+
+# 主函数
+main() {
+    log_info "KernelSU Module Packager v1.0.0"
+    
+    # 解析参数
+    parse_arguments "$@"
+    
+    # 验证参数
+    if ! validate_arguments; then
+        log_error "参数验证失败"
+        exit 1
+    fi
+    
+    # 显示配置信息
+    if [ "${DEBUG:-0}" = "1" ]; then
+        log_debug "打包配置:"
+        log_debug "  模块目录: $MODULE_DIR"
+        log_debug "  输出文件: $OUTPUT_FILE"
+        log_debug "  输出格式: $OUTPUT_FORMAT"
+        log_debug "  验证模块: $VALIDATE_MODULE"
+        log_debug "  最大压缩: $USE_MAX_COMPRESSION"
+        log_debug "  签名包: $SIGN_PACKAGE"
+        log_debug "  排除模式: ${EXCLUDE_PATTERNS[*]}"
+        log_debug "  临时目录: ${MODULE_PACKAGER_TEMP:-/tmp}"
+    fi
+    
+    # 检查模拟运行
+    if [ "${DRY_RUN:-0}" = "1" ]; then
+        log_info "[DRY-RUN] 将要执行的操作:"
+        log_info "  读取模块: $MODULE_DIR"
+        log_info "  创建包: $OUTPUT_FILE"
+        log_info "  格式: $OUTPUT_FORMAT"
+        if [ "$VALIDATE_MODULE" = "1" ]; then
+            log_info "  验证: 是"
+        fi
+        if [ "${#EXCLUDE_PATTERNS[@]}" -gt 0 ]; then
+            log_info "  排除模式: ${EXCLUDE_PATTERNS[*]}"
+        fi
+        return 0
+    fi
+    
+    # 打包模块
+    if ! package_module "$MODULE_DIR" "$OUTPUT_FILE"; then
+        error_exit "模块打包失败"
+    fi
+    
+    log_success "操作完成"
+}
+
+# 如果直接运行脚本，执行主函数
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

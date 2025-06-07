@@ -6,14 +6,22 @@ readme = "README.md"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "click>=8.2.1",
+    "pydantic>=2.11.5",
+    "pygithub>=2.6.1",
     "toml>=0.10.2",
 ]
 
 [project.scripts]
-rmm = "pyrmm.cli.__main__:cli"
+rmm = "pyrmm.cli:cli"
+
+[project.optional-dependencies]
+ai = [
+    "mcp>=1.9.3",
+    "openai>=1.84.0",
+]
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,134 @@
+.\" Manual page for module-packager
+.TH MODULE-PACKAGER 1 "2024-01-01" "RootManage-Module-Model" "KernelSU Module Tools"
+.SH NAME
+module-packager \- KernelSU模块打包工具
+.SH SYNOPSIS
+.B module-packager
+[\fIOPTION\fR]... \fIMODULE_DIR\fR
+.SH DESCRIPTION
+.B module-packager
+是一个专业的KernelSU模块打包工具，支持多种压缩格式、验证功能和高级打包选项。
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+显示帮助信息并退出
+.TP
+.BR \-v ", " \-\-version
+显示版本信息并退出
+.TP
+.BR \-q ", " \-\-quiet
+安静模式，减少输出信息
+.TP
+.BR \-d ", " \-\-debug
+启用调试模式，显示详细打包信息
+.TP
+.BR \-\-dry\-run
+仅模拟打包，不创建实际文件
+.TP
+.BR \-o ", " \-\-output " \fIFILE\fR"
+指定输出文件路径
+.TP
+.BR \-f ", " \-\-format " \fIFORMAT\fR"
+指定压缩格式 (zip|tar.gz|tar.xz) (默认: zip)
+.TP
+.BR \-c ", " \-\-compression " \fILEVEL\fR"
+设置压缩级别 (1-9) (默认: 6)
+.TP
+.BR \-\-exclude " \fIPATTERN\fR"
+排除文件模式 (可多次使用)
+.TP
+.BR \-\-include " \fIPATTERN\fR"
+包含文件模式 (覆盖排除)
+.TP
+.BR \-\-no\-default\-excludes
+不使用默认排除规则
+.TP
+.BR \-\-validate
+打包前验证模块结构
+.TP
+.BR \-\-verify
+打包后验证压缩包完整性
+.TP
+.BR \-\-checksum
+生成校验和文件
+.TP
+.BR \-\-sign
+对模块包进行签名 (如果支持)
+.TP
+.BR \-\-list\-contents
+打包后列出包内容
+.TP
+.BR \-\-preserve\-permissions
+保留文件权限
+.TP
+.BR \-\-preserve\-owner
+保留文件所有者信息
+.TP
+.BR \-\-timestamp " \fITIME\fR"
+设置固定时间戳 (用于可重现构建)
+
+.SH EXAMPLES
+.TP
+基本打包：
+.B module-packager /path/to/module
+.TP
+指定输出和格式：
+.B module-packager --output mymodule.zip --format zip /path/to/module
+.TP
+高压缩比打包：
+.B module-packager --format tar.xz --compression 9 /path/to/module
+.TP
+完整验证打包：
+.B module-packager --validate --verify --checksum --list-contents /path/to/module
+.TP
+排除特定文件：
+.B module-packager --exclude "*.log" --exclude "temp/*" /path/to/module
+
+.SH FILES
+.TP
+.I /usr/etc/module-packager.conf
+默认配置文件
+.TP
+.I ~/.module-packager.conf
+用户配置文件
+
+.SH DEFAULT EXCLUDES
+默认排除的文件和目录模式：
+.TP
+.I *.log, *.tmp, *.bak
+临时和备份文件
+.TP
+.I .git/*, .svn/*, .hg/*
+版本控制目录
+.TP
+.I __pycache__/*, *.pyc
+Python缓存文件
+.TP
+.I .DS_Store, Thumbs.db
+系统缓存文件
+
+.SH EXIT STATUS
+.TP
+.B 0
+打包成功
+.TP
+.B 1
+打包失败或错误
+.TP
+.B 2
+无效的参数或配置
+.TP
+.B 3
+验证失败
+
+.SH SEE ALSO
+.BR ksm-test (1),
+.BR module-builder (1),
+.BR module-validator (1)
+
+.SH AUTHOR
+RootManage-Module-Model Project
+
+.SH BUGS
+报告错误请访问: https://github.com/lightrek/RootManage-Module-Model/issues

@@ -1,0 +1,32 @@
+#!/system/bin/sh
+# ${module_name} Boot Completed Script
+# 此脚本在系统完全启动后执行
+
+MODDIR=${0%/*}
+
+# 等待BOOT_COMPLETED广播
+while [ "$(getprop sys.boot_completed)" != "1" ]; do
+    sleep 1
+done
+
+# 检查KernelSU环境
+if [ "$KSU" = "true" ]; then
+    log -p i -t "${module_id}" "Boot Completed: KernelSU环境"
+else
+    echo "[${module_id}] Boot Completed: Magisk环境" >> /dev/kmsg
+fi
+
+# 系统完全启动后的逻辑
+# 适合执行需要完整系统环境的任务
+
+# 示例：启动用户级服务
+# start_user_service() {
+#     # 启动用户服务的逻辑
+# }
+
+# 示例：检查依赖的应用
+# check_dependencies() {
+#     # 检查必要应用是否安装
+# }
+
+log -p i -t "${module_id}" "Boot Completed 处理完成"
