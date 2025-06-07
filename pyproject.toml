@@ -1,7 +1,7 @@
 [project]
 name = "pyrmm"
-version = "0.1.0"
-description = "用来新建和管理,开发magisk模块的工具集"
+version = "0.1.1"
+description = "Magisk/Apatch/Kernelsu模块的工具集"
 readme = "README.md"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
