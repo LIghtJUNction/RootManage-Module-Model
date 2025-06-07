@@ -1,4 +1,5 @@
 from pathlib import Path
+import click
 import toml
 import shutil
 from pyrmm.usr.lib.fs import RmmFileSystem
@@ -14,7 +15,7 @@ class RmmProjectMeta(type):
         if isinstance(projects, str):
             raise AttributeError(f"项目配置错误!： '{projects}' 请检查：{RmmFileSystem.META}")
         return projects
-    
+
     def project_path(cls, project_name: str) -> Path:
         """Get the path of a project by its name."""
         projects = cls.META
@@ -34,7 +35,7 @@ class RmmProjectMeta(type):
         if not project_path.exists():
             raise FileNotFoundError(f"项目路径不存在: {project_path}")
         # 读取项目的元数据文件
-        meta_file = project_path / "project.meta"
+        meta_file = project_path / "rmmproject.toml"
         if not meta_file.exists():
             raise FileNotFoundError(f"项目元数据文件不存在: {meta_file}")        
         with open(meta_file, 'r', encoding='utf-8') as f:
@@ -122,9 +123,11 @@ class RmmProject(metaclass=RmmProjectMeta):
         }
         
         # 将项目信息写入项目元数据文件
-        meta_file = project_path / "project.meta"
+        meta_file = project_path / "rmmproject.toml"
         with open(meta_file, 'w', encoding='utf-8') as f:
             toml.dump(project_info, f)
+
+        
         
         # 将项目路径添加到配置中
         projects = Config.META.get("projects", {})
@@ -134,12 +137,19 @@ class RmmProject(metaclass=RmmProjectMeta):
         
         return project_info
 
+    @staticmethod
+    def is_rmmproject(project_path: Path) -> bool:
+        """Check if the given path is a valid RMM project."""
+        meta_file = project_path / "rmmproject.toml"
+        return meta_file.exists() and meta_file.is_file()
+
     @classmethod
     def sync(cls, project_name: str):
         """Sync a project by its name."""
         project_path = cls.project_path(project_name)
-        if not project_path.exists():
-            delattr(cls, project_name)
+        if not cls.is_rmmproject(project_path):
+            if click.confirm(f"项目 '{project_name}' 不是一个有效的 RMM 项目。移除？",default=True):
+                delattr(cls, project_name)
 
     @classmethod
     def init_basic(cls, project_path: Path):

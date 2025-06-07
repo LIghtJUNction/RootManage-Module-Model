@@ -29,6 +29,14 @@ class RmmFileSystemMeta(type):
         """Return the metadata directory path of the RMM file system."""
         return cls.ROOT / 'meta.toml'
 
+    def __getattr__(cls, item: str):
+        """Get an attribute from the RMM file system."""
+        with open(cls.META, 'r') as f:
+            import toml
+            meta = toml.load(f)
+        if item in meta["projects"]:
+            return cls.ROOT / Path(meta["projects"][item])
+        raise AttributeError(f"'{cls.__name__}' object has no attribute '{item}'!!!")
 class RmmFileSystem(metaclass=RmmFileSystemMeta):
     """RMM File System class"""
     @classmethod

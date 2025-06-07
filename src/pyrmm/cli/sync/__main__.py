@@ -18,6 +18,8 @@ def project():
         click.echo("没有找到任何RMM项目。")
         return
     for project in projects:
+        if project == "last":
+            continue
         click.echo(f"正在同步项目: {project}")
         try:
             RmmProject.sync(project)
