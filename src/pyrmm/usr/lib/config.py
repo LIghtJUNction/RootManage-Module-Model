@@ -69,7 +69,7 @@ class Config(metaclass = ConfigMeta):
     """
     Configuration class for the Pyrmm application.
     """
-    @classmethod
+    @classmethod    
     def init(cls):
         """Initialize the configuration by ensuring the metadata directory exists."""
         RmmFileSystem.init()
@@ -79,9 +79,7 @@ class Config(metaclass = ConfigMeta):
                 "username": "username",
                 "email": "email",
                 "version": __version__,
-                "projects": {
-                    "last": "None",
-                }
+                "projects": {}
             }
         )
         cls.__save__(meta)

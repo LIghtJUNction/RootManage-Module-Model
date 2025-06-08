@@ -1,8 +1,8 @@
 [project]
 name = "pyrmm"
-version = "0.1.1"
+version = "0.1.4"
 description = "Magisk/Apatch/Kernelsu模块的工具集"
-readme = "README.md"
+readme = "README.MD"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
@@ -26,4 +26,3 @@ ai = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-

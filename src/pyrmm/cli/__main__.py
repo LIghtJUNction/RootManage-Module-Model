@@ -2,7 +2,7 @@ import click
 from pyrmm.__about__ import __version__
 @click.group()
 @click.option('-p', '--profile', help='指定配置文件')
-@click.option('-t' , '--token' , envvar="GITHUB_TOKEN", help='指定GITHUB访问令牌')
+@click.option('-t' , '--token' , envvar="GITHUB_ACCESS_TOKEN", help='指定GITHUB访问令牌')
 @click.version_option(version=__version__, message=f'Pyrmm CLI version {__version__}')
 @click.help_option('-h', '--help', help='显示帮助信息')
 @click.option('--debug/--no-debug', default=False, help='启用调试模式')
@@ -44,6 +44,21 @@ cli.add_command(config)
 """
 配置 Pyrmm 模块 项目
 """
+
+from pyrmm.cli.publish import publish
+cli.add_command(publish)
+"""
+发布 Pyrmm 模块 项目
+"""
+
+from pyrmm.cli.clean import clean
+cli.add_command(clean)
+"""
+清理 Pyrmm 模块 项目
+"""
+
+
+
 
 if __name__ == '__main__':
     cli()

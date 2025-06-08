@@ -1,7 +1,0 @@
-{
-  "version": "v3.0.1",
-  "versionCode": "2025060501",
-  "zipUrl": "https://github.com/LIghtJUNction/RootManage-Module-Model/releases/download/v3.0.1/gogogo-v3.0.1-2025060501-byLIghtJUNction.zip",
-  "changelog": "https://github.com/LIghtJUNction/RootManage-Module-Model/raw/main/CHANGELOG.md",
-  "description": "配置好go运行环境，自带一个多平台/多架构构建CLI程序。"
-}

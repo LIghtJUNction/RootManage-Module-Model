@@ -35,7 +35,7 @@ class RmmFileSystemMeta(type):
             import toml
             meta = toml.load(f)
         if item in meta["projects"]:
-            return cls.ROOT / Path(meta["projects"][item])
+            return Path(meta["projects"][item])
         raise AttributeError(f"'{cls.__name__}' object has no attribute '{item}'!!!")
 class RmmFileSystem(metaclass=RmmFileSystemMeta):
     """RMM File System class"""
