@@ -296,10 +296,23 @@ class RmmProject(RmmBase, metaclass=RmmProjectMeta):
         with open(meta_file, 'w', encoding='utf-8') as f:
             toml.dump(project_info, f)
           # 创建 module.prop 文件
-        module_prop: Path = project_path / "module.prop"
-          # 获取作者信息
+        module_prop: Path = project_path / "module.prop"        # 获取作者信息
         authors = project_info.get("authors", [{}])
-        author_name = authors[0].get("name", Config.username) if authors else Config.username
+        # 安全地获取作者名称，确保返回字符串类型
+        if authors and isinstance(authors[0], dict):
+            author_dict = authors[0]
+            author_name_value = author_dict.get("name", Config.username)
+            if isinstance(author_name_value, str):
+                author_name: str = author_name_value
+            else:
+                author_name: str = "username"  # 使用默认值
+        else:
+            # 从 Config.username 获取，但确保是字符串类型
+            config_username = Config.username
+            if isinstance(config_username, str):
+                author_name: str = config_username
+            else:
+                author_name: str = "username"  # 使用默认值
         
         # 使用版本生成器生成版本信息
         version_info = VersionGenerator.generate("", project_path)
@@ -318,6 +331,8 @@ class RmmProject(RmmBase, metaclass=RmmProjectMeta):
             for key, value in module_prop_content.items():
                 f.write(f"{key}={value}\n")
             
+          # 创建必要的文件
+        cls._create_project_files(project_path, project_name, author_name)
         
         # 将项目路径添加到配置中
         projects = Config.META.get("projects", {})
@@ -406,5 +421,183 @@ class RmmProject(RmmBase, metaclass=RmmProjectMeta):
                 raise
         else:
             print(f"ℹ️  构建输出目录不存在: {dist_dir}")
+
+    @classmethod
+    def _create_project_files(cls, project_path: Path, project_name: str, author_name: str) -> None:
+        """创建项目必要的文件：README.MD、CHANGELOG.MD、LICENSE
+        
+        Args:
+            project_path: 项目路径
+            project_name: 项目名称
+            author_name: 作者名称
+        """
+        from datetime import datetime
+        
+        current_year = datetime.now().year
+        
+        # 创建 README.MD
+        readme_content = f"""# {project_name}
+
+一个基于 RMM (Root Module Manager) 的模块项目。
+
+## 功能特性
+
+- 支持 Magisk、APatch、KernelSU
+- 自动版本管理
+- 构建输出优化
+- GitHub 集成
+
+## 安装方法
+
+1. 下载最新的 release 文件
+2. 通过 Magisk/APatch/KernelSU 安装模块
+3. 重启设备
+
+## 构建
+
+```bash
+# 构建模块
+rmm build
+
+# 发布到 GitHub
+rmm publish
+```
+
+## 开发
+
+```bash
+# 安装开发依赖
+uv tool install pyrmm
+
+# 初始化项目
+rmm init .
+
+# 构建并测试
+rmm build && rmm test
+```
+
+## 许可证
+
+MIT License - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 作者
+
+- {author_name}
+
+---
+
+使用 [RMM](https://github.com/LIghtJUNction/RootManage-Module-Model) 构建
+"""
+        
+        # 创建 CHANGELOG.MD
+        changelog_content = f"""# 更新日志
+
+所有对该项目的重要更改都会记录在此文件中。
+
+## [未发布]
+
+### 新增
+- 初始项目设置
+- 基本模块结构
+
+### 变更
+- 无
+
+### 修复
+- 无
+
+## [1.0.0] - {datetime.now().strftime('%Y-%m-%d')}
+
+### 新增
+- 项目初始版本
+- 基本功能实现
+
+---
+
+## 版本格式说明
+
+- **[未发布]** - 即将发布的更改
+- **[版本号]** - 已发布的版本及发布日期
+
+### 更改类型
+
+- **新增** - 新功能
+- **变更** - 现有功能的更改
+- **弃用** - 即将移除的功能
+- **移除** - 已移除的功能
+- **修复** - Bug 修复
+- **安全** - 安全相关的修复
+"""
+        
+        # 创建 LICENSE 文件内容
+        license_content = f"""
+# LICENSES        
+MIT License
+
+Copyright (c) {current_year} {author_name}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+# RMM Project License
+MIT License
+
+Copyright (c) 2025 LIghtJUNction
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+"""
+        
+        # 写入文件
+        files_to_create = [
+            ("README.MD", readme_content),
+            ("CHANGELOG.MD", changelog_content),
+            ("LICENSE", license_content)
+        ]
+        
+        for filename, content in files_to_create:
+            file_path = project_path / filename
+            
+            # 如果文件不存在才创建，避免覆盖现有文件
+            if not file_path.exists():
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    print(f"✅ 创建文件: {filename}")
+                except Exception as e:
+                    print(f"⚠️  警告: 创建文件 {filename} 失败: {e}")
+            else:
+                print(f"ℹ️  文件已存在，跳过: {filename}")
 
 

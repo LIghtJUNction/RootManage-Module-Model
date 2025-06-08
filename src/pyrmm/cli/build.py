@@ -36,13 +36,19 @@ def build(project_name: str | None, path: Path | None, output: Path | None, clea
             return
         
         click.echo(f"🔨 正在构建项目: {project_name}")
-        click.echo(f"📁 项目路径: {project_path}")
-          # 生成新版本
+        click.echo(f"📁 项目路径: {project_path}")        # 生成新版本
         click.echo(f"📝 正在为项目 {project_name} 生成新版本...")
         try:
             # 获取项目的当前版本信息
             project_info = RmmProject.project_info(project_path)
-            old_version = project_info.get("version", "1.0.0")
+            version_value = project_info.get("version", "1.0.0")
+            
+            # 确保版本是字符串类型
+            if isinstance(version_value, str):
+                old_version = version_value
+            else:
+                old_version = "1.0.0"  # 使用默认版本，如果不是字符串类型
+            
             click.echo(f"🔄 当前版本: {old_version}")
             
             # 使用当前版本生成新版本

@@ -18,9 +18,9 @@ try:
     from github import Github
     from github.GithubException import GithubException
     from github.Repository import Repository
-    _github_available: bool = True
+    _github_available = True
 except ImportError:
-    _github_available: bool = False
+    _github_available = False
     
 @dataclass
 class GitRemoteInfo:
@@ -589,11 +589,168 @@ class RmmGit(RmmBase, metaclass=RmmGitMeta):
     def is_valid_item(cls, item_name: str) -> bool:
         """检查是否是有效的Git项目"""
         return True
-    
     @classmethod
     def get_sync_prompt(cls, item_name: str) -> str:
         """获取同步提示信息"""
         return f"Git仓库 '{item_name}' 信息"
+
+    @classmethod
+    def get_local_tags(cls, project_path: Path) -> list[str]:
+        """获取本地Git标签列表
+        
+        Args:
+            project_path: 项目路径
+            
+        Returns:
+            本地标签列表
+        """
+        git_root = cls.find_git_root(project_path)
+        if not git_root:
+            return []
+        
+        try:
+            result = subprocess.run(
+                ['git', 'tag', '--list'],
+                cwd=git_root,
+                capture_output=True,
+                text=True,
+                encoding='utf-8'
+            )
+            
+            if result.returncode == 0:
+                tags = [tag.strip() for tag in result.stdout.split('\n') if tag.strip()]
+                return sorted(tags)
+        except Exception as e:
+            print(f"获取本地标签失败: {e}")
+        
+        return []
+    
+    @classmethod
+    def get_github_releases(cls, username: str, repo_name: str, token: str | None = None) -> list[str]:
+        """获取GitHub仓库的所有release标签
+        
+        Args:
+            username: GitHub用户名
+            repo_name: 仓库名
+            token: GitHub API token (可选)
+            
+        Returns:
+            release标签列表
+        """
+        repo: Any | None = cls.get_github_repo(username, repo_name, token)
+        if not repo:
+            return []
+        
+        try:
+            releases: Any = repo.get_releases()
+            release_tags = [str(release.tag_name) for release in releases]
+            return sorted(release_tags)
+        except GithubException as e:
+            print(f"获取GitHub releases失败: {e}")
+            return []
+        except Exception as e:
+            print(f"GitHub API调用出错: {e}")
+            return []
+    
+    @classmethod
+    def find_orphan_tags(cls, project_path: Path, remote_name: str = 'origin', 
+                        token: str | None = None) -> list[str]:
+        """查找孤立标签（本地存在但GitHub上没有对应release的标签）
+        
+        Args:
+            project_path: 项目路径
+            remote_name: 远程仓库名，默认为'origin'
+            token: GitHub API token (可选)
+            
+        Returns:
+            孤立标签列表
+        """
+        # 获取仓库信息
+        repo_info = cls.get_repo_info(project_path)
+        if not repo_info or remote_name not in repo_info.remotes:
+            return []
+        
+        remote_info = repo_info.remotes[remote_name]
+        if not remote_info.username or not remote_info.repo_name:
+            return []
+        
+        # 获取本地标签
+        local_tags = cls.get_local_tags(project_path)
+        if not local_tags:
+            return []
+        
+        # 获取GitHub releases
+        release_tags = cls.get_github_releases(remote_info.username, remote_info.repo_name, token)
+        
+        # 找出本地存在但GitHub上没有release的标签
+        orphan_tags = [tag for tag in local_tags if tag not in release_tags]
+        
+        return orphan_tags
+    
+    @classmethod
+    def delete_local_tag(cls, project_path: Path, tag_name: str) -> bool:
+        """删除本地Git标签
+        
+        Args:
+            project_path: 项目路径
+            tag_name: 标签名
+            
+        Returns:
+            是否删除成功
+        """
+        git_root = cls.find_git_root(project_path)
+        if not git_root:
+            return False
+        
+        try:
+            result = subprocess.run(
+                ['git', 'tag', '-d', tag_name],
+                cwd=git_root,
+                capture_output=True,
+                text=True,
+                encoding='utf-8'
+            )
+            
+            return result.returncode == 0
+        except Exception as e:
+            print(f"删除本地标签 {tag_name} 失败: {e}")
+            return False
+    
+    @classmethod
+    def clean_orphan_tags(cls, project_path: Path, remote_name: str = 'origin', 
+                         token: str | None = None, dry_run: bool = False) -> tuple[list[str], list[str]]:
+        """清理孤立标签
+        
+        Args:
+            project_path: 项目路径
+            remote_name: 远程仓库名，默认为'origin'
+            token: GitHub API token (可选)
+            dry_run: 是否为干运行（只查找不删除）
+            
+        Returns:
+            (成功删除的标签, 删除失败的标签) 元组
+        """
+        orphan_tags = cls.find_orphan_tags(project_path, remote_name, token)
+        
+        if not orphan_tags:
+            return [], []
+        
+        if dry_run:
+            return orphan_tags, []
+        
+        success_tags: list[str] = []
+        failed_tags: list[str] = []
+        
+        for tag in orphan_tags:
+            # 删除本地标签
+            if cls.delete_local_tag(project_path, tag):
+                success_tags.append(tag)
+                print(f"✅ 已删除本地标签: {tag}")
+            else:
+                failed_tags.append(tag)
+                print(f"❌ 删除本地标签失败: {tag}")
+        
+        return success_tags, failed_tags
 
 
 # 导出类型和常用函数

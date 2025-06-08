@@ -189,7 +189,7 @@ class ProxyManager:
         proxy_links: list[str] = []
         proxy_links.append("## 🚀 加速下载链接")
         proxy_links.append("")
-        proxy_links.append("以下链接提供加速下载服务，选择速度最快的节点：")
+        proxy_links.append("代理下载地址列表，已按速度排序：")
         proxy_links.append("")
         
         for i, proxy in enumerate(top_proxies, 1):
