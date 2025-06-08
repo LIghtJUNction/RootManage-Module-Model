@@ -17,7 +17,7 @@ def sync(project_name: str | None, update: bool, sync_all: bool, proxy: bool) ->
     """    # 处理代理选项
     def handle_proxy_update(project_name: str) -> None:
         """获取代理列表并更新项目元数据"""
-        if proxy:
+        if proxy or sync_all:
             try:
                 click.echo("🌐 正在获取GitHub代理列表...")
                 
@@ -75,6 +75,7 @@ def sync(project_name: str | None, update: bool, sync_all: bool, proxy: bool) ->
                 click.echo(f"✅ 项目 {project} 同步成功。")
             except Exception as e:
                 click.echo(f"❌ 项目 {project} 同步失败: {e}")
+
     elif project_name:
         # 同步指定项目
         click.echo(f"正在同步项目: {project_name}")

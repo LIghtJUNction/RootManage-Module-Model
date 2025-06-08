@@ -15,7 +15,6 @@ def github(ctx: click.Context, project_path: str, tag: str, name: str, body: str
     from pyrmm.usr.lib.project import RmmProject
     from pyrmm.usr.lib.git import RmmGit
     from pyrmm.usr.lib.proxy import ProxyManager
-    import os
     from pathlib import Path
 
     token = ctx.obj.get('token', None)
@@ -70,6 +69,7 @@ def github(ctx: click.Context, project_path: str, tag: str, name: str, body: str
         if not github_token:
             github_token = ctx.obj.get('token', None)
             if not github_token:
+                click.echo(" rmm test github --TOKEN YOUR_GITHUB_ACCESS_TOKEN")
                 click.echo("❌ 未提供GitHub访问令牌。请设置GITHUB_ACCESS_TOKEN环境变量或使用--token参数")
                 click.echo("💡 GitHub token 需要以下权限:")
                 click.echo("   - repo (完整仓库权限)")
@@ -81,6 +81,7 @@ def github(ctx: click.Context, project_path: str, tag: str, name: str, body: str
         # 验证GitHub token权限
         click.echo("🔑 验证GitHub访问权限...")
         if not RmmGit.check_repo_exists(origin_info.username, origin_info.repo_name, github_token):
+            click.echo(" rmm test github --TOKEN YOUR_GITHUB_ACCESS_TOKEN")
             click.echo("❌ 无法访问GitHub仓库，请检查:")
             click.echo("   1. 仓库是否存在且可访问")
             click.echo("   2. GitHub token 是否有效")

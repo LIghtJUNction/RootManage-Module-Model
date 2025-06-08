@@ -57,6 +57,14 @@ cli.add_command(clean)
 清理 Pyrmm 模块 项目
 """
 
+from pyrmm.cli.test import test
+cli.add_command(test)
+"""
+测试 Pyrmm 模块 项目
+"""
+
+
+
 
 
 
