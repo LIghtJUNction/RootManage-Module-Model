@@ -39,6 +39,13 @@ cli.add_command(sync)
 同步 & 刷新 Pyrmm 模块 项目
 """
 
+from pyrmm.cli.run import run
+cli.add_command(run)
+"""
+运行 Pyrmm 自定义脚本 项目
+"""
+
+
 from pyrmm.cli.config import config
 cli.add_command(config)
 """

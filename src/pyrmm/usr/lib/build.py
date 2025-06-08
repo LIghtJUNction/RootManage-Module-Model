@@ -6,6 +6,7 @@ import time
 import traceback
 import shutil
 import zipfile
+import tarfile
 import os
 from .config import Config
 from .base import RmmBaseMeta, RmmBase
@@ -193,21 +194,23 @@ class RmmBuilder(RmmBase, metaclass=RmmBuilderMeta):
                     if verbose:
                         print(f"  ➤ 执行后构建钩子: {hook_name}")
                     hook_func()
-            
-            # 计算构建时间
+              # 计算构建时间
             build_time = time.time() - start_time
             
             # 查找输出文件
-            output_files = list(output_dir.glob("*.zip"))
-            output_file = str(output_files[0]) if output_files else None
+            zip_files = list(output_dir.glob("*.zip"))
+            tar_files = list(output_dir.glob("*.tar.gz"))
+            all_output_files = zip_files + tar_files
             
             result: dict[str, Any] = {
                 "success": True,
                 "build_time": build_time
             }
             
-            if output_file:
-                result["output_file"] = output_file
+            if all_output_files:
+                result["output_files"] = [str(f) for f in all_output_files]
+                # 为了向后兼容，保留单个输出文件字段（优先使用zip文件）
+                result["output_file"] = str(zip_files[0]) if zip_files else str(tar_files[0])
             
             if verbose:
                 print(f"✅ 构建完成，耗时 {build_time:.2f} 秒")
@@ -248,8 +251,7 @@ class RmmBuilder(RmmBase, metaclass=RmmBuilderMeta):
         project_info = RmmProject.project_info(project_path)
         project_name = project_info.get("name", project_path.name)
         version = project_info.get("version", "1.0.0")
-        
-        # 检查是否有module.prop文件
+          # 检查是否有module.prop文件
         module_prop = project_path / "module.prop"
         if module_prop.exists():
             # 创建基本的zip包
@@ -282,6 +284,34 @@ class RmmBuilder(RmmBase, metaclass=RmmBuilderMeta):
         else:
             if verbose:
                 print("⚠️  未找到module.prop文件，跳过模块打包")
+        
+        # 无论是否有module.prop，都创建源代码tar.gz包
+        source_output_file = output_dir / f"{project_name}-{version}.tar.gz"
+        if verbose:
+            print(f"📦 正在创建源代码包: {source_output_file}")
+        
+        with tarfile.open(source_output_file, 'w:gz') as tf:
+            # 遍历项目目录，添加所有文件到tar.gz
+            for root, dirs, files in os.walk(project_path):
+                # 跳过隐藏目录、dist目录、__pycache__目录、.rmmp目录
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d != 'dist' and d != '__pycache__']
+                
+                for file in files:
+                    # 跳过隐藏文件、Python缓存文件（但保留Rmake.py等配置文件）
+                    if file.startswith('.') and file != '.gitignore' or file.endswith('.pyc'):
+                        continue
+                    
+                    file_path = Path(root) / file
+                    # 计算相对路径
+                    arcname = file_path.relative_to(project_path)
+                    
+                    if verbose:
+                        print(f"  📄 添加源文件: {arcname}")
+                    
+                    tf.add(file_path, arcname)
+        
+        if verbose:
+            print(f"✅ 源代码包创建完成: {source_output_file}")
     
     @classmethod
     def is_valid_item(cls, item_name: str) -> bool:

@@ -77,13 +77,26 @@ def build(project_name: str | None, path: Path | None, output: Path | None, clea
             output_dir=output,
             clean=clean,
             verbose=verbose,
-            debug=debug
-        )
+            debug=debug        )
         
         if result.get("success", False):
             click.echo(f"✅ 项目 '{project_name}' 构建成功！")
-            if "output_file" in result:
+            
+            # 显示所有输出文件
+            if "output_files" in result:
+                click.echo("📦 生成的文件:")
+                for output_file in result["output_files"]:
+                    file_path = Path(output_file)
+                    if file_path.suffix == ".zip":
+                        click.echo(f"  🗜️  模块包: {output_file}")
+                    elif file_path.name.endswith(".tar.gz"):
+                        click.echo(f"  📄 源代码包: {output_file}")
+                    else:
+                        click.echo(f"  📦 文件: {output_file}")
+            elif "output_file" in result:
+                # 向后兼容
                 click.echo(f"📦 输出文件: {result['output_file']}")
+                
             if "build_time" in result:
                 click.echo(f"⏱️  构建时间: {result['build_time']:.2f}秒")
         else:

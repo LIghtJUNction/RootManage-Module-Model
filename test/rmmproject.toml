@@ -16,6 +16,7 @@ email = "email"
 
 [[scripts]]
 build = "rmm build"
+ls = "rmm config ls"
 
 [urls]
 github = "https://github.com/LIghtJUNction/test"

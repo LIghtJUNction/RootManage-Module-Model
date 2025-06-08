@@ -191,11 +191,11 @@ class ProxyManager:
         proxy_links.append("")
         proxy_links.append("代理下载地址列表，已按速度排序：")
         proxy_links.append("")
-        
         for i, proxy in enumerate(top_proxies, 1):
             domain_main = proxy.get_domain_main_part()
             speed_text = f"{proxy.speed:.1f}Mb/s" if proxy.speed > 0 else "测速中"
-            proxy_download_url = download_url.replace("github.com", proxy.url.replace("https://", "").replace("http://", ""))
+            # 生成代理下载链接：将完整的GitHub URL追加到代理域名后
+            proxy_download_url = f"{proxy.url}/{download_url}"
             proxy_links.append(f"{i}. [{domain_main} ({speed_text})]({proxy_download_url})")
         
         proxy_links.append("")

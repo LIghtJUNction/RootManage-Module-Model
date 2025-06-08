@@ -16,6 +16,11 @@ def publish(ctx: click.Context, token: str, yes: bool):
 from pyrmm.cli.publish.github import github
 publish.add_command(github)
 
+from pyrmm.cli.publish.repo import repo
+publish.add_command(repo)
+
+
+
 if __name__ == "__main__":
     publish()
 
