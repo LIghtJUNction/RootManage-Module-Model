@@ -1,6 +1,6 @@
 [project]
 name = "pyrmm"
-version = "0.1.5"
+version = "0.1.8"
 description = "Magisk/Apatch/Kernelsu模块的工具集"
 readme = "README.MD"
 authors = [
