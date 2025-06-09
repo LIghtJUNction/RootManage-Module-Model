@@ -37,3 +37,4 @@ documentation = "https://github.com/LIghtJUNction/RootManageModuleModel"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 module-name = "rmmr"
+python-source = "../../src/pyrmm/cli/"

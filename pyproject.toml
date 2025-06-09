@@ -16,7 +16,7 @@ dependencies = [
 
 [project.scripts]
 rmm = "pyrmm.cli.__main__:cli"
-rmmr = "rmmr:cli"
+rmmr = "pyrmm.cli.rmmr:cli"
 
 [build-system]
 requires = ["hatchling"]

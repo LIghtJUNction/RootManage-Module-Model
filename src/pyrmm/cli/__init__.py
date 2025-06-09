@@ -3,14 +3,12 @@ def __getattr__(name):
         from .__main__ import cli
         return cli
     elif name == "rmmr":
-        # 直接导入编译好的 Rust 模块
+        # 直接导入编译好的 Rust 模块 (.pyd 文件在当前目录)
         try:
-            import rmmr as rust_module
+            from . import rmmr as rust_module
             return rust_module
         except ImportError:
-            # 如果导入失败，回退到 Python 包装器
-            from .rmmr import cli
-            return cli
+            raise ImportError("无法导入 rmmr Rust 模块，请确保 rmmr.*.pyd 文件存在")
     else:
         raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
     

@@ -205,22 +205,6 @@ pub fn run_command(cmd: &str, args: &[&str], working_dir: Option<&std::path::Pat
     Ok(stdout)
 }
 
-/// 确保目录存在
-pub fn ensure_dir_exists<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
-    std::fs::create_dir_all(path.as_ref())
-        .with_context(|| format!("无法创建目录: {}", path.as_ref().display()))?;
-    Ok(())
-}
-
-/// 删除目录及其内容
-pub fn remove_dir_all<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
-    if path.as_ref().exists() {
-        std::fs::remove_dir_all(path.as_ref())
-            .with_context(|| format!("无法删除目录: {}", path.as_ref().display()))?;
-    }
-    Ok(())
-}
-
 /// 检查文件是否存在
 pub fn file_exists<P: AsRef<std::path::Path>>(path: P) -> bool {
     path.as_ref().exists() && path.as_ref().is_file()
@@ -229,4 +213,22 @@ pub fn file_exists<P: AsRef<std::path::Path>>(path: P) -> bool {
 /// 检查目录是否存在
 pub fn dir_exists<P: AsRef<std::path::Path>>(path: P) -> bool {
     path.as_ref().exists() && path.as_ref().is_dir()
+}
+
+/// 确保目录存在，如果不存在则创建
+pub fn ensure_dir_exists<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
+    if !path.as_ref().exists() {
+        std::fs::create_dir_all(&path)
+            .with_context(|| format!("创建目录失败: {}", path.as_ref().display()))?;
+    }
+    Ok(())
+}
+
+/// 递归删除目录
+pub fn remove_dir_all<P: AsRef<std::path::Path>>(path: P) -> Result<()> {
+    if path.as_ref().exists() {
+        std::fs::remove_dir_all(&path)
+            .with_context(|| format!("删除目录失败: {}", path.as_ref().display()))?;
+    }
+    Ok(())
 }

@@ -275,16 +275,21 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
     
     let args = if let Some(args) = args {
         args
-    } else {
-        // 从 Python 的 sys.argv 获取参数
+    } else {        // 从 Python 的 sys.argv 获取参数
         Python::with_gil(|py| {
-            let sys = py.import_bound("sys")?;
+            let sys = py.import("sys")?;
             let argv: Vec<String> = sys.getattr("argv")?.extract()?;
             
             // 处理参数：第一个参数通常是脚本路径，我们替换为程序名
+            // 特别处理 Windows 下的 .exe 路径
             let mut processed_args = vec!["rmmr".to_string()];
-            if argv.len() > 1 {
-                processed_args.extend_from_slice(&argv[1..]);
+            
+            // 跳过第一个参数（exe路径），直接处理后续参数
+            for arg in argv.iter().skip(1) {
+                // 跳过包含 .exe 路径的参数
+                if !arg.contains("rmmr.exe") && !arg.ends_with(".exe") {
+                    processed_args.push(arg.clone());
+                }
             }
             
             Ok::<Vec<String>, pyo3::PyErr>(processed_args)
