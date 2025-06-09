@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fs"
-requires-python = ">=3.12"  # 修改为支持多个Python版本
+requires-python = ">=3.9"  # 修改为支持多个Python版本
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",

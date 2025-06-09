@@ -1,0 +1,263 @@
+name: Build Rust Modules (RMMBOX)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'rmmbox/**'
+      - '.github/workflows/RMMBOX-CI.yml'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'rmmbox/**'
+      - '.github/workflows/RMMBOX-CI.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }} - Python ${{ matrix.python-version }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        arch: [x86_64, aarch64]
+        exclude:
+          # Windows doesn't support aarch64 runners on GitHub Actions
+          - os: windows-latest
+            arch: aarch64
+          # Ubuntu aarch64 only supported on self-hosted runners
+          # We'll use ubuntu-latest for x86_64 and skip aarch64 for now
+          - os: ubuntu-latest
+            arch: aarch64
+        include:
+          # Add specific macOS aarch64 (Apple Silicon) support
+          - os: macos-14  # Apple Silicon runners
+            python-version: '3.9'
+            arch: aarch64
+          - os: macos-14
+            python-version: '3.10'
+            arch: aarch64
+          - os: macos-14
+            python-version: '3.11'
+            arch: aarch64
+          - os: macos-14
+            python-version: '3.12'
+            arch: aarch64
+          - os: macos-14
+            python-version: '3.13'
+            arch: aarch64
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        architecture: ${{ matrix.arch == 'x86_64' && 'x64' || 'auto' }}
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.arch == 'aarch64' && (matrix.os == 'macos-14' && 'aarch64-apple-darwin' || 'aarch64-unknown-linux-gnu') || (startsWith(matrix.os, 'windows') && 'x86_64-pc-windows-msvc' || startsWith(matrix.os, 'ubuntu') && 'x86_64-unknown-linux-gnu' || 'x86_64-apple-darwin') }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+
+    - name: Set up cross-compilation (Linux aarch64)
+      if: matrix.os == 'ubuntu-latest' && matrix.arch == 'aarch64'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+        echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+    - name: Set environment variables for cross-compilation
+      shell: bash
+      run: |
+        if [[ "${{ matrix.arch }}" == "aarch64" ]]; then
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "CARGO_BUILD_TARGET=aarch64-apple-darwin" >> $GITHUB_ENV
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then
+            echo "CARGO_BUILD_TARGET=aarch64-unknown-linux-gnu" >> $GITHUB_ENV
+          fi
+        else
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            echo "CARGO_BUILD_TARGET=x86_64-pc-windows-msvc" >> $GITHUB_ENV
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then
+            echo "CARGO_BUILD_TARGET=x86_64-unknown-linux-gnu" >> $GITHUB_ENV
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "CARGO_BUILD_TARGET=x86_64-apple-darwin" >> $GITHUB_ENV
+          fi
+        fi
+
+    - name: Display build environment
+      shell: bash
+      run: |
+        echo "OS: ${{ runner.os }}"
+        echo "Architecture: ${{ matrix.arch }}"
+        echo "Python version: ${{ matrix.python-version }}"
+        python --version
+        python -c "import sys; print(f'Python: {sys.version}'); print(f'Platform: {sys.platform}'); print(f'Architecture: {sys.maxsize > 2**32 and \"64-bit\" or \"32-bit\"}')"
+        rustc --version
+        cargo --version
+        uv --version
+
+    - name: Build Rust modules
+      shell: bash
+      working-directory: rmmbox
+      run: |
+        python build_all.py
+
+    - name: List generated files
+      shell: bash
+      run: |
+        echo "=== Generated binary files ==="
+        find src/pyrmm/usr/lib -name "*.pyd" -o -name "*.so" | head -20
+        echo ""
+        echo "=== File details ==="
+        find src/pyrmm/usr/lib -name "*.pyd" -o -name "*.so" -exec ls -la {} \;
+
+    - name: Test import modules
+      shell: bash
+      run: |
+        echo "=== Testing module imports ==="
+        cd src
+        python -c "
+        import sys
+        sys.path.insert(0, '.')
+        
+        print('Testing imports...')
+        try:
+            import pyrmm.usr.lib.fs as fs_module
+            print('✅ fs module imported successfully')
+            print(f'fs.ROOT: {fs_module.ROOT}')
+        except Exception as e:
+            print(f'❌ fs module import failed: {e}')
+        
+        try:
+            import pyrmm.usr.lib.config as config_module
+            print('✅ config module imported successfully')
+            # Test basic functionality
+            config_module.Config.init()
+            print('✅ config module functionality test passed')
+        except Exception as e:
+            print(f'❌ config module import failed: {e}')
+        
+        try:
+            import pyrmm.usr.lib.basic as basic_module
+            print('✅ basic module imported successfully')
+            print(f'basic.CUSTOMIZE_SH length: {len(basic_module.CUSTOMIZE_SH)}')
+        except Exception as e:
+            print(f'❌ basic module import failed: {e}')
+        "
+
+    - name: Create artifact name
+      shell: bash
+      run: |
+        OS_NAME="${{ runner.os }}"
+        if [[ "$OS_NAME" == "Windows" ]]; then
+          OS_LOWER="windows"
+          EXT="pyd"
+        elif [[ "$OS_NAME" == "macOS" ]]; then
+          OS_LOWER="macos"
+          EXT="so"
+        else
+          OS_LOWER="linux"
+          EXT="so"
+        fi
+        
+        ARTIFACT_NAME="rust-modules-${OS_LOWER}-${{ matrix.arch }}-py${{ matrix.python-version }}"
+        echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
+        echo "BINARY_EXT=${EXT}" >> $GITHUB_ENV
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: |
+          src/pyrmm/usr/lib/*.${{ env.BINARY_EXT }}
+        retention-days: 30
+
+  collect-and-release:
+    name: Collect all artifacts and create release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Organize artifacts by platform
+      run: |
+        mkdir -p release/windows release/macos release/linux
+        
+        # Move artifacts to organized structure
+        find artifacts -name "*.pyd" -exec cp {} release/windows/ \;
+        find artifacts -name "*.so" | while read file; do
+          if [[ "$file" == *"macos"* ]]; then
+            cp "$file" release/macos/
+          else
+            cp "$file" release/linux/
+          fi
+        done
+        
+        # List organized files
+        echo "=== Organized artifacts ==="
+        find release -type f | sort
+
+    - name: Create archive for each platform
+      run: |
+        cd release
+        tar -czf ../rust-modules-windows.tar.gz windows/
+        tar -czf ../rust-modules-macos.tar.gz macos/
+        tar -czf ../rust-modules-linux.tar.gz linux/
+        tar -czf ../rust-modules-all-platforms.tar.gz windows/ macos/ linux/
+
+    - name: Upload release archives
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-modules-release-archives
+        path: |
+          rust-modules-*.tar.gz
+        retention-days: 90
+
+    - name: Create Release (on main branch)
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: rust-modules-${{ github.run_number }}
+        name: Rust Modules Build ${{ github.run_number }}
+        body: |
+          Automated build of Rust modules for PyRMM
+          
+          **Build Information:**
+          - Commit: ${{ github.sha }}
+          - Date: ${{ github.event.head_commit.timestamp }}
+          - Python versions: 3.9, 3.10, 3.11, 3.12, 3.13
+          - Platforms: Windows (x86_64), macOS (x86_64, aarch64), Linux (x86_64)
+          
+          **Files included:**
+          - `rust-modules-windows.tar.gz` - Windows .pyd files
+          - `rust-modules-macos.tar.gz` - macOS .so files  
+          - `rust-modules-linux.tar.gz` - Linux .so files
+          - `rust-modules-all-platforms.tar.gz` - All platforms combined
+          
+          Extract the appropriate archive and place the files in `src/pyrmm/usr/lib/`
+        files: |
+          rust-modules-*.tar.gz
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

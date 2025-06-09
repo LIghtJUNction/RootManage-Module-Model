@@ -19,7 +19,6 @@ cargo:rustc-cfg=Py_3_9
 cargo:rustc-cfg=Py_3_10
 cargo:rustc-cfg=Py_3_11
 cargo:rustc-cfg=Py_3_12
-cargo:rustc-cfg=Py_3_13
 cargo:rustc-cfg=rustc_has_once_lock
 cargo:rustc-check-cfg=cfg(rustc_has_once_lock)
 cargo:rustc-cfg=cargo_toml_lints
