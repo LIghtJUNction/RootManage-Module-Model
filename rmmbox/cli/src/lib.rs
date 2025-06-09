@@ -275,21 +275,63 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
     
     let args = if let Some(args) = args {
         args
-    } else {        // 从 Python 的 sys.argv 获取参数
+    } else {
+        // 从 Python 的 sys.argv 获取参数
         Python::with_gil(|py| {
             let sys = py.import("sys")?;
             let argv: Vec<String> = sys.getattr("argv")?.extract()?;
             
+            // 调试：打印原始参数
+            if std::env::var("RMMR_DEBUG").is_ok() {
+                eprintln!("DEBUG: 原始 sys.argv: {:?}", argv);
+            }
+            
             // 处理参数：第一个参数通常是脚本路径，我们替换为程序名
-            // 特别处理 Windows 下的 .exe 路径
             let mut processed_args = vec!["rmmr".to_string()];
             
-            // 跳过第一个参数（exe路径），直接处理后续参数
-            for arg in argv.iter().skip(1) {
-                // 跳过包含 .exe 路径的参数
-                if !arg.contains("rmmr.exe") && !arg.ends_with(".exe") {
-                    processed_args.push(arg.clone());
+            // 获取实际的命令行参数
+            // 对于通过 Python 脚本包装器调用的情况，我们需要更仔细地处理参数
+            let mut skip_next = false;
+            for (i, arg) in argv.iter().enumerate() {
+                if skip_next {
+                    skip_next = false;
+                    continue;
                 }
+                
+                // 跳过第一个参数（通常是脚本路径）
+                if i == 0 {
+                    continue;
+                }
+                
+                // 跳过包含特定模式的参数
+                if arg.contains("rmmr.exe") || 
+                   arg.contains("python") ||
+                   arg.contains("Scripts") ||
+                   arg.ends_with(".exe") ||
+                   arg == "-c" {
+                    // 如果是 -c 参数，还需要跳过下一个参数（Python 代码）
+                    if arg == "-c" {
+                        skip_next = true;
+                    }
+                    continue;
+                }
+                
+                // 跳过包含 Python 代码的参数
+                if arg.contains("import") || arg.contains("pyrmm") {
+                    continue;
+                }
+                
+                processed_args.push(arg.clone());
+            }
+            
+            // 如果没有有效参数，显示帮助
+            if processed_args.len() == 1 {
+                processed_args.push("--help".to_string());
+            }
+            
+            // 调试：打印处理后的参数
+            if std::env::var("RMMR_DEBUG").is_ok() {
+                eprintln!("DEBUG: 处理后的参数: {:?}", processed_args);
             }
             
             Ok::<Vec<String>, pyo3::PyErr>(processed_args)
@@ -297,8 +339,23 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
     };
     
     let app = build_cli_app();
-    let matches = app.try_get_matches_from(args)
-        .map_err(|e| pyo3::exceptions::PySystemExit::new_err(e.to_string()))?;
+    let matches = match app.try_get_matches_from(args) {
+        Ok(matches) => matches,
+        Err(e) => {
+            // 改进错误处理：如果是帮助或版本信息，直接输出而不是错误
+            match e.kind() {
+                clap::error::ErrorKind::DisplayHelp | 
+                clap::error::ErrorKind::DisplayVersion => {
+                    print!("{}", e);
+                    return Ok(());
+                }
+                _ => {
+                    eprintln!("{}", e);
+                    return Err(pyo3::exceptions::PySystemExit::new_err(e.exit_code()));
+                }
+            }
+        }
+    };
     
     // 创建全局上下文
     let profile = matches.get_one::<String>("profile").cloned();
@@ -331,7 +388,8 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
             println!("RMMR CLI version: {}", VERSION);
         }
         _ => {
-            return Err(pyo3::exceptions::PyValueError::new_err("No command specified"));
+            // 显示帮助信息而不是错误
+            println!("{}", build_cli_app().render_help());
         }
     }
     
