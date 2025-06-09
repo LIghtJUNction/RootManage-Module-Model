@@ -145,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.target }}
-          path: dist
+          path: dist  
   sdist:
     runs-on: ubuntu-latest
     defaults:
@@ -154,7 +154,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
-        uses: PyO3/maturin-action@v1.19.1
+        uses: PyO3/maturin-action@v1.49.1
         with:
           command: sdist
           args: --out dist
