@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 description = "Fast filesystem utilities for RMM (Root Manage Module Model) implemented in Rust"
 license = "MIT"
-homepage = "https://github.com/lightqaq/RootManageModuleModel"
-repository = "https://github.com/lightqaq/RootManageModuleModel"
-documentation = "https://github.com/lightqaq/RootManageModuleModel"
+homepage = "https://github.com/LIghtJUNction/RootManageModuleModel"
+repository = "https://github.com/LIghtJUNction/RootManageModuleModel"
+documentation = "https://github.com/LIghtJUNction/RootManageModuleModel"
 keywords = ["filesystem", "rmm", "python-extension"]
 categories = ["filesystem", "development-tools"]
-authors = ["lightqaq"]
+authors = ["LIghtJUNction"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
