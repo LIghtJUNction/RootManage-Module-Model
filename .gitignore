@@ -3,3 +3,4 @@ go/api/except.txt
 /go
 go.tar.gz
 MyModule/MyModule.zip
+*.pyc
