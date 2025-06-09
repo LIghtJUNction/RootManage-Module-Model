@@ -21,6 +21,9 @@ permissions:
 jobs:
   linux:
     runs-on: ${{ matrix.platform.runner }}
+    defaults:
+      run:
+        working-directory: rmmbox/config
     strategy:
       matrix:
         platform:
@@ -53,9 +56,11 @@ jobs:
         with:
           name: wheels-linux-${{ matrix.platform.target }}   
           path: dist
-
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
+    defaults:
+      run:
+        working-directory: rmmbox/config
     strategy:
       matrix:
         platform:
@@ -67,13 +72,13 @@ jobs:
             target: aarch64
           - runner: ubuntu-22.04
             target: armv7
-    steps:
+    steps:      
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v1.49.1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --find-interpreter      
@@ -84,9 +89,11 @@ jobs:
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
           path: dist
-
   windows:
     runs-on: ${{ matrix.platform.runner }}
+    defaults:
+      run:
+        working-directory: rmmbox/config
     strategy:
       matrix:
         platform:
@@ -111,9 +118,11 @@ jobs:
         with:
           name: wheels-windows-${{ matrix.platform.target }} 
           path: dist
-
   macos:
     runs-on: ${{ matrix.platform.runner }}
+    defaults:
+      run:
+        working-directory: rmmbox/config
     strategy:
       matrix:
         platform:
@@ -137,9 +146,11 @@ jobs:
         with:
           name: wheels-macos-${{ matrix.platform.target }}   
           path: dist
-
   sdist:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rmmbox/config
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
