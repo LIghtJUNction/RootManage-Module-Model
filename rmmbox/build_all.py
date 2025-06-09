@@ -106,60 +106,60 @@ def extract_pyd_files(project_dir, target_lib_dir):
 
 
 def main():
-    """Main function"""
+    """主函数"""
     script_dir = Path(__file__).parent
     rmmbox_dir = script_dir
     target_lib_dir = script_dir.parent / "src" / "pyrmm" / "usr" / "lib"
     
-    print(f"rmmbox directory: {rmmbox_dir}")
-    print(f"Target lib directory: {target_lib_dir}")
+    print(f"rmmbox path: {rmmbox_dir}")
+    print(f"target lib dir: {target_lib_dir}")
     
-    # Ensure target directory exists
+    # 确保目标目录存在
     target_lib_dir.mkdir(parents=True, exist_ok=True)
     
-    # Find all Rust projects
+    # 查找所有Rust项目
     projects = find_rust_projects(rmmbox_dir)
     
     if not projects:
-        print("No Rust projects found")
+
         return
     
-    print(f"Found {len(projects)} projects")
+
     
-    # Build statistics
+    # 构建统计
     success_count = 0
     failed_projects = []
     extracted_files = []
     
-    # Build projects one by one
+    # 逐个构建项目
     for project_dir in projects:
         try:
             if build_project(project_dir):
-                # Extract .pyd files
+                # 提取.pyd文件
                 files = extract_pyd_files(project_dir, target_lib_dir)
                 extracted_files.extend(files)
                 success_count += 1
-                print(f"✅ {project_dir.name} build successful")
+                print(f"✅ {project_dir.name} ")
             else:
                 failed_projects.append(project_dir.name)
-                print(f"❌ {project_dir.name} build failed")
+                print(f"❌ {project_dir.name} ")
         except Exception as e:
             failed_projects.append(project_dir.name)
-            print(f"❌ {project_dir.name} build failed: {e}")
-    
-    # Output results
-    print(f"\n=== Build completed ===")
-    print(f"Success: {success_count}/{len(projects)}")
-    
+            print(f"❌ {project_dir.name} {e}")
+
+    # 输出结果
+    print(f"\n=== summary ===")
+    print(f"success: {success_count}/{len(projects)}")
+
     if failed_projects:
-        print(f"Failed projects: {', '.join(failed_projects)}")
-    
+        print(f"failed projects: {', '.join(failed_projects)}")
+
     if extracted_files:
-        print(f"Extracted files:")
+        print(f"extracted files:")
         for file in extracted_files:
             print(f"  {file}")
-    
-    print(f"✅ All files moved to: {target_lib_dir}")
+
+    print(f"✅ all files have been moved to: {target_lib_dir}")
 
 
 if __name__ == "__main__":
