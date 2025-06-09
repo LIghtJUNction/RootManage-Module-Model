@@ -1,0 +1,7 @@
+id=test-fs
+name=test-fs
+version=v1.0.1-pyo3dev.3ea4ec84
+versionCode=2025060902
+author=LIghtJUNction
+description=RMM项目 test-fs
+updateJson=https://raw.githubusercontent.com/LIghtJUNction/test-fs/main/update.json

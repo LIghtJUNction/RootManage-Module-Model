@@ -4,7 +4,7 @@ from pathlib import Path
 from .fs import RmmFileSystem
 from ...__about__ import __version__
 import toml
-
+print("警告！！！ 未加载rust 版本模块！ --- config.py 模块已加载")
 
 class ConfigMeta(type):
     _cache: dict[str, str | dict[str, str]] | None = None

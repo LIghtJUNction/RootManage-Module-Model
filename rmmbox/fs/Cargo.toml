@@ -1,0 +1,22 @@
+[package]
+name = "fs"
+version = "0.1.0"
+edition = "2021"
+description = "Fast filesystem utilities for RMM (Root Manage Module Model) implemented in Rust"
+license = "MIT"
+homepage = "https://github.com/lightqaq/RootManageModuleModel"
+repository = "https://github.com/lightqaq/RootManageModuleModel"
+documentation = "https://github.com/lightqaq/RootManageModuleModel"
+keywords = ["filesystem", "rmm", "python-extension"]
+categories = ["filesystem", "development-tools"]
+authors = ["lightqaq"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "fs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.25.0"
+dirs = "6.0.0"
+toml = "0.8"

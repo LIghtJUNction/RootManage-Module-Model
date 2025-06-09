@@ -1,0 +1,84 @@
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "config"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 4 - Beta",
+]
+dynamic = ["version"]
+[tool.maturin]
+features = ["pyo3/extension-module"]
+# 跨平台构建配置 - 纯Rust扩展模块，不需要Python源码
+# python-source = "src"  # 注释掉，因为这是纯Rust扩展
+# 支持多种Python版本
+python-versions = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+# 启用跨平台构建 - 使用cibuildwheel或手动指定目标
+module-name = "config"
+bindings = "pyo3"
+
+# 发布配置
+[tool.maturin.build-options]
+# 启用所有优化
+strip = true
+# 生成调试信息（release模式下）
+debug-assertions = false
+
+# 跨平台轮子构建
+[tool.cibuildwheel]
+# 构建的平台
+build = ["cp38-*", "cp39-*", "cp310-*", "cp311-*", "cp312-*", "cp313-*"]
+skip = ["*-musllinux*", "pp*"]  # 跳过musl和PyPy
+
+# 测试命令
+test-command = "python -c 'import config; print(\"Config module imported successfully\")'"
+
+# 环境变量
+[tool.cibuildwheel.environment]
+# Rust相关环境变量
+CARGO_NET_GIT_FETCH_WITH_CLI = "true"
+
+# Linux配置
+[tool.cibuildwheel.linux]
+before-all = [
+    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+    "source ~/.cargo/env",
+    "rustup target add x86_64-unknown-linux-gnu",
+    "rustup target add aarch64-unknown-linux-gnu"
+]
+environment = { PATH = "$HOME/.cargo/bin:$PATH" }
+
+# macOS配置  
+[tool.cibuildwheel.macos]
+before-all = [
+    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+    "source ~/.cargo/env",
+    "rustup target add x86_64-apple-darwin",
+    "rustup target add aarch64-apple-darwin"
+]
+environment = { PATH = "$HOME/.cargo/bin:$PATH" }
+
+# Windows配置
+[tool.cibuildwheel.windows]
+before-all = [
+    "rustup target add x86_64-pc-windows-msvc",
+    "rustup target add i686-pc-windows-msvc"
+]
+
