@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict
+from typing import Any
 import click
 
 class RmmBaseMeta(type):
@@ -7,7 +7,7 @@ class RmmBaseMeta(type):
     
     @property
     @abstractmethod
-    def META(cls) -> Dict[str, Any]:
+    def META(cls) -> dict[str, Any]:
         """获取元数据配置 - 由子类实现"""
         pass
     
@@ -22,7 +22,7 @@ class RmmBaseMeta(type):
         pass
     
     @abstractmethod
-    def get_item_config(cls, item_name: str) -> Dict[str, Any]:
+    def get_item_config(cls, item_name: str) -> dict[str, Any]:
         """获取指定项目的配置 - 由子类实现"""
         pass
     

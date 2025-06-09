@@ -17,12 +17,7 @@ dependencies = [
 [project.scripts]
 rmm = "pyrmm.cli:cli"
 
-[project.optional-dependencies]
-ai = [
-    "mcp>=1.9.3",
-    "openai>=1.84.0",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+

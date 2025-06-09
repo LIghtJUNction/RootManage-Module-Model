@@ -3,8 +3,13 @@ from collections.abc import Iterable
 from pathlib import Path
 from .fs import RmmFileSystem
 from ...__about__ import __version__
+<<<<<<< HEAD
+import toml
+print("警告！！！ 未加载rust 版本模块！ --- config.py 模块已加载")
+=======
 # import toml - 延迟导入以减少启动时间
 
+>>>>>>> main
 
 class ConfigMeta(type):
     _cache: dict[str, str | dict[str, str]] | None = None

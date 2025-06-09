@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Literal
 import shutil
-
+print("警告！！！ 未加载rust 版本模块！ --- fs.py 模块已加载")
 class RmmFileSystemMeta(type):
     @property
     def ROOT(cls) -> Path:
