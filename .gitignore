@@ -4,3 +4,4 @@ go/api/except.txt
 go.tar.gz
 MyModule/MyModule.zip
 *.pyc
+/rmmbox/config/target/debug
