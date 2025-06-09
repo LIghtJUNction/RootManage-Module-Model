@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # v0.1.8
 
 
@@ -9,4 +7,3 @@
 + 新增 install 命令组
 + 将build.py 分解为 build-core.py 和 build.py
 + 若干bug修复
->>>>>>> main

@@ -1,0 +1,11 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmbox\fs\target\debug\deps\liblibc-ada8e62f5a602c05.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\macros.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\primitives.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\msvc\mod.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmbox\fs\target\debug\deps\liblibc-ada8e62f5a602c05.rlib: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\macros.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\primitives.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\msvc\mod.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmbox\fs\target\debug\deps\libc-ada8e62f5a602c05.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\macros.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\primitives.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\msvc\mod.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\lib.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\macros.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\primitives.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\mod.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libc-0.2.172\src\windows\msvc\mod.rs:
