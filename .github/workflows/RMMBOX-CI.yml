@@ -13,29 +13,68 @@ on:
       - '.github/workflows/RMMBOX-CI.yml'
   workflow_dispatch:
 
-jobs:
+jobs:  
+
   build:
     name: Build on ${{ matrix.os }} - Python ${{ matrix.python-version }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      max-parallel: 6  # Reduce concurrent builds to avoid cache issues
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
-        arch: [x86_64, aarch64]
-        exclude:
-          # Windows doesn't support aarch64 runners on GitHub Actions
-          - os: windows-latest
-            arch: aarch64
-          # Ubuntu aarch64 only supported on self-hosted runners
-          # We'll use ubuntu-latest for x86_64 and skip aarch64 for now
-          - os: ubuntu-latest
-            arch: aarch64
         include:
-          # Add specific macOS aarch64 (Apple Silicon) support
-          - os: macos-14  # Apple Silicon runners
+          # Windows x86_64
+          - os: windows-latest
             python-version: '3.9'
-            arch: aarch64
+            arch: x86_64
+          - os: windows-latest
+            python-version: '3.10'
+            arch: x86_64
+          - os: windows-latest
+            python-version: '3.11'
+            arch: x86_64
+          - os: windows-latest
+            python-version: '3.12'
+            arch: x86_64
+          - os: windows-latest
+            python-version: '3.13'
+            arch: x86_64
+          
+          # Linux x86_64
+          - os: ubuntu-latest
+            python-version: '3.9'
+            arch: x86_64
+          - os: ubuntu-latest
+            python-version: '3.10'
+            arch: x86_64
+          - os: ubuntu-latest
+            python-version: '3.11'
+            arch: x86_64
+          - os: ubuntu-latest
+            python-version: '3.12'
+            arch: x86_64
+          - os: ubuntu-latest
+            python-version: '3.13'
+            arch: x86_64
+            
+          # macOS x86_64 (Intel)
+          - os: macos-13  # Use macOS-13 for x86_64
+            python-version: '3.9'
+            arch: x86_64
+          - os: macos-13
+            python-version: '3.10'
+            arch: x86_64
+          - os: macos-13
+            python-version: '3.11'
+            arch: x86_64
+          - os: macos-13
+            python-version: '3.12'
+            arch: x86_64
+          - os: macos-13
+            python-version: '3.13'
+            arch: x86_64
+            
+          # macOS aarch64 (Apple Silicon) - only newer Python versions
           - os: macos-14
             python-version: '3.10'
             arch: aarch64
