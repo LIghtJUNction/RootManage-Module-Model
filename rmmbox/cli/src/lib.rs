@@ -271,10 +271,25 @@ fn rmmr(m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[pyfunction]
 #[pyo3(signature = (args=None))]
 fn cli(args: Option<Vec<String>>) -> PyResult<()> {
-    let args = args.unwrap_or_else(|| {
-        // 当从Python调用时，使用程序名作为第一个参数
-        vec!["rmmr".to_string()]
-    });
+    use pyo3::Python;
+    
+    let args = if let Some(args) = args {
+        args
+    } else {
+        // 从 Python 的 sys.argv 获取参数
+        Python::with_gil(|py| {
+            let sys = py.import_bound("sys")?;
+            let argv: Vec<String> = sys.getattr("argv")?.extract()?;
+            
+            // 处理参数：第一个参数通常是脚本路径，我们替换为程序名
+            let mut processed_args = vec!["rmmr".to_string()];
+            if argv.len() > 1 {
+                processed_args.extend_from_slice(&argv[1..]);
+            }
+            
+            Ok::<Vec<String>, pyo3::PyErr>(processed_args)
+        })?
+    };
     
     let app = build_cli_app();
     let matches = app.try_get_matches_from(args)
