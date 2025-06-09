@@ -1,0 +1,70 @@
+# 统一构建工作流 - 构建所有 rmmbox 模块
+name: Build All Modules
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install maturin
+        run: pip install maturin
+      
+      - name: Run unified build script
+        run: python rmmbox/build_all.py
+        
+      - name: Check extracted files
+        run: |
+          echo "Checking lib directory:"
+          ls -la src/pyrmm/usr/lib/ || echo "lib directory not found"
+          echo "Checking src directory:"
+          ls -la src/pyrmm/ || echo "src directory not found"
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-modules
+          path: |
+            src/pyrmm/usr/lib/*.pyd
+            src/pyrmm/usr/lib/*.so
+            src/pyrmm/*.pyi
+            rmmbox/*/dist/*.whl
+          if-no-files-found: warn
+          
+      - name: Commit and push changes
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/pyrmm/usr/lib/ src/pyrmm/*.pyi || true
+          git diff --staged --quiet || git commit -m "Auto-build: Update compiled modules and stubs"
+          git push || true
