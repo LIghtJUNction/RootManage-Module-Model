@@ -1,15 +1,13 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict, PyList, PyBool};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
-use std::process::Command;
 use anyhow::{Result, anyhow};
 use regex::Regex;
 
 // === 类型定义 ===
-type ProjectInfo = HashMap<String, PyObject>;
-type Projects = HashMap<String, String>;
+type ProjectInfo = PyObject;
 
 // === 项目元类功能 ===
 
@@ -105,11 +103,10 @@ fn project_info(py: Python, project_path: &str) -> PyResult<PyObject> {
     
     let cache = get_project_cache();
     let mtime_cache = get_project_mtime();
-    
-    // 检查缓存
+      // 检查缓存
     if let (Some(cached_info), Some(&cached_mtime)) = (cache.get(&cache_key), mtime_cache.get(&cache_key)) {
         if (cached_mtime - current_mtime).abs() < 0.001 {
-            return Ok(cached_info.clone().into_pyobject(py)?.into_any().unbind());
+            return Ok(cached_info.clone_ref(py));
         }
     }
     
@@ -119,11 +116,11 @@ fn project_info(py: Python, project_path: &str) -> PyResult<PyObject> {
     
     let toml_value: toml::Value = toml::from_str(&content)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-    
-    // 转换为 Python 对象
+      // 转换为 Python 对象
     let py_dict = toml_value_to_py_object(py, &toml_value)?;
-      // 更新缓存
-    cache.insert(cache_key.clone(), py_dict.bind(py).clone().unbind());
+    
+    // 更新缓存
+    cache.insert(cache_key.clone(), py_dict.clone_ref(py));
     mtime_cache.insert(cache_key, current_mtime);
     
     Ok(py_dict)
@@ -136,7 +133,7 @@ fn set_project_config(py: Python, name: &str, value: PyObject) -> PyResult<()> {
     let project_path = Path::new(&project_path_str);
     
     // 获取当前项目信息
-    let mut current_info = project_info(py, &project_path_str)?;
+    let current_info = project_info(py, &project_path_str)?;
     let current_dict = current_info.downcast_bound::<PyDict>(py)?;
     
     // 更新信息
@@ -181,7 +178,7 @@ fn delete_project_config(py: Python, name: &str) -> PyResult<()> {
     // 从配置中移除项目记录
     let config_module = py.import("pyrmm.usr.lib.config")?;
     let config_class = config_module.getattr("Config")?;
-    let mut projects = get_projects_meta(py)?;
+    let projects = get_projects_meta(py)?;
     let projects_dict = projects.downcast_bound::<PyDict>(py)?;
     
     if projects_dict.contains(name)? {
@@ -217,7 +214,7 @@ fn add_project(py: Python, project_name: &str, project_path: &str) -> PyResult<(
     let config_class = config_module.getattr("Config")?;
     let meta = config_class.getattr("META")?;    let projects = meta.call_method1("get", ("projects", PyDict::new(py)))?;
     
-    if let Ok(projects_dict) = projects.downcast_bound::<PyDict>(py) {
+    if let Ok(projects_dict) = projects.downcast::<PyDict>() {
         let canonical_path = path.canonicalize()
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
         projects_dict.set_item(project_name, canonical_path.to_string_lossy().to_string())?;
@@ -269,9 +266,7 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     let config_class = config_module.getattr("Config")?;
     let config_username = config_class.getattr("username")?.extract::<String>()?;
     let config_email = config_class.getattr("email")?.extract::<String>()?;
-    let config_version = config_class.getattr("version")?.extract::<String>()?;
-    
-    let mut username = config_username.clone();
+    let config_version = config_class.getattr("version")?.extract::<String>()?;    let mut username = config_username.clone();
     let mut repo_name = project_name.to_string();
     let mut is_in_repo_root = false;
     
@@ -312,7 +307,7 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     }
     
     // 创建项目信息
-    let mut project_info = PyDict::new(py);
+    let project_info = PyDict::new(py);
     project_info.set_item("id", project_name)?;
     project_info.set_item("name", project_name)?;
     project_info.set_item("requires_rmm", format!(">={}", config_version))?;
@@ -327,13 +322,11 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     // URLs
     let urls = PyDict::new(py);
     urls.set_item("github", github_url)?;
-    project_info.set_item("urls", urls)?;
-      // Dependencies
+    project_info.set_item("urls", urls)?;    // Dependencies
     let deps = PyList::new(py, [PyDict::new(py)])?;
-    if let Some(first_dep) = deps.get_item(0)? {
-        let dep_dict = first_dep.downcast::<PyDict>()?;
-        dep_dict.set_item("dep?", "?version")?;
-    }
+    let first_dep = deps.get_item(0)?;
+    let dep_dict = first_dep.downcast::<PyDict>()?;
+    dep_dict.set_item("dep?", "?version")?;
     project_info.set_item("dependencies", deps)?;
     
     // Authors
@@ -347,16 +340,30 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     script.set_item("build", "rmm build")?;
     let scripts = PyList::new(py, [script])?;
     project_info.set_item("scripts", scripts)?;
-    
-    // 添加 Git 信息
+      // 添加 Git 信息
     if let Some(git) = git_info {
         let git_dict = serde_json_to_py_object(py, &git)?;
         project_info.set_item("git", git_dict)?;
     }
     
-    // 写入项目元数据文件
+    // Get author name before consuming project_info
+    let author_name = project_info.get_item("authors")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing authors"))?
+        .downcast::<PyList>()?
+        .get_item(0)?
+        .downcast::<PyDict>()?
+        .get_item("name")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing author name"))?
+        .extract::<String>()?;
+    
+    // Get updateJson before consuming project_info
+    let update_json = project_info.get_item("updateJson")?
+        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing updateJson"))?
+        .extract::<String>()?;
+      // 写入项目元数据文件
     let meta_file = path.join("rmmproject.toml");
-    let toml_value = py_object_to_toml_value(py, &project_info.into_pyobject(py)?.into_any().unbind())?;
+    let project_info_pyobj = project_info.into_pyobject(py)?.into_any().unbind();
+    let toml_value = py_object_to_toml_value(py, &project_info_pyobj)?;
     let toml_string = toml::to_string(&toml_value)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
     
@@ -367,28 +374,13 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     let version_module = py.import("pyrmm.usr.lib.version")?;
     let version_generator = version_module.getattr("VersionGenerator")?;
     let version_info = version_generator.call_method("generate", ("", path.to_string_lossy().as_ref()), None)?;
-      let version = version_info.get_item("version")?.ok_or_else(|| 
-        pyo3::exceptions::PyKeyError::new_err("Missing version in version_info"))?.extract::<String>()?;
-    let version_code = version_info.get_item("versionCode")?.ok_or_else(|| 
-        pyo3::exceptions::PyKeyError::new_err("Missing versionCode in version_info"))?.extract::<String>()?;
-    
-    let author_name = project_info.get_item("authors")?
-        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing authors"))?
-        .downcast::<PyList>()?
-        .get_item(0)?
-        .ok_or_else(|| pyo3::exceptions::PyIndexError::new_err("Empty authors list"))?
-        .downcast::<PyDict>()?
-        .get_item("name")?
-        .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing author name"))?
-        .extract::<String>()?;
-    
-    // 创建 module.prop
-    let module_prop = path.join("module.prop");    let module_prop_content = format!(
+    let version = version_info.get_item("version")?.extract::<String>()?;
+    let version_code = version_info.get_item("versionCode")?.extract::<String>()?;
+      // 创建 module.prop
+    let module_prop = path.join("module.prop");
+    let module_prop_content = format!(
         "id={}\nname={}\nversion={}\nversionCode={}\nauthor={}\ndescription=RMM项目 {}\nupdateJson={}\n",
-        project_name, project_name, version, version_code, author_name, project_name,
-        project_info.get_item("updateJson")?
-            .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing updateJson"))?
-            .extract::<String>()?
+        project_name, project_name, version, version_code, author_name, project_name, update_json
     );
     
     fs::write(&module_prop, module_prop_content)
@@ -398,15 +390,14 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
         .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
     
     // 将项目路径添加到配置中
-    let config_meta = config_class.getattr("META")?;    let projects = config_meta.call_method1("get", ("projects", PyDict::new(py)))?;
-    if let Ok(projects_dict) = projects.downcast_bound::<PyDict>(py) {
+    let config_meta = config_class.getattr("META")?;    let projects = config_meta.call_method1("get", ("projects", PyDict::new(py)))?;    if let Ok(projects_dict) = projects.downcast::<PyDict>() {
         projects_dict.set_item(project_name, path.canonicalize()
             .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?
             .to_string_lossy().to_string())?;
         config_class.setattr("projects", projects)?;
     }
     
-    Ok(project_info.into_pyobject(py)?.into_any().unbind())
+    Ok(project_info_pyobj)
 }
 
 /// 同步项目
@@ -421,7 +412,7 @@ fn sync_project(py: Python, project_name: &str) -> PyResult<()> {
     
     // 对于有效项目，更新版本信息
     let project_path_str = project_path(py, project_name)?;
-    let path = Path::new(&project_path_str);
+    let _path = Path::new(&project_path_str);
     
     // 使用 VersionGenerator 来生成并更新版本信息
     let version_module = py.import("pyrmm.usr.lib.version")?;
@@ -447,7 +438,7 @@ fn sync_project(py: Python, project_name: &str) -> PyResult<()> {
 /// 初始化基础项目
 #[pyfunction]
 fn init_basic(py: Python, project_path: &str) -> PyResult<PyObject> {
-    let result = init_project(py, project_path)?;
+    let _result = init_project(py, project_path)?;
     let path = Path::new(project_path);
     let system_dir = path.join("system");
     fs::create_dir_all(system_dir)
@@ -460,7 +451,7 @@ fn init_basic(py: Python, project_path: &str) -> PyResult<PyObject> {
 /// 初始化库项目
 #[pyfunction]
 fn init_library(py: Python, project_path: &str) -> PyResult<PyObject> {
-    let result = init_project(py, project_path)?;
+    let _result = init_project(py, project_path)?;
     let path = Path::new(project_path);
     let lib_dir = path.join("lib");
     fs::create_dir_all(lib_dir)
@@ -742,15 +733,18 @@ SOFTWARE.
 
 /// 转换 TOML 值为 Python 对象
 fn toml_value_to_py_object(py: Python, value: &toml::Value) -> PyResult<PyObject> {
-    match value {        toml::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),
+    match value {       
+        toml::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),
         toml::Value::Integer(i) => Ok(i.into_pyobject(py)?.into_any().unbind()),
-        toml::Value::Float(f) => Ok(f.into_pyobject(py)?.into_any().unbind()),
-        toml::Value::Boolean(b) => Ok(b.into_pyobject(py)?.into_any().unbind()),
+        toml::Value::Float(f) => Ok(f.into_pyobject(py)?.into_any().unbind()),        toml::Value::Boolean(b) => {
+            Ok(<pyo3::Bound<'_, PyBool> as Clone>::clone(&PyBool::new(py, *b)).into_any().unbind())
+        },
         toml::Value::Array(arr) => {
             let py_list = PyList::empty(py);
             for item in arr {
                 py_list.append(toml_value_to_py_object(py, item)?)?;
-            }            Ok(py_list.into_pyobject(py)?.into_any().unbind())
+            }
+            Ok(py_list.into_pyobject(py)?.into_any().unbind())
         },
         toml::Value::Table(table) => {
             let py_dict = PyDict::new(py);
@@ -791,9 +785,10 @@ fn py_object_to_toml_value(py: Python, obj: &PyObject) -> PyResult<toml::Value> 
 }
 
 /// 转换 serde_json::Value 为 Python 对象
-fn serde_json_to_py_object(py: Python, value: &serde_json::Value) -> PyResult<PyObject> {
-    match value {
-        serde_json::Value::Null => Ok(py.None()),        serde_json::Value::Bool(b) => Ok(b.into_pyobject(py)?.into_any().unbind()),
+fn serde_json_to_py_object(py: Python, value: &serde_json::Value) -> PyResult<PyObject> {    match value {
+        serde_json::Value::Null => Ok(py.None()),        serde_json::Value::Bool(b) => {
+            Ok(<pyo3::Bound<'_, PyBool> as Clone>::clone(&PyBool::new(py, *b)).into_any().unbind())
+        },
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 Ok(i.into_pyobject(py)?.into_any().unbind())
@@ -803,7 +798,8 @@ fn serde_json_to_py_object(py: Python, value: &serde_json::Value) -> PyResult<Py
                 Ok(n.to_string().into_pyobject(py)?.into_any().unbind())
             }
         },
-        serde_json::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),        serde_json::Value::Array(arr) => {
+        serde_json::Value::String(s) => Ok(s.into_pyobject(py)?.into_any().unbind()),
+        serde_json::Value::Array(arr) => {
             let py_list = PyList::empty(py);
             for item in arr {
                 py_list.append(serde_json_to_py_object(py, item)?)?;
@@ -820,9 +816,79 @@ fn serde_json_to_py_object(py: Python, value: &serde_json::Value) -> PyResult<Py
     }
 }
 
+/// RMM Project class implemented in Rust
+#[pyclass]
+struct RmmProject;
+
+#[pymethods]
+impl RmmProject {
+    #[new]
+    fn new() -> Self {
+        Self
+    }
+    
+    #[staticmethod]
+    fn project_path(py: Python, project_name: &str) -> PyResult<String> {
+        project_path(py, project_name)
+    }
+    
+    #[staticmethod]
+    fn project_info(py: Python, project_path: &str) -> PyResult<PyObject> {
+        project_info(py, project_path)
+    }
+    
+    #[staticmethod]
+    fn add_project(py: Python, project_name: &str, project_path: &str) -> PyResult<()> {
+        add_project(py, project_name, project_path)
+    }
+    
+    #[staticmethod]
+    fn is_valid_item(py: Python, item_name: &str) -> PyResult<bool> {
+        is_valid_item(py, item_name)
+    }
+    
+    #[staticmethod]
+    fn get_sync_prompt(item_name: &str) -> PyResult<String> {
+        Ok(get_sync_prompt(item_name))
+    }
+    
+    #[staticmethod]
+    fn is_rmmproject(project_path: &str) -> PyResult<bool> {
+        Ok(is_rmmproject(project_path))
+    }
+    
+    #[staticmethod]
+    fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
+        init_project(py, project_path)
+    }
+    
+    #[staticmethod]
+    fn sync_project(py: Python, project_name: &str) -> PyResult<()> {
+        sync_project(py, project_name)
+    }
+    
+    #[staticmethod]
+    fn init_basic(py: Python, project_path: &str) -> PyResult<PyObject> {
+        init_basic(py, project_path)
+    }
+    
+    #[staticmethod]
+    fn init_library(py: Python, project_path: &str) -> PyResult<PyObject> {
+        init_library(py, project_path)
+    }
+    
+    #[staticmethod]
+    fn clean_dist(project_path: &str) -> PyResult<()> {
+        clean_dist(project_path)
+    }
+}
+
 /// Python 模块定义
 #[pymodule]
 fn project(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // 添加RmmProject类
+    m.add_class::<RmmProject>()?;
+    
     // 项目元类功能
     m.add_function(wrap_pyfunction!(get_projects_meta, m)?)?;
     m.add_function(wrap_pyfunction!(project_path, m)?)?;

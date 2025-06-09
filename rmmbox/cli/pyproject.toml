@@ -1,0 +1,39 @@
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "rmmr"
+description = "RMM (Root Module Manager) Command Line Interface implemented in Rust"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["cli", "rmm", "magisk", "kernelsu", "apatck"]
+authors = [
+    {email = "LIghtJUNction@users.noreply.github.com"},
+    {name = "LIghtJUNction"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Archiving :: Packaging",
+]
+dynamic = ["version"]
+
+[project.urls]
+repository = "https://github.com/LIghtJUNction/RootManageModuleModel"
+documentation = "https://github.com/LIghtJUNction/RootManageModuleModel"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "rmmr"

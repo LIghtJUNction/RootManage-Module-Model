@@ -6,7 +6,7 @@ readme = "README.MD"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "click>=8.2.1",
     "pydantic>=2.11.5",
@@ -15,7 +15,8 @@ dependencies = [
 ]
 
 [project.scripts]
-rmm = "pyrmm.cli:cli"
+rmm = "pyrmm.cli.__main__:cli"
+rmmr = "rmmr:cli"
 
 [build-system]
 requires = ["hatchling"]

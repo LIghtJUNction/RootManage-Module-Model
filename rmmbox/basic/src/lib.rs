@@ -16,7 +16,7 @@ pub const SERVERS_SH: &str = r#"
 "#;
 
 /// README 模板
-pub const README_TEMPLATE: &str = r#"
+pub const README: &str = r#"
 # {project_name}
 
 一个基于 RMM (Root Module Manager) 的模块项目。
@@ -72,7 +72,7 @@ MIT License - 查看 [LICENSE](LICENSE) 文件了解详情。
 "#;
 
 /// LICENSE 模板
-pub const LICENSE_TEMPLATE: &str = r#"
+pub const LICENSE: &str = r#"
 # LICENSES        
 # ADD YOUR LICENSES HERE
 
@@ -100,21 +100,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 "#;
 
-/// 生成 README 内容
-#[pyfunction]
-fn get_readme(project_name: &str, author_name: &str) -> PyResult<String> {
-    Ok(README_TEMPLATE
-        .replace("{project_name}", project_name)
-        .replace("{author_name}", author_name))
-}
-
-/// 生成更新日志内容
-#[pyfunction]
-fn get_changelog() -> PyResult<String> {
-    let now = chrono::Utc::now();
-    let date_str = now.format("%Y-%m-%d").to_string();
-    
-    Ok(format!(r#"
+/// CHANGELOG 模板  
+pub const CHANGELOG: &str = r#"
 # 更新日志
 
 所有对该项目的重要更改都会记录在此文件中。
@@ -131,7 +118,7 @@ fn get_changelog() -> PyResult<String> {
 ### 修复
 - 无
 
-## [1.0.0] - {}
+## [1.0.0] - {date}
 
 ### 新增
 - 项目初始版本
@@ -152,7 +139,23 @@ fn get_changelog() -> PyResult<String> {
 - **移除** - 已移除的功能
 - **修复** - Bug 修复
 - **安全** - 安全相关的修复
-"#, date_str))
+"#;
+
+/// 生成 README 内容
+#[pyfunction]
+fn get_readme(project_name: &str, author_name: &str) -> PyResult<String> {
+    Ok(README
+        .replace("{project_name}", project_name)
+        .replace("{author_name}", author_name))
+}
+
+/// 生成更新日志内容
+#[pyfunction]
+fn get_changelog() -> PyResult<String> {
+    let now = chrono::Utc::now();
+    let date_str = now.format("%Y-%m-%d").to_string();
+    
+    Ok(CHANGELOG.replace("{date}", &date_str))
 }
 
 /// 获取 CUSTOMIZE_SH 内容
@@ -170,7 +173,7 @@ fn get_servers_sh() -> PyResult<String> {
 /// 获取 LICENSE 内容
 #[pyfunction]
 fn get_license() -> PyResult<String> {
-    Ok(LICENSE_TEMPLATE.to_string())
+    Ok(LICENSE.to_string())
 }
 
 /// A Python module implemented in Rust.
@@ -179,8 +182,9 @@ fn basic(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // 添加常量
     m.add("CUSTOMIZE_SH", CUSTOMIZE_SH)?;
     m.add("SERVERS_SH", SERVERS_SH)?;
-    m.add("README", README_TEMPLATE)?;
-    m.add("LICENSE", LICENSE_TEMPLATE)?;
+    m.add("README", README)?;
+    m.add("CHANGELOG", CHANGELOG)?;
+    m.add("LICENSE", LICENSE)?;
     
     // 添加函数
     m.add_function(wrap_pyfunction!(get_readme, m)?)?;

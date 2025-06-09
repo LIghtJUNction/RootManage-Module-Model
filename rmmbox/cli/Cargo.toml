@@ -1,0 +1,35 @@
+[package]
+name = "rmmr"
+version = "0.1.0"
+edition = "2021"
+description = "RMM (Root Module Manager) Command Line Interface implemented in Rust"
+license = "MIT"
+homepage = "https://github.com/LIghtJUNction/RootManageModuleModel"
+repository = "https://github.com/LIghtJUNction/RootManageModuleModel"
+documentation = "https://github.com/LIghtJUNction/RootManageModuleModel"
+keywords = ["cli", "rmm", "magisk", "kernelsu", "apatck"]
+categories = ["command-line-utilities", "development-tools"]
+authors = ["LIghtJUNction"]
+
+[lib]
+name = "rmmr"
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pyo3 = { version = "0.25.0", features = ["extension-module"] }
+clap = { version = "4.5.40", features = ["derive", "cargo"] }
+tokio = { version = "1.45.1", features = ["full"] }
+anyhow = "1.0.98"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+toml = "0.8.23"
+chrono = { version = "0.4.41", features = ["serde"] }
+dirs = "6.0.0"
+colored = "3.0.0"
+indicatif = "0.17.11"
+walkdir = "2.5.0"
+reqwest = { version = "0.12.19", features = ["json"] }
+regex = "1.11.1"
+zip = { version = "4.0.0", default-features = false, features = ["deflate"] }

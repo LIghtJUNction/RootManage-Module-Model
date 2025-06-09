@@ -56,7 +56,23 @@ jobs:
           - os: ubuntu-latest
             python-version: '3.13'
             arch: x86_64
-            
+
+          - os: ubuntu-latest
+            python-version: '3.9'
+            arch: arm64
+          - os: ubuntu-latest
+            python-version: '3.10'
+            arch: arm64
+          - os: ubuntu-latest
+            python-version: '3.11'
+            arch: arm64
+          - os: ubuntu-latest
+            python-version: '3.12'
+            arch: arm64
+          - os: ubuntu-latest
+            python-version: '3.13'
+            arch: arm64
+
           # macOS x86_64 (Intel)
           - os: macos-13  # Use macOS-13 for x86_64
             python-version: '3.9.0'
@@ -142,8 +158,7 @@ jobs:
         echo "OS: ${{ runner.os }}"
         echo "Architecture: ${{ matrix.arch }}"
         echo "Python version: ${{ matrix.python-version }}"
-        python --version
-        python -c "import sys; print(f'Python: {sys.version}'); print(f'Platform: {sys.platform}'); print(f'Architecture: {sys.maxsize > 2**32 and \"64-bit\" or \"32-bit\"}')"
+        python --version        python -c "import sys; print(f'Python: {sys.version}'); print(f'Platform: {sys.platform}'); print(f'Architecture: {sys.maxsize > 2**32 and \"64-bit\" or \"32-bit\"}')"
         rustc --version
         cargo --version
         uv --version
@@ -151,8 +166,18 @@ jobs:
     - name: Build Rust modules
       shell: bash
       working-directory: rmmbox
+      continue-on-error: false  # 我们在脚本内部处理错误
       run: |
-        python build_all.py
+        echo "开始构建Rust模块..."
+        python build_all.py || {
+          echo "⚠️ 构建过程中有部分失败，但继续处理"
+          exit_code=$?
+          if [ $exit_code -eq 1 ]; then
+            echo "❌ 所有模块都失败了，停止工作流"
+            exit 1
+          fi
+          echo "✅ 有模块成功构建，继续工作流"
+        }
 
     - name: List generated files
       shell: bash

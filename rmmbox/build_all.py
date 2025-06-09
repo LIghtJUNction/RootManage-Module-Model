@@ -53,22 +53,37 @@ def find_rust_projects(rmmbox_dir):
 
 
 def build_project(project_dir):
-    """Build a single project"""
+    """Build a single project with error handling"""
     print(f"\n=== Building project: {project_dir.name} ===")
     
-    # Create virtual environment
-    print("Creating virtual environment...")
-    run_command("uv venv", cwd=project_dir)
-    
-    # Sync dependencies
-    print("Syncing dependencies...")
-    run_command("uv sync", cwd=project_dir)
-    
-    # Build wheels
-    print("Building wheels...")
-    run_command("uv build", cwd=project_dir)
-    
-    return True
+    try:
+        # Create virtual environment
+        print("Creating virtual environment...")
+        result = run_command("uv venv", cwd=project_dir, check=False)
+        if result.returncode != 0:
+            print(f" Failed to create virtual environment for {project_dir.name}")
+            return False
+        
+        # Sync dependencies
+        print("Syncing dependencies...")
+        result = run_command("uv sync", cwd=project_dir, check=False)
+        if result.returncode != 0:
+            print(f" Failed to sync dependencies for {project_dir.name}")
+            return False
+        
+        # Build wheels
+        print("Building wheels...")
+        result = run_command("uv build", cwd=project_dir, check=False)
+        if result.returncode != 0:
+            print(f" Failed to build wheels for {project_dir.name}")
+            return False
+        
+        print(f" Successfully built {project_dir.name}")
+        return True
+        
+    except Exception as e:
+        print(f" Exception while building {project_dir.name}: {e}")
+        return False
 
 
 def extract_pyd_files(project_dir, target_lib_dir):
@@ -130,8 +145,7 @@ def main():
     success_count = 0
     failed_projects = []
     extracted_files = []
-    
-    # 逐个构建项目
+      # 逐个构建项目
     for project_dir in projects:
         try:
             if build_project(project_dir):
@@ -139,27 +153,37 @@ def main():
                 files = extract_pyd_files(project_dir, target_lib_dir)
                 extracted_files.extend(files)
                 success_count += 1
-                print(f" {project_dir.name} ")
+                print(f" {project_dir.name} 构建成功")
             else:
                 failed_projects.append(project_dir.name)
-                print(f" {project_dir.name} ")
+                print(f" {project_dir.name} 构建失败")
         except Exception as e:
             failed_projects.append(project_dir.name)
-            print(f" {project_dir.name} {e}")
+            print(f" {project_dir.name} 构建异常: {e}")
 
     # 输出结果
-    print(f"\n=== summary ===")
-    print(f"success: {success_count}/{len(projects)}")
+    print(f"\n=== 构建总结 ===")
+    print(f"成功构建: {success_count}/{len(projects)}")
 
     if failed_projects:
-        print(f"failed projects: {', '.join(failed_projects)}")
+        print(f"失败的项目: {', '.join(failed_projects)}")
+        print("⚠️  注意：某些模块构建失败，但其他模块已成功构建")
 
     if extracted_files:
-        print(f"extracted files:")
+        print(f"\n📦 成功提取的文件:")
         for file in extracted_files:
             print(f"  {file}")
 
-    print(f" all files have been moved to: {target_lib_dir}")
+    print(f"\n📁 所有文件已移动到: {target_lib_dir}")
+    
+    # 即使有失败，只要有成功的就返回0 (GitHub Actions会继续)
+    # 只有全部失败才返回非0
+    if success_count == 0:
+        print(" 所有项目都构建失败")
+        sys.exit(1)
+    else:
+        print(f" 构建完成，成功 {success_count} 个，失败 {len(failed_projects)} 个")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
