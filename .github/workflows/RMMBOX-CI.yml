@@ -57,7 +57,8 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-        architecture: ${{ matrix.arch == 'x86_64' && 'x64' || 'auto' }}
+        # Fix architecture setting for different platforms - use auto for macOS-14 (Apple Silicon)
+        architecture: ${{ matrix.os == 'macos-14' && 'auto' || (matrix.arch == 'x86_64' && 'x64' || 'auto') }}
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -184,8 +185,8 @@ jobs:
           src/pyrmm/usr/lib/*.${{ env.BINARY_EXT }}
         retention-days: 30
 
-  collect-and-release:
-    name: Collect all artifacts and create release
+  commit-modules:
+    name: Commit built modules to repository
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
@@ -193,71 +194,76 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
 
-    - name: Organize artifacts by platform
+    - name: Organize and copy modules to target directory
       run: |
-        mkdir -p release/windows release/macos release/linux
+        echo "=== Organizing downloaded artifacts ==="
+        find artifacts -type f -name "*.pyd" -o -name "*.so" | sort
         
-        # Move artifacts to organized structure
-        find artifacts -name "*.pyd" -exec cp {} release/windows/ \;
-        find artifacts -name "*.so" | while read file; do
-          if [[ "$file" == *"macos"* ]]; then
-            cp "$file" release/macos/
-          else
-            cp "$file" release/linux/
-          fi
-        done
+        # Ensure target directory exists
+        mkdir -p src/pyrmm/usr/lib
         
-        # List organized files
-        echo "=== Organized artifacts ==="
-        find release -type f | sort
+        # Copy all .pyd and .so files to target directory
+        find artifacts -type f \( -name "*.pyd" -o -name "*.so" \) -exec cp {} src/pyrmm/usr/lib/ \;
+        
+        echo ""
+        echo "=== Files copied to src/pyrmm/usr/lib/ ==="
+        ls -la src/pyrmm/usr/lib/*.{pyd,so} 2>/dev/null || echo "No .pyd/.so files found"
 
-    - name: Create archive for each platform
+    - name: Check for changes
+      id: changes
       run: |
-        cd release
-        tar -czf ../rust-modules-windows.tar.gz windows/
-        tar -czf ../rust-modules-macos.tar.gz macos/
-        tar -czf ../rust-modules-linux.tar.gz linux/
-        tar -czf ../rust-modules-all-platforms.tar.gz windows/ macos/ linux/
+        git add src/pyrmm/usr/lib/
+        if git diff --staged --quiet; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "No changes to commit"
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Changes detected:"
+          git diff --staged --name-only
+        fi
 
-    - name: Upload release archives
-      uses: actions/upload-artifact@v4
-      with:
-        name: rust-modules-release-archives
-        path: |
-          rust-modules-*.tar.gz
-        retention-days: 90
+    - name: Commit and push changes
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Get current branch name
+        BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+        
+        # Count files by type
+        PYD_COUNT=$(find src/pyrmm/usr/lib -name "*.pyd" 2>/dev/null | wc -l)
+        SO_COUNT=$(find src/pyrmm/usr/lib -name "*.so" 2>/dev/null | wc -l)
+        
+        git add src/pyrmm/usr/lib/
+        git commit -m "🤖 Auto-update Rust modules from CI
+        
+        - Built ${PYD_COUNT} .pyd files (Windows)
+        - Built ${SO_COUNT} .so files (macOS/Linux)  
+        - Python versions: 3.9, 3.10, 3.11, 3.12, 3.13
+        - Platforms: Windows (x86_64), macOS (x86_64, aarch64), Linux (x86_64)
+        - Commit: ${GITHUB_SHA:0:7}
+        - Workflow: ${{ github.run_number }}"
+        
+        git push origin "$BRANCH_NAME"
+        
+        echo "✅ Successfully committed and pushed updated Rust modules"
 
-    - name: Create Release (on main branch)
-      if: github.ref == 'refs/heads/main'
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: rust-modules-${{ github.run_number }}
-        name: Rust Modules Build ${{ github.run_number }}
-        body: |
-          Automated build of Rust modules for PyRMM
-          
-          **Build Information:**
-          - Commit: ${{ github.sha }}
-          - Date: ${{ github.event.head_commit.timestamp }}
-          - Python versions: 3.9, 3.10, 3.11, 3.12, 3.13
-          - Platforms: Windows (x86_64), macOS (x86_64, aarch64), Linux (x86_64)
-          
-          **Files included:**
-          - `rust-modules-windows.tar.gz` - Windows .pyd files
-          - `rust-modules-macos.tar.gz` - macOS .so files  
-          - `rust-modules-linux.tar.gz` - Linux .so files
-          - `rust-modules-all-platforms.tar.gz` - All platforms combined
-          
-          Extract the appropriate archive and place the files in `src/pyrmm/usr/lib/`
-        files: |
-          rust-modules-*.tar.gz
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Summary
+      run: |
+        echo "=== Build Summary ==="
+        echo "Branch: ${GITHUB_REF#refs/heads/}"
+        echo "Commit: ${GITHUB_SHA:0:7}"
+        echo "Workflow Run: ${{ github.run_number }}"
+        echo ""
+        echo "Updated modules in src/pyrmm/usr/lib/:"
+        ls -la src/pyrmm/usr/lib/*.{pyd,so} 2>/dev/null || echo "No modules found"
