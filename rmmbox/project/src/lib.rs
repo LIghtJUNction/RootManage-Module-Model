@@ -393,9 +393,9 @@ fn init_project(py: Python, project_path: &str) -> PyResult<PyObject> {
     
     fs::write(&module_prop, module_prop_content)
         .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
-    
-    // 创建必要的文件
-    create_project_files(path, project_name, &author_name)?;
+      // 创建必要的文件
+    create_project_files(path, project_name, &author_name)
+        .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
     
     // 将项目路径添加到配置中
     let config_meta = config_class.getattr("META")?;    let projects = config_meta.call_method1("get", ("projects", PyDict::new(py)))?;
