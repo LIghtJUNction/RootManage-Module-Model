@@ -175,26 +175,26 @@ jobs:
         print('Testing imports...')
         try:
             import pyrmm.usr.lib.fs as fs_module
-            print('✅ fs module imported successfully')
+            print(' fs module imported successfully')
             print(f'fs.ROOT: {fs_module.ROOT}')
         except Exception as e:
-            print(f'❌ fs module import failed: {e}')
+            print(f' fs module import failed: {e}')
         
         try:
             import pyrmm.usr.lib.config as config_module
-            print('✅ config module imported successfully')
+            print(' config module imported successfully')
             # Test basic functionality
             config_module.Config.init()
-            print('✅ config module functionality test passed')
+            print(' config module functionality test passed')
         except Exception as e:
-            print(f'❌ config module import failed: {e}')
+            print(f' config module import failed: {e}')
         
         try:
             import pyrmm.usr.lib.basic as basic_module
-            print('✅ basic module imported successfully')
+            print(' basic module imported successfully')
             print(f'basic.CUSTOMIZE_SH length: {len(basic_module.CUSTOMIZE_SH)}')
         except Exception as e:
-            print(f'❌ basic module import failed: {e}')
+            print(f' basic module import failed: {e}')
         "
 
     - name: Create artifact name
@@ -295,7 +295,7 @@ jobs:
         
         git push origin "$BRANCH_NAME"
         
-        echo "✅ Successfully committed and pushed updated Rust modules"
+        echo " Successfully committed and pushed updated Rust modules"
 
     - name: Summary
       run: |
