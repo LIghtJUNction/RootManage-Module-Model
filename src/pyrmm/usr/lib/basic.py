@@ -7,7 +7,6 @@ SERVERS_SH: servers.sh
 
 """
 
-
 CUSTOMIZE_SH = """
 # This file is part of PyRMM.
 ui_print "开始安装模块..."
@@ -17,7 +16,6 @@ ui_print "开始安装模块..."
 SERVERS_SH = """
 # This file is part of PyRMM.
 """
-
 
 README = """
 # {project_name}

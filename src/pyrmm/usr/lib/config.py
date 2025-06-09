@@ -3,18 +3,24 @@ from collections.abc import Iterable
 from pathlib import Path
 from .fs import RmmFileSystem
 from ...__about__ import __version__
+<<<<<<< HEAD
 import toml
 print("警告！！！ 未加载rust 版本模块！ --- config.py 模块已加载")
+=======
+# import toml - 延迟导入以减少启动时间
+
+>>>>>>> main
 
 class ConfigMeta(type):
     _cache: dict[str, str | dict[str, str]] | None = None
     _lm : float = 0
     """文件上次修改时间"""
     _cm : float = 0
-    """现在读取到的文件修改时间"""
+    """现在读取到的文件修改时间"""    
     @classmethod
     def __save__(cls, meta: dict[str, str | dict[str, str]]):
         """Save the metadata to the metadata directory."""
+        import toml  # 局部导入
         with open(RmmFileSystem.META, "w") as f:
             toml.dump(meta, f)
     @property
@@ -24,6 +30,7 @@ class ConfigMeta(type):
         if cls._cache is not None and cls._lm == cls._cm:
             return cls._cache
         with open(RmmFileSystem.META, "r") as f:
+            import toml  # 局部导入
             meta: dict[str,str | dict[str,str]] = toml.load(f)
         cls._lm = cls._cm
         return meta

@@ -1,13 +1,13 @@
 """ShellCheck 自动安装器 - 支持跨平台自动下载安装"""
 import os
 import platform
-import subprocess
-import tarfile
+# import subprocess - 延迟导入
+# import tarfile - 延迟导入
 from typing import Literal
-import zipfile
+# import zipfile - 延迟导入
 from pathlib import Path
-import requests
-import tempfile
+# import requests - 延迟导入
+# import tempfile - 延迟导入
 import stat
 
 from .proxy import ProxyManager
@@ -108,7 +108,6 @@ class ShellCheckInstaller:
         except Exception as e:
             print(f"⚠️ 获取代理失败: {e}")
             return []
-    
     @classmethod
     def download_with_proxies(
         cls, 
@@ -118,6 +117,8 @@ class ShellCheckInstaller:
         timeout: int = 120
     ) -> bool:
         """使用代理列表下载文件，自动尝试多个代理"""
+        import requests  # 局部导入
+        
         urls_to_try = proxy_urls + [download_url]  # 代理 + 原始地址
         url_type = "原始" if not proxy_urls else "代理"
         for i, url in enumerate(urls_to_try):
@@ -149,7 +150,6 @@ class ShellCheckInstaller:
                 
                 print(f"\n✅ 下载成功: {output_path}")
                 return True
-                
             except requests.exceptions.RequestException as e:
                 print(f"\n❌ {url_type}下载失败: {e}")
                 if i < len(urls_to_try) - 1:
@@ -165,6 +165,9 @@ class ShellCheckInstaller:
     @classmethod
     def extract_archive(cls, archive_path: Path, extract_to: Path) -> bool:
         """解压归档文件"""
+        import zipfile  # 局部导入
+        import tarfile  # 局部导入
+        
         try:
             extract_to.mkdir(parents=True, exist_ok=True)
             
@@ -219,10 +222,11 @@ class ShellCheckInstaller:
         except Exception as e:
             print(f"❌ 安装失败: {e}")
             return False
-    
     @classmethod
     def verify_installation(cls, install_dir: Path) -> bool:
         """验证安装是否成功"""
+        import subprocess  # 局部导入
+        
         try:
             exe_name = "shellcheck.exe" if platform.system() == "Windows" else "shellcheck"
             exe_path = install_dir / exe_name
@@ -251,7 +255,6 @@ class ShellCheckInstaller:
         except Exception as e:
             print(f"❌ 验证安装失败: {e}")
             return False
-    
     @classmethod
     def install(
         cls,
@@ -270,6 +273,8 @@ class ShellCheckInstaller:
         Returns:
             bool: 安装是否成功
         """
+        import tempfile  # 局部导入
+        
         try:
             # 设置默认值
             if install_dir is None:

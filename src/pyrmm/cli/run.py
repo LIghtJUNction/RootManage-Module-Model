@@ -1,10 +1,11 @@
 import click
-import subprocess
 
 @click.command()
 @click.argument("script_name", required=False)
 def run(script_name: str | None) -> None:
     """灵感来自npm"""
+    # 延迟导入 - 减少启动时间
+    import subprocess
     from pathlib import Path
     from pyrmm.usr.lib.project import RmmProject
     project_info = RmmProject.project_info(Path.cwd())
