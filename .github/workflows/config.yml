@@ -25,70 +25,57 @@ jobs:
       run:
         working-directory: rmmbox/config
     strategy:
-      matrix:
+      matrix:        
         platform:
           - runner: ubuntu-22.04
             target: x86_64
           - runner: ubuntu-22.04
-            target: x86
-          - runner: ubuntu-22.04
-            target: aarch64
+            target: aarch64          
           - runner: ubuntu-22.04
             target: armv7
-          - runner: ubuntu-22.04
-            target: s390x
           - runner: ubuntu-22.04
             target: ppc64le
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter      
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          manylinux: auto
+      - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build wheels        
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.platform.target == 'x86_64' && 'x86_64-unknown-linux-gnu' || matrix.platform.target == 'aarch64' && 'aarch64-unknown-linux-gnu' || matrix.platform.target == 'armv7' && 'armv7-unknown-linux-gnueabihf' || matrix.platform.target == 'ppc64le' && 'powerpc64le-unknown-linux-gnu' }}
+        run: uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.platform.target }}   
-          path: dist
+          path: rmmbox/config/dist
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
       run:
         working-directory: rmmbox/config
     strategy:
-      matrix:
+      matrix:        
         platform:
           - runner: ubuntu-22.04
             target: x86_64
           - runner: ubuntu-22.04
-            target: x86
-          - runner: ubuntu-22.04
             target: aarch64
           - runner: ubuntu-22.04
             target: armv7
+            
     steps:      
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
+      - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter      
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          manylinux: musllinux_1_2
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.platform.target == 'x86_64' && 'x86_64-unknown-linux-musl' || matrix.platform.target == 'aarch64' && 'aarch64-unknown-linux-musl' || matrix.platform.target == 'armv7' && 'armv7-unknown-linux-musleabihf' }}
+        run: uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
-          path: dist
+          path: rmmbox/config/dist
   windows:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
@@ -101,23 +88,19 @@ jobs:
             target: x64
           - runner: windows-latest
             target: x86
-    steps:
+    steps:      
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-          architecture: ${{ matrix.platform.target }}        
+      - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter      
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.platform.target == 'x64' && 'x86_64-pc-windows-msvc' || matrix.platform.target == 'x86' && 'i686-pc-windows-msvc' }}
+        run: uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-${{ matrix.platform.target }} 
-          path: dist
+          path: rmmbox/config/dist
   macos:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
@@ -130,39 +113,34 @@ jobs:
             target: x86_64
           - runner: macos-14
             target: aarch64
-    steps:
+    steps:      
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
+      - uses: astral-sh/setup-uv@v5
+      - uses: dtolnay/rust-toolchain@stable
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter      
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.platform.target == 'x86_64' && 'x86_64-apple-darwin' || matrix.platform.target == 'aarch64' && 'aarch64-apple-darwin' }}
+        run: uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.target }}   
-          path: dist
+          path: rmmbox/config/dist
   sdist:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: rmmbox/config
-    steps:
+    steps:      
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - name: Build sdist
-        uses: PyO3/maturin-action@v1.49.1
-        with:
-          command: sdist
-          args: --out dist
+        run: uv build --sdist
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
           name: wheels-sdist
-          path: dist
+          path: rmmbox/config/dist
 
   release:
     name: Release

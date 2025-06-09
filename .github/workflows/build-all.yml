@@ -1,0 +1,82 @@
+# Unified CI workflow for all rmmbox modules
+name: Build All Modules
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - '*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-all:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: Build all modules
+        run: python rmmbox/build_all.py
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyd-files-${{ matrix.os }}
+          path: src/pyrmm/usr/lib/*.pyd
+          if-no-files-found: warn
+          
+      - name: Commit and push changes
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-latest'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add src/pyrmm/usr/lib/
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-build: Update .pyd files [skip ci]"
+            git push
+          fi
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-all]
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      
+    steps:
+      - uses: actions/download-artifact@v4
+        
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pyd-files-*/*.pyd
+          generate_release_notes: true

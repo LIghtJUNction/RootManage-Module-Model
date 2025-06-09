@@ -68,13 +68,12 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv pip install setuptools-rust wheel
-          uv build --wheel
+          uv build --wheel      
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.platform.target }}
-          path: dist
-
+          path: rmmbox/fs/dist
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
@@ -96,20 +95,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          manylinux: musllinux_1_2
-          working-directory: rmmbox/fs
+          enable-cache: true
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+      - name: Build wheels
+        env:
+          PYO3_CROSS_LIB_DIR: /opt/python/cp312-cp312/lib
+        run: |
+          if [ "${{ matrix.platform.target }}" = "x86" ]; then
+            export CARGO_BUILD_TARGET=i686-unknown-linux-musl
+          elif [ "${{ matrix.platform.target }}" = "aarch64" ]; then
+            export CARGO_BUILD_TARGET=aarch64-unknown-linux-musl
+          elif [ "${{ matrix.platform.target }}" = "armv7" ]; then
+            export CARGO_BUILD_TARGET=armv7-unknown-linux-musleabihf
+          else
+            export CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
+          fi
+          uv venv
+          source .venv/bin/activate
+          uv pip install setuptools-rust wheel
+          uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-musllinux-${{ matrix.platform.target }}
-          path: dist
-
+          path: rmmbox/fs/dist
   windows:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
@@ -128,19 +143,31 @@ jobs:
         with:
           python-version: 3.x
           architecture: ${{ matrix.platform.target }}
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          working-directory: rmmbox/fs
+          enable-cache: true
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+      - name: Build wheels
+        run: |
+          if [ "${{ matrix.platform.target }}" = "x86" ]; then
+            set CARGO_BUILD_TARGET=i686-pc-windows-msvc
+          else
+            set CARGO_BUILD_TARGET=x86_64-pc-windows-msvc
+          fi
+          uv venv
+          .venv\Scripts\activate
+          uv pip install setuptools-rust wheel
+          uv build --wheel
+        shell: cmd
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-windows-${{ matrix.platform.target }}
-          path: dist
-
+          path: rmmbox/fs/dist
   macos:
     runs-on: ${{ matrix.platform.runner }}
     defaults:
@@ -158,18 +185,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x      
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1.49.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          target: ${{ matrix.platform.target }}
-          args: --release --out dist --find-interpreter
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          enable-cache: true
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+      - name: Build wheels
+        run: |
+          if [ "${{ matrix.platform.target }}" = "aarch64" ]; then
+            export CARGO_BUILD_TARGET=aarch64-apple-darwin
+          else
+            export CARGO_BUILD_TARGET=x86_64-apple-darwin
+          fi
+          uv venv
+          source .venv/bin/activate
+          uv pip install setuptools-rust wheel
+          uv build --wheel
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.target }}
-          path: dist
-
+          path: rmmbox/fs/dist
   sdist:
     runs-on: ubuntu-latest
     defaults:
@@ -177,12 +216,21 @@ jobs:
         working-directory: rmmbox/fs
     steps:
       - uses: actions/checkout@v4
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1.49.1
+      - uses: actions/setup-python@v5
         with:
-          command: sdist
-          args: --out dist
-          working-directory: rmmbox/fs
+          python-version: 3.x
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build sdist
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv pip install setuptools-rust wheel
+          uv build --sdist
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
