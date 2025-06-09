@@ -1,0 +1,8 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmbox\config\target\release\build\target-lexicon-408c113759022676\build_script_build-408c113759022676.exe: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\build.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/data_model.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/triple.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/targets.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmbox\config\target\release\build\target-lexicon-408c113759022676\build_script_build-408c113759022676.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\build.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/data_model.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/triple.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/targets.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\build.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/data_model.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/triple.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\target-lexicon-0.13.2\src/targets.rs:

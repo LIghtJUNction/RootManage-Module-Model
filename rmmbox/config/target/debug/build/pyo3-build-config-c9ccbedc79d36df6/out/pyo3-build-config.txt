@@ -1,0 +1,11 @@
+implementation=CPython
+version=3.13
+shared=true
+abi3=false
+lib_name=python313
+lib_dir=C:\Users\light\AppData\Local\Programs\Python\Python313\libs
+executable=C:\Users\light\AppData\Local\Programs\Python\Python313\python.exe
+pointer_width=64
+build_flags=
+python_framework_prefix=None
+suppress_build_script_link_lines=false
