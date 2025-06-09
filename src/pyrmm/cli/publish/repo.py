@@ -1,8 +1,8 @@
 import click
-import json
-import requests
+# import json - 延迟导入以减少启动时间
+# import requests - 延迟导入以减少启动时间
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 from pyrmm.usr.lib.project import RmmProject
 from pyrmm.usr.lib.git import RmmGit
@@ -177,9 +177,13 @@ def repo(ctx: click.Context, project_path: str, registry: str, category: str,
         click.echo(f"❌ 提交过程中发生错误: {e}")
 
 
-def _submit_to_registry(registry: str, module_metadata: Dict[str, Any], 
+def _submit_to_registry(registry: str, module_metadata: dict[str, Any], 
                        token: str, force_update: bool, auto_yes: bool) -> bool:
     """提交模块到集合仓库"""
+    
+    # 延迟导入 - 仅在实际使用时导入
+    import json
+    import requests
     
     # 解析仓库信息
     if '/' not in registry:

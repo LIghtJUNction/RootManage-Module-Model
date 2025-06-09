@@ -1,9 +1,5 @@
 from pathlib import Path
-from typing import Optional
-
 from .shellcheck_installer import ShellCheckInstaller
-
-
 class RmmInstallMeta(type):
     pass
 
@@ -24,8 +20,8 @@ class RmmInstaller(metaclass=RmmInstallMeta):
     def install_bin(
         cls, 
         name: str, 
-        install_dir: Optional[Path] = None,
-        project_path: Optional[Path] = None,
+        install_dir: Path | None = None,
+        project_path: Path | None = None,
         use_proxy: bool = True
     ) -> bool:
         """
@@ -46,7 +42,7 @@ class RmmInstaller(metaclass=RmmInstallMeta):
             raise ValueError(f"不支持的二进制程序: {name}")
     
     @classmethod
-    def uninstall_bin(cls, name: str, install_dir: Optional[Path] = None) -> bool:
+    def uninstall_bin(cls, name: str, install_dir: Path | None = None) -> bool:
         """
         卸载二进制程序
         
@@ -63,7 +59,7 @@ class RmmInstaller(metaclass=RmmInstallMeta):
             raise ValueError(f"不支持的二进制程序: {name}")
     
     @classmethod
-    def is_bin_installed(cls, name: str, install_dir: Optional[Path] = None) -> bool:
+    def is_bin_installed(cls, name: str, install_dir: Path | None = None) -> bool:
         """
         检查二进制程序是否已安装
         
@@ -82,8 +78,8 @@ class RmmInstaller(metaclass=RmmInstallMeta):
 
 # 便捷函数 - 重新导出原有的便捷函数
 def install_shellcheck(
-    install_dir: Optional[Path] = None,
-    project_path: Optional[Path] = None,
+    install_dir: Path | None = None,
+    project_path: Path | None = None,
     use_proxy: bool = True
 ) -> bool:
     """
@@ -100,7 +96,7 @@ def install_shellcheck(
     return RmmInstaller.install_bin("shellcheck", install_dir, project_path, use_proxy)
 
 
-def uninstall_shellcheck(install_dir: Optional[Path] = None) -> bool:
+def uninstall_shellcheck(install_dir: Path | None = None) -> bool:
     """
     便捷的 ShellCheck 卸载函数
     
@@ -113,7 +109,7 @@ def uninstall_shellcheck(install_dir: Optional[Path] = None) -> bool:
     return RmmInstaller.uninstall_bin("shellcheck", install_dir)
 
 
-def is_shellcheck_installed(install_dir: Optional[Path] = None) -> bool:
+def is_shellcheck_installed(install_dir: Path | None = None) -> bool:
     """
     检查 ShellCheck 是否已安装
     

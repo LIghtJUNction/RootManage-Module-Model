@@ -1,6 +1,6 @@
 """GitHub代理管理器 - 获取和解析GitHub代理节点"""
-import json
-import requests
+# import json - 延迟导入以减少启动时间
+# import requests - 延迟导入以减少启动时间
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
@@ -45,8 +45,11 @@ class ProxyManager:
         Raises:
             requests.RequestException: 网络请求失败
             json.JSONDecodeError: JSON解析失败
-            ValueError: 数据格式错误
-        """
+            ValueError: 数据格式错误        """
+        # 延迟导入 - 仅在实际使用时导入
+        import json
+        import requests
+        
         # 发送HTTP请求
         response: requests.Response = requests.get(cls.API_URL, timeout=30)
         response.raise_for_status()        # 解析JSON响应
@@ -79,8 +82,10 @@ class ProxyManager:
             
         Raises:
             OSError: 文件写入失败
-            json.JSONEncodeError: JSON编码失败
-        """
+            json.JSONEncodeError: JSON编码失败        """
+        # 延迟导入 - 仅在实际使用时导入
+        import json
+        
         # 确保目录存在
         file_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -105,8 +110,10 @@ class ProxyManager:
         Raises:
             FileNotFoundError: 文件不存在
             json.JSONDecodeError: JSON解析失败
-            ValueError: 数据格式错误
-        """
+            ValueError: 数据格式错误        """
+        # 延迟导入 - 仅在实际使用时导入
+        import json
+        
         if not file_path.exists():
             raise FileNotFoundError(f"代理文件不存在: {file_path}")
         

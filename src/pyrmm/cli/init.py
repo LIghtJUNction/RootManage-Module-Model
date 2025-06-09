@@ -1,6 +1,5 @@
 from pathlib import Path
 import click
-from pyrmm.usr.lib.project import RmmProject
 
 @click.command()
 @click.argument("project_path", default=".")
@@ -13,6 +12,9 @@ def init(project_path: str, yes: bool, rtype: str) -> None:
     
     PROJECT_PATH: 项目路径 (默认为当前目录)
     """
+    # 延迟导入 - 只在需要时导入
+    from pyrmm.usr.lib.project import RmmProject
+    
     rpath = Path(project_path).resolve()
     
     click.echo(f"正在初始化 {rtype} 类型的RMM项目到: {rpath}")

@@ -1,9 +1,6 @@
 import click
 from pathlib import Path
 from typing import Any
-from pyrmm.usr.lib.project import RmmProject
-from pyrmm.usr.lib.config import Config
-from pyrmm.usr.lib.proxy import ProxyManager
 
 @click.command()
 @click.argument("project_name", required=False)
@@ -14,7 +11,11 @@ def sync(project_name: str | None, update: bool, sync_all: bool, proxy: bool) ->
     """同步RMM项目
     
     PROJECT_NAME: 要同步的项目名称 (可选，如果不指定则需要使用 --all 参数)
-    """    # 处理代理选项
+    """
+    # 延迟导入 - 只在实际执行时才导入
+    from pyrmm.usr.lib.project import RmmProject
+    from pyrmm.usr.lib.config import Config
+    from pyrmm.usr.lib.proxy import ProxyManager# 处理代理选项
     def handle_proxy_update(project_name: str) -> None:
         """获取代理列表并更新项目元数据"""
         if proxy or sync_all:

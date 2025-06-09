@@ -1,9 +1,7 @@
 import click
 from pathlib import Path
-from pyrmm.usr.lib.build import RmmBuilder
-from pyrmm.usr.lib.project import RmmProject
-from pyrmm.usr.lib.version import VersionGenerator
 
+# 延迟导入 - 只在实际执行时才导入耗时的模块
 @click.command()
 @click.argument("project_name", required=False)
 @click.option("--path", "-p", type=click.Path(exists=True, path_type=Path), help="指定项目路径")
@@ -16,6 +14,10 @@ def build(project_name: str | None, path: Path | None, output: Path | None, clea
     
     PROJECT_NAME: 要构建的项目名称 (可选，如果不指定则构建当前目录的项目)
     """
+    # 延迟导入 - 显著减少模块加载时间
+    from pyrmm.usr.lib.build import RmmBuilder
+    from pyrmm.usr.lib.project import RmmProject
+    from pyrmm.usr.lib.version import VersionGenerator
     try:
         # 确定项目路径
         if path:
