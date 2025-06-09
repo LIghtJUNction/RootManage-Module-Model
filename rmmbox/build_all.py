@@ -139,13 +139,13 @@ def main():
                 files = extract_pyd_files(project_dir, target_lib_dir)
                 extracted_files.extend(files)
                 success_count += 1
-                print(f"✅ {project_dir.name} ")
+                print(f" {project_dir.name} ")
             else:
                 failed_projects.append(project_dir.name)
-                print(f"❌ {project_dir.name} ")
+                print(f" {project_dir.name} ")
         except Exception as e:
             failed_projects.append(project_dir.name)
-            print(f"❌ {project_dir.name} {e}")
+            print(f" {project_dir.name} {e}")
 
     # 输出结果
     print(f"\n=== summary ===")
@@ -159,7 +159,7 @@ def main():
         for file in extracted_files:
             print(f"  {file}")
 
-    print(f"✅ all files have been moved to: {target_lib_dir}")
+    print(f" all files have been moved to: {target_lib_dir}")
 
 
 if __name__ == "__main__":

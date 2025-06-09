@@ -9,9 +9,9 @@ use std::path::PathBuf;
 struct RmmFileSystem;
 
 #[pymethods]
-impl RmmFileSystem {
-    #[classattr]
-    fn ROOT(_py: Python) -> PyResult<PathBuf> {
+impl RmmFileSystem {    #[classattr]
+    #[pyo3(name = "ROOT")]
+    fn root(_py: Python) -> PyResult<PathBuf> {
         let root = match env::var("RMM_ROOT") {
             Ok(path) => PathBuf::from(path),
             Err(_) => {
@@ -23,36 +23,38 @@ impl RmmFileSystem {
     }
 
     #[classattr]
-    fn TMP(_py: Python) -> PyResult<PathBuf> {
-        let root = Self::ROOT(_py)?;
+    #[pyo3(name = "TMP")]
+    fn tmp(_py: Python) -> PyResult<PathBuf> {
+        let root = Self::root(_py)?;
         Ok(root.join("tmp"))
     }
 
     #[classattr]
-    fn CACHE(_py: Python) -> PyResult<PathBuf> {
-        let root = Self::ROOT(_py)?;
+    #[pyo3(name = "CACHE")]
+    fn cache(_py: Python) -> PyResult<PathBuf> {
+        let root = Self::root(_py)?;
         Ok(root.join("cache"))
     }
 
     #[classattr]
-    fn DATA(_py: Python) -> PyResult<PathBuf> {
-        let root = Self::ROOT(_py)?;
+    #[pyo3(name = "DATA")]
+    fn data(_py: Python) -> PyResult<PathBuf> {
+        let root = Self::root(_py)?;
         Ok(root.join("data"))
     }
 
     #[classattr]
-    fn META(_py: Python) -> PyResult<PathBuf> {
-        let root = Self::ROOT(_py)?;
+    #[pyo3(name = "META")]
+    fn meta(_py: Python) -> PyResult<PathBuf> {
+        let root = Self::root(_py)?;
         Ok(root.join("meta.toml"))
-    }
-
-    #[staticmethod]
+    }    #[staticmethod]
     fn init(py: Python) -> PyResult<()> {
-        let root = Self::ROOT(py)?;
-        let tmp = Self::TMP(py)?;
-        let cache = Self::CACHE(py)?;
-        let data = Self::DATA(py)?;
-        let meta = Self::META(py)?;        std_fs::create_dir_all(&root).map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create ROOT directory: {}", e)))?;
+        let root = Self::root(py)?;
+        let tmp = Self::tmp(py)?;
+        let cache = Self::cache(py)?;
+        let data = Self::data(py)?;
+        let meta = Self::meta(py)?;std_fs::create_dir_all(&root).map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create ROOT directory: {}", e)))?;
         std_fs::create_dir_all(&tmp).map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create TMP directory: {}", e)))?;
         std_fs::create_dir_all(&cache).map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create CACHE directory: {}", e)))?;
         std_fs::create_dir_all(&data).map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to create DATA directory: {}", e)))?;
