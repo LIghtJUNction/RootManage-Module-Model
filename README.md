@@ -7,4 +7,5 @@
 
 [![Alt](https://repobeats.axiom.co/api/embed/4dbcdf8b2d24156dcf08cef7cc801d9adb317cae.svg "Repobeats analytics image")](https://github.com/LIghtJUNction/RootManage-Module-Model/)
 
-# 融合rust重构拓展模块测试分支
+# v0.1.7 -- 纯python版本
+# v0.2.0 -- rust+python
