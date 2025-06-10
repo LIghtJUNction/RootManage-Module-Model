@@ -5,3 +5,4 @@ go.tar.gz
 MyModule/MyModule.zip
 *.pyc
 /rmmbox/config/target/debug
+/rust/target
