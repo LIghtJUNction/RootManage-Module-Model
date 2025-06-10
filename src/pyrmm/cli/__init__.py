@@ -5,66 +5,46 @@ RMM CLI 模块
 """
 
 import sys
-from pathlib import Path
-from typing import Optional, List, Any, Callable
-print("TEST")
-def _find_rust_module() -> Optional[Any]:
-    """查找并导入 Rust 编译的模块
-    
-    Returns:
-        Rust 模块对象，如果找不到则返回 None
-    """
-    current_dir = Path(__file__).parent
-    
-    # 首先尝试直接导入（如果在 site-packages 中）
+from collections.abc import Callable
+
+def _find_rust_module():
+    """查找并导入 Rust 编译的模块"""
     try:
-        import rmmcore  # type: ignore
+        # 直接导入，让Python解释器处理版本匹配
+        import rmmcore
         return rmmcore
     except ImportError:
         pass
     
-    # 获取当前 Python 版本信息
-    import platform
-    python_version = f"cp{sys.version_info.major}{sys.version_info.minor}"
-    platform_tag = platform.machine().lower()
-    if platform_tag == "amd64":
-        platform_tag = "win_amd64"
-    elif platform_tag == "x86":
-        platform_tag = "win32"
-    
-    # 构建可能的文件名
-    possible_names = [
-        f"rmmcore.{python_version}-{platform_tag}.pyd",  # Windows specific
-        f"rmmcore.{python_version}-{platform_tag}.so",   # Linux/macOS specific
-        "rmmcore.pyd",  # Generic Windows
-        "rmmcore.so",   # Generic Unix
-        "rmmcore.dylib"  # macOS
-    ]
-    
-    for module_name in possible_names:
-        module_file = current_dir / module_name
-        if module_file.exists():
-            # 动态导入模块
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("rmmcore", module_file)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules["rmmcore"] = module
-                spec.loader.exec_module(module)
-                return module
-    
-    return None
+    # 如果直接导入失败，尝试从当前目录导入
+    try:
+        from . import rmmcore
+        return rmmcore
+    except ImportError:
+        return None
 
 # 尝试导入 Rust 模块
-_rust_module = _find_rust_module()
+rmmcore = _find_rust_module()
 
-if _rust_module is None:
+if rmmcore is None:
     raise ImportError(
         "无法找到 Rust CLI 扩展。请确保已正确编译了 Rust 扩展模块。\n"
         "运行 'maturin develop' 来构建扩展。"
     )
 
-# 导出 CLI 函数
-cli: Callable[[Optional[List[str]]], None] = _rust_module.cli
+# 包装 CLI 函数以处理参数
+def cli(args=None):
+    """
+    CLI 入口函数
+    
+    Args:
+        args: 命令行参数列表，如果为 None 则从 sys.argv 获取
+    """
+    # 如果没有提供参数，从 sys.argv 获取，但排除脚本名
+    if args is None:
+        args = sys.argv[1:]
+    
+    # 调用 Rust 实现的 CLI 函数
+    return rmmcore.cli(args)
 
 __all__ = ['cli']

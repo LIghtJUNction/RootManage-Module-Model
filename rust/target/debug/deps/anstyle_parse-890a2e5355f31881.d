@@ -1,9 +1,0 @@
-C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libanstyle_parse-890a2e5355f31881.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\params.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\definitions.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\table.rs
-
-C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\anstyle_parse-890a2e5355f31881.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\params.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\definitions.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\table.rs
-
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\lib.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\params.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\mod.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\definitions.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-parse-0.2.7\src\state\table.rs:

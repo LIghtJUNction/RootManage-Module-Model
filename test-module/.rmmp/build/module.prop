@@ -1,0 +1,7 @@
+id=test-module
+name=test-module
+version=v0.1.0-62377120
+versionCode=2025061007
+author=LIghtJUNction
+description=RMM项目 test-module
+updateJson=https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/update.json

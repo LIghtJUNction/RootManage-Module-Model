@@ -22,7 +22,7 @@ impl Default for RmmConfig {
     fn default() -> Self {
         Self {
             email: "email".to_string(),
-            username: "LIghtJUNction".to_string(),
+            username: "username".to_string(),
             version: get_rmm_version(),
             projects: HashMap::new(),
             github_token: None,
@@ -41,12 +41,19 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
             // 确保版本是最新的
             config.version = get_rmm_version();
             
-            // 验证项目路径有效性
-            config.validate_projects()?;
+            // 从环境变量加载GitHub token
+            config.github_token = env::var("GITHUB_ACCESS_TOKEN").ok();
+            
+            // 验证项目路径有效性并同步项目信息
+            config.validate_and_sync_projects()?;
+            
+            // 保存更新后的配置
+            config.save()?;
             
             config
         } else {
-            let config = Self::default();
+            let mut config = Self::default();
+            config.github_token = env::var("GITHUB_ACCESS_TOKEN").ok();
             config.save()?;
             config
         };
@@ -76,24 +83,63 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
     pub fn config_path() -> Result<PathBuf> {
         let rmm_root = get_rmm_root()?;
         Ok(rmm_root.join("meta.toml"))
-    }
-    
-    /// 验证项目路径的有效性
-    pub fn validate_projects(&mut self) -> Result<()> {
+    }    /// 验证并同步项目信息
+    pub fn validate_and_sync_projects(&mut self) -> Result<()> {
         let mut invalid_projects = Vec::new();
+        let mut updated = false;
         
-        for (name, path) in &self.projects {
-            let project_path = Path::new(path);
+        // 先收集所有需要处理的项目信息
+        let projects_to_check: Vec<(String, String)> = self.projects.iter()
+            .map(|(name, path)| (name.clone(), path.clone()))
+            .collect();
+        
+        for (name, path) in projects_to_check {
+            let project_path = Path::new(&path);
             if !project_path.exists() || !is_rmm_project(project_path) {
                 invalid_projects.push(name.clone());
+            } else {
+                // 同步项目元数据
+                if let Err(e) = self.sync_project_metadata(&name, project_path) {
+                    eprintln!("警告: 无法同步项目 {} 的元数据: {}", name, e);
+                } else {
+                    updated = true;
+                }
             }
         }
         
         // 移除无效项目
         for name in invalid_projects {
             self.projects.remove(&name);
+            updated = true;
         }
         
+        // 如果有更新，保存配置
+        if updated {
+            self.save()?;
+        }
+        
+        Ok(())
+    }
+    
+    /// 同步单个项目的元数据
+    fn sync_project_metadata(&self, _project_name: &str, project_path: &Path) -> Result<()> {
+        let config_file = project_path.join("rmmproject.toml");
+        if !config_file.exists() {
+            return Ok(()); // 项目配置文件不存在，跳过同步
+        }
+        
+        // 读取项目配置
+        let content = fs::read_to_string(&config_file)?;
+        let mut project_config: ProjectConfig = toml::from_str(&content)?;
+        
+        // 同步RMM版本信息
+        project_config.requires_rmm = self.version.clone();
+        
+        // 保存更新后的项目配置
+        let updated_content = toml::to_string_pretty(&project_config)?;
+        fs::write(&config_file, updated_content)?;
+        
+        println!("已同步项目元数据: {}", project_path.display());
         Ok(())
     }
     
@@ -134,8 +180,7 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
     pub fn list_projects(&self) -> &HashMap<String, String> {
         &self.projects
     }
-    
-    /// 设置用户信息
+      /// 设置用户信息
     pub fn set_user_info(&mut self, username: Option<String>, email: Option<String>) -> Result<()> {
         if let Some(username) = username {
             self.username = username;
@@ -144,6 +189,160 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
             self.email = email;
         }
         self.save()
+    }
+    
+    /// 发现指定目录下的所有 RMM 项目
+    pub fn discover_projects(&self, search_path: &Path, max_depth: usize) -> Result<Vec<(String, PathBuf)>> {
+        let mut discovered_projects = Vec::new();
+        self.discover_projects_recursive(search_path, max_depth, 0, &mut discovered_projects)?;
+        Ok(discovered_projects)
+    }
+    
+    /// 递归发现项目
+    fn discover_projects_recursive(
+        &self,
+        current_path: &Path,
+        max_depth: usize,
+        current_depth: usize,
+        projects: &mut Vec<(String, PathBuf)>
+    ) -> Result<()> {
+        if current_depth > max_depth {
+            return Ok(());
+        }
+        
+        // 检查当前目录是否是 RMM 项目
+        if is_rmm_project(current_path) {
+            let project_name = current_path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            
+            let canonical_path = current_path.canonicalize()?;
+            projects.push((project_name, canonical_path));
+        }
+        
+        // 如果当前目录是项目目录，不再向下搜索
+        if is_rmm_project(current_path) {
+            return Ok(());
+        }
+        
+        // 递归搜索子目录
+        if let Ok(entries) = fs::read_dir(current_path) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        // 跳过隐藏目录和一些特殊目录
+                        if let Some(dir_name) = path.file_name().and_then(|name| name.to_str()) {
+                            if dir_name.starts_with('.') || 
+                               dir_name == "node_modules" || 
+                               dir_name == "target" ||
+                               dir_name == "__pycache__" ||
+                               dir_name == "build" ||
+                               dir_name == "dist" {
+                                continue;
+                            }
+                        }
+                        
+                        self.discover_projects_recursive(&path, max_depth, current_depth + 1, projects)?;
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    /// 同步项目列表（发现新项目并移除无效项目）
+    pub fn sync_project_list(&mut self, search_paths: &[PathBuf], max_depth: usize) -> Result<()> {
+        println!("🔍 开始同步项目列表...");
+        
+        // 1. 验证现有项目并移除无效的
+        let mut invalid_projects = Vec::new();
+        let mut valid_projects = 0;
+        
+        println!("📋 检查现有项目...");
+        for (name, path) in &self.projects {
+            let project_path = Path::new(path);
+            if !project_path.exists() {
+                println!("❌ 项目路径不存在: {} -> {}", name, path);
+                invalid_projects.push(name.clone());
+            } else if !is_rmm_project(project_path) {
+                println!("❌ 无效的 RMM 项目: {} -> {}", name, path);
+                invalid_projects.push(name.clone());
+            } else {
+                println!("✅ 有效项目: {} -> {}", name, path);
+                valid_projects += 1;
+            }
+        }
+        
+        // 移除无效项目
+        for name in &invalid_projects {
+            self.projects.remove(name);
+        }
+        
+        if !invalid_projects.is_empty() {
+            println!("🧹 已移除 {} 个无效项目", invalid_projects.len());
+        }
+        
+        // 2. 发现新项目
+        let mut new_projects = Vec::new();
+        let mut discovered_count = 0;
+        
+        println!("🔍 发现新项目...");
+        for search_path in search_paths {
+            if !search_path.exists() {
+                println!("⚠️  搜索路径不存在: {}", search_path.display());
+                continue;
+            }
+            
+            println!("📁 搜索路径: {} (最大深度: {})", search_path.display(), max_depth);
+            let discovered = self.discover_projects(search_path, max_depth)?;
+            discovered_count += discovered.len();
+            
+            for (project_name, project_path) in discovered {
+                let path_str = project_path.to_string_lossy().to_string();
+                
+                // 检查是否已经存在
+                let is_existing = self.projects.values().any(|existing_path| {
+                    Path::new(existing_path).canonicalize().ok() == Some(project_path.clone())
+                });
+                
+                if !is_existing {
+                    // 处理名称冲突
+                    let mut final_name = project_name.clone();
+                    let mut counter = 1;
+                    while self.projects.contains_key(&final_name) {
+                        final_name = format!("{}_{}", project_name, counter);
+                        counter += 1;
+                    }
+                    
+                    new_projects.push((final_name, path_str));
+                }
+            }
+        }
+        
+        // 添加新项目
+        for (name, path) in &new_projects {
+            self.projects.insert(name.clone(), path.clone());
+            println!("➕ 新增项目: {} -> {}", name, path);
+        }
+        
+        // 3. 保存配置
+        if !invalid_projects.is_empty() || !new_projects.is_empty() {
+            self.save()?;
+        }
+        
+        // 4. 显示统计信息
+        println!("\n📊 同步完成统计:");
+        println!("  - 有效项目: {}", valid_projects);
+        println!("  - 移除项目: {}", invalid_projects.len());
+        println!("  - 发现项目: {}", discovered_count);
+        println!("  - 新增项目: {}", new_projects.len());
+        println!("  - 总项目数: {}", self.projects.len());
+        
+        Ok(())
     }
 }
 
@@ -154,6 +353,7 @@ pub struct ProjectConfig {
     pub name: String,
     pub description: Option<String>,
     pub requires_rmm: String,
+    pub version: Option<String>,
     #[serde(rename = "versionCode")]
     pub version_code: String,
     #[serde(rename = "updateJson")]
@@ -209,16 +409,21 @@ pub struct GitInfo {
 }
 
 impl ProjectConfig {
+    /// 从文件加载配置
+    pub fn load_from_file(config_path: &Path) -> Result<Self> {
+        if !config_path.exists() {
+            return Err(anyhow!("项目配置文件不存在: {}", config_path.display()));
+        }
+        
+        let content = fs::read_to_string(config_path)?;
+        let config: ProjectConfig = toml::from_str(&content)?;
+        Ok(config)
+    }
+    
     /// 从项目目录加载配置
     pub fn load_from_dir(project_path: &Path) -> Result<Self> {
         let config_file = project_path.join("rmmproject.toml");
-        if !config_file.exists() {
-            return Err(anyhow!("项目配置文件不存在: {}", config_file.display()));
-        }
-        
-        let content = fs::read_to_string(&config_file)?;
-        let config: ProjectConfig = toml::from_str(&content)?;
-        Ok(config)
+        Self::load_from_file(&config_file)
     }
     
     /// 保存配置到文件
@@ -236,6 +441,7 @@ pub struct RmakeConfig {
     pub build: RmakeBuildConfig,
     pub package: Option<RmakePackageConfig>,
     pub scripts: Option<HashMap<String, String>>,
+    pub proxy: Option<RmakeProxyConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -252,6 +458,13 @@ pub struct RmakePackageConfig {
     pub zip_name: Option<String>,
     pub tar_name: Option<String>,
     pub compression: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RmakeProxyConfig {
+    pub enabled: bool,
+    pub auto_select: Option<bool>,
+    pub custom_proxy: Option<String>,
 }
 
 impl RmakeConfig {

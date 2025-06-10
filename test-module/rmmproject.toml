@@ -1,0 +1,34 @@
+id = "test-module"
+name = "test-module"
+description = "RMM项目 test-module"
+requires_rmm = "0.2.0"
+version = "v0.1.0-62377120"
+versionCode = "2025061007"
+updateJson = "https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/update.json"
+readme = "README.MD"
+changelog = "CHANGELOG.MD"
+license = "LICENSE"
+dependencies = []
+
+[[authors]]
+name = "LIghtJUNction"
+email = "email"
+
+[[scripts]]
+name = "build"
+command = "rmm build"
+
+[urls]
+github = "https://github.com/LIghtJUNction/RootManageModuleModel"
+
+[build]
+prebuild = "Rmake"
+build = "default"
+postbuild = "Rmake"
+
+[git]
+git_root = ""
+remote_url = "https://github.com/LIghtJUNction/RootManageModuleModel.git"
+username = "LIghtJUNction"
+repo_name = "RootManageModuleModel"
+is_in_repo_root = false

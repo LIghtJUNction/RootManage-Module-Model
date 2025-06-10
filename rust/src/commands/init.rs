@@ -126,8 +126,8 @@ fn create_project_config(
     Ok(ProjectConfig {
         id: name.to_string(),
         name: name.to_string(),
-        description: Some(format!("RMM项目 {}", name)),
-        requires_rmm: format!(">={}", rmm_version),
+        description: Some(format!("RMM项目 {}", name)),        requires_rmm: format!(">={}", rmm_version),
+        version: Some("v1.0.0".to_string()),
         version_code: "1".to_string(),
         update_json,
         readme: "README.MD".to_string(),

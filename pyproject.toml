@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rmm = "pyrmm.cli.main:main"
+rmm = "pyrmm.cli:cli"
 
 [build-system]
 requires = ["maturin>=1.8,<2.0"]
@@ -44,9 +44,7 @@ strip = true
 # 二进制类型
 bindings = "pyo3"
 
-# 版本配置
-[tool.maturin.version]
-path = "src/pyrmm/__init__.py"
+
 
 # uv 工作区配置
 [tool.uv]

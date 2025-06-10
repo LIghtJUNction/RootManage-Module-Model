@@ -6,6 +6,8 @@ use std::env;
 mod config;
 mod commands;
 mod utils;
+mod github;
+mod proxy;
 
 use config::RmmConfig;
 use utils::setup_logging;
@@ -26,12 +28,13 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
         // 从命令行获取参数，跳过第一个（程序名）
         final_args.extend(env::args().skip(1));
     }
-    
-    match run_cli(final_args) {
+      match run_cli(final_args) {
         Ok(_) => Ok(()),
         Err(e) => {
+            // 不要在这里打印错误，因为 clap 已经处理了输出
+            // 只有真正的错误才需要打印
             eprintln!("错误: {}", e);
-            std::process::exit(1);
+            Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
         }
     }
 }
@@ -41,13 +44,31 @@ fn run_cli(args: Vec<String>) -> Result<()> {
     setup_logging()?;
     
     let app = build_cli();
-    let matches = app.try_get_matches_from(args)?;
+    
+    // 使用 get_matches_from 而不是 try_get_matches_from
+    // 这样 clap 会自动处理 --help 和 --version 并正常退出
+    let matches = match app.try_get_matches_from(args) {
+        Ok(matches) => matches,
+        Err(err) => {
+            // 如果是帮助或版本信息，正常输出并退出
+            if err.kind() == clap::error::ErrorKind::DisplayHelp ||
+               err.kind() == clap::error::ErrorKind::DisplayVersion {
+                print!("{}", err);
+                return Ok(());
+            }
+            // 其他错误则返回错误
+            return Err(err.into());
+        }
+    };
     
     // 初始化配置
     let config = RmmConfig::load()?;
       // 路由到不同的命令处理器
-    match matches.subcommand() {
-        Some(("init", sub_matches)) => commands::init::handle_init(&config, sub_matches),
+    match matches.subcommand() {        Some(("init", sub_matches)) => commands::init::handle_init(&config, sub_matches),
+        Some(("build", sub_matches)) => commands::build::handle_build(&config, sub_matches),
+        Some(("sync", sub_matches)) => commands::sync::handle_sync(&config, sub_matches),
+        Some(("check", sub_matches)) => commands::check::handle_check(&config, sub_matches),
+        Some(("publish", sub_matches)) => commands::publish::handle_publish(&config, sub_matches),
         _ => {
             // 如果没有子命令，显示帮助
             let mut app = build_cli();
@@ -80,8 +101,11 @@ fn build_cli() -> Command {
                 .action(ArgAction::SetTrue)                
                 .global(true)
                 .help("静默模式，只输出错误")
-        )
-        .subcommand(commands::init::build_command())
+        )        .subcommand(commands::init::build_command())
+        .subcommand(commands::build::build_command())
+        .subcommand(commands::sync::build_command())
+        .subcommand(commands::check::build_command())
+        .subcommand(commands::publish::build_command())
 }
 
 /// Python 模块定义

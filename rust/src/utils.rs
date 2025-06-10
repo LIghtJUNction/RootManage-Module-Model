@@ -330,3 +330,248 @@ fn parse_github_url(url: &str) -> Option<(String, String)> {
     
     None
 }
+
+/// 生成版本号和版本代码
+pub fn generate_version_info() -> Result<(String, String)> {
+    use chrono::{Utc, Datelike};
+    
+    let now = Utc::now();
+    let year = now.year();
+    let month = now.month();
+    let day = now.day();
+    
+    // 生成版本代码：年份+月份+日期+两位序列(从00开始)
+    let version_code = format!("{:04}{:02}{:02}00", year, month, day);
+    
+    // 获取 Git commit hash
+    let commit_hash = get_git_commit_hash().unwrap_or_else(|_| "unknown".to_string());
+    
+    // 生成版本号：v0.1.0-{commit_hash前8位}
+    let short_hash = if commit_hash.len() >= 8 {
+        &commit_hash[..8]
+    } else {
+        &commit_hash
+    };
+    let version = format!("v0.1.0-{}", short_hash);
+    
+    Ok((version, version_code))
+}
+
+/// 获取当前 Git commit hash
+pub fn get_git_commit_hash() -> Result<String> {
+    use git2::Repository;
+    
+    let current_dir = std::env::current_dir()?;
+    let mut search_path = current_dir.as_path();
+    
+    // 向上搜索 Git 仓库
+    loop {
+        let git_dir = search_path.join(".git");
+        if git_dir.exists() {
+            // 找到 Git 仓库，尝试打开
+            if let Ok(repo) = Repository::open(search_path) {
+                // 获取 HEAD 引用
+                if let Ok(head) = repo.head() {
+                    if let Some(oid) = head.target() {
+                        return Ok(oid.to_string());
+                    }
+                }
+            }
+            break;
+        }
+        
+        match search_path.parent() {
+            Some(parent) => search_path = parent,
+            None => break,
+        }
+    }
+    
+    anyhow::bail!("无法获取 Git commit hash")
+}
+
+/// 更新项目的版本信息
+pub fn update_project_version(config: &mut crate::config::ProjectConfig) -> Result<()> {
+    let (version, version_code) = generate_version_info()?;
+    
+    // 更新版本号
+    config.version = Some(version.clone());
+    
+    // 检查是否需要更新版本代码
+    let today_prefix = &version_code[..8]; // YYYYMMDD
+    let current_prefix = if config.version_code.len() >= 8 {
+        &config.version_code[..8]
+    } else {
+        ""
+    };
+    
+    if today_prefix != current_prefix {
+        // 新的一天，重置为00
+        config.version_code = version_code;
+    } else {
+        // 同一天，递增序列号
+        let current_seq: u32 = if config.version_code.len() >= 10 {
+            config.version_code[8..].parse().unwrap_or(0)
+        } else {
+            0
+        };
+        
+        let new_seq = (current_seq + 1).min(99); // 最大99
+        config.version_code = format!("{}{:02}", today_prefix, new_seq);
+    }
+    
+    println!("🔄 更新版本信息: 版本号={}, 版本代码={}", version, config.version_code);
+    
+    Ok(())
+}
+
+/// 检测当前项目是否在 Git 仓库根目录
+pub fn detect_git_repo_info() -> Result<Option<GitRepoInfo>> {
+    let current_dir = std::env::current_dir()?;
+    let mut search_path = current_dir.as_path();
+    
+    // 向上搜索 .git 目录
+    loop {
+        let git_dir = search_path.join(".git");
+        if git_dir.exists() {
+            // 找到 Git 仓库根目录
+            let is_in_repo_root = search_path == current_dir;
+              // 读取 Git 配置获取远程仓库信息
+            if let Some(git_info) = get_git_info(search_path) {
+                return Ok(Some(GitRepoInfo {
+                    repo_root: search_path.to_path_buf(),
+                    is_in_repo_root,
+                    remote_url: git_info.remote_url,
+                    username: git_info.username,
+                    repo_name: git_info.repo_name,
+                }));
+            }
+        }
+        
+        match search_path.parent() {
+            Some(parent) => search_path = parent,
+            None => break,
+        }
+    }
+    
+    Ok(None)
+}
+
+/// Git 仓库信息
+#[derive(Debug, Clone)]
+pub struct GitRepoInfo {
+    pub repo_root: PathBuf,
+    pub is_in_repo_root: bool,
+    pub remote_url: String,
+    pub username: String,
+    pub repo_name: String,
+}
+
+/// 生成 update.json 文件
+pub async fn generate_update_json(
+    config: &crate::config::ProjectConfig,
+    project_root: &Path,
+    rmake_config: Option<&crate::config::RmakeConfig>,
+) -> Result<()> {
+    use serde_json::json;
+    
+    // 检测 Git 仓库信息
+    let git_info = detect_git_repo_info()?;
+    
+    if git_info.is_none() {
+        println!("⚠️  未检测到 Git 仓库，跳过 update.json 生成");
+        return Ok(());
+    }
+    
+    let git_info = git_info.unwrap();
+    println!("📁 检测到 Git 仓库: {}/{}", git_info.username, git_info.repo_name);
+      // 构建基础 URL
+    let base_path = if git_info.is_in_repo_root {
+        String::new()
+    } else {
+        // 计算相对路径
+        let current_dir = std::env::current_dir()?;
+        let relative_path = current_dir
+            .strip_prefix(&git_info.repo_root)
+            .map_err(|_| anyhow::anyhow!("无法计算相对路径"))?;
+        format!("/{}", relative_path.to_string_lossy().replace('\\', "/"))
+    };
+    
+    let zip_filename = format!("{}-{}.zip", config.id, config.version_code);
+    let changelog_filename = "CHANGELOG.MD";
+    
+    // 构建原始 URL
+    let zip_url = format!(
+        "https://raw.githubusercontent.com/{}/{}/main{}/{}",
+        git_info.username, git_info.repo_name, base_path, zip_filename
+    );
+    
+    let changelog_url = format!(
+        "https://raw.githubusercontent.com/{}/{}/main{}/{}",
+        git_info.username, git_info.repo_name, base_path, changelog_filename
+    );
+    
+    // 检查是否需要应用代理
+    let (final_zip_url, final_changelog_url) = if let Some(rmake) = rmake_config {
+        if let Some(proxy_config) = &rmake.proxy {
+            if proxy_config.enabled {
+                let proxy = if let Some(custom_proxy) = &proxy_config.custom_proxy {
+                    // 使用自定义代理
+                    Some(crate::proxy::GithubProxy {
+                        url: custom_proxy.clone(),
+                        server: "custom".to_string(),
+                        ip: "".to_string(),
+                        location: "".to_string(),
+                        latency: 0,
+                        speed: 0.0,
+                    })
+                } else if proxy_config.auto_select.unwrap_or(true) {
+                    // 自动选择最快代理
+                    println!("🔍 正在获取最快的 GitHub 代理...");
+                    match crate::proxy::get_fastest_proxy().await {
+                        Ok(proxy_opt) => {
+                            if let Some(proxy) = &proxy_opt {
+                                println!("✅ 选择代理: {} (速度: {:.2})", proxy.url, proxy.speed);
+                            }
+                            proxy_opt
+                        }
+                        Err(e) => {
+                            println!("⚠️  获取代理失败: {}, 将使用原始链接", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                
+                (
+                    crate::proxy::apply_proxy_to_url(&zip_url, proxy.as_ref()),
+                    crate::proxy::apply_proxy_to_url(&changelog_url, proxy.as_ref()),
+                )
+            } else {
+                (zip_url, changelog_url)
+            }
+        } else {
+            (zip_url, changelog_url)
+        }
+    } else {
+        (zip_url, changelog_url)
+    };
+    
+    // 创建 update.json 内容
+    let update_json = json!({
+        "versionCode": config.version_code.parse::<u32>().unwrap_or(1),
+        "version": config.version.clone(),
+        "zipUrl": final_zip_url,
+        "changelog": final_changelog_url
+    });
+    
+    // 写入 update.json 文件
+    let update_json_path = project_root.join("update.json");
+    let content = serde_json::to_string_pretty(&update_json)?;
+    std::fs::write(&update_json_path, content)?;
+    
+    println!("📄 生成 update.json: {}", update_json_path.display());
+    println!("🔗 模块下载链接: {}", final_zip_url);
+    
+    Ok(())
+}

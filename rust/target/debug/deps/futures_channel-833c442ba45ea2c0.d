@@ -1,9 +1,0 @@
-C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libfutures_channel-833c442ba45ea2c0.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lock.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\queue.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\oneshot.rs
-
-C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\futures_channel-833c442ba45ea2c0.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lock.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\mod.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\queue.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\oneshot.rs
-
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lib.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\lock.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\mod.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\mpsc\queue.rs:
-C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\futures-channel-0.3.31\src\oneshot.rs:
