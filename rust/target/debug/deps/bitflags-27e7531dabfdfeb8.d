@@ -1,0 +1,11 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libbitflags-27e7531dabfdfeb8.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\iter.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\parser.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\traits.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\public.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\internal.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\external.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\bitflags-27e7531dabfdfeb8.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\iter.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\parser.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\traits.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\public.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\internal.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\external.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\lib.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\iter.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\parser.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\traits.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\public.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\internal.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\bitflags-2.9.1\src\external.rs:

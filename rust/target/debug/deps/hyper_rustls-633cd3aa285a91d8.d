@@ -1,0 +1,9 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libhyper_rustls-633cd3aa285a91d8.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\config.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector\builder.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\stream.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\hyper_rustls-633cd3aa285a91d8.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\config.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector\builder.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\stream.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\lib.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\config.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\connector\builder.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\hyper-rustls-0.27.7\src\stream.rs:

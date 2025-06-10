@@ -1,0 +1,5 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\liblibssh2_sys-8df2da8901b2c1e7.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libssh2-sys-0.3.1\lib.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libssh2_sys-8df2da8901b2c1e7.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libssh2-sys-0.3.1\lib.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\libssh2-sys-0.3.1\lib.rs:

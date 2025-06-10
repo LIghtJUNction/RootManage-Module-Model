@@ -1,0 +1,121 @@
+cargo:rerun-if-env-changed=LIBSSH2_SYS_USE_PKG_CONFIG
+cargo:include=C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\build\libssh2-sys-f3b7a380263916ea\out\include
+cargo:root=C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\build\libssh2-sys-f3b7a380263916ea\out
+cargo:rerun-if-env-changed=DEP_Z_INCLUDE
+cargo:rerun-if-env-changed=DEP_OPENSSL_INCLUDE
+OPT_LEVEL = Some(0)
+TARGET = Some(x86_64-pc-windows-msvc)
+cargo:rerun-if-env-changed=VCINSTALLDIR
+VCINSTALLDIR = None
+cargo:rerun-if-env-changed=VSTEL_MSBuildProjectFullPath
+VSTEL_MSBuildProjectFullPath = None
+cargo:rerun-if-env-changed=VSCMD_ARG_VCVARS_SPECTRE
+VSCMD_ARG_VCVARS_SPECTRE = None
+cargo:rerun-if-env-changed=WindowsSdkDir
+WindowsSdkDir = None
+cargo:rerun-if-env-changed=WindowsSDKVersion
+WindowsSDKVersion = None
+cargo:rerun-if-env-changed=LIB
+LIB = None
+PATH = Some(C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps;C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug;C:\Users\light\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib\rustlib\x86_64-pc-windows-msvc\lib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\libnvvp;C:\ProgramData\scoop\shims;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8\libnvvp;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\NVIDIA Corporation\NVIDIA app\NvDLISR;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Users\light\AppData\Local\Android\sdk\ndk\android-ndk-r27c;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files\nodejs\;C:\Users\light\.local\bin\;C:\Users\light\AppData\Roaming\Python\Python313\Scripts\;C:\Users\light\.aivk\data\qq\napcat_root\napcat\;C:\Program Files\PowerShell\7\;C:\Program Files\NVIDIA Corporation\Nsight Compute 2025.2.0\;C:\Program Files\Docker\Docker\resources\bin;C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI\;C:\Program Files (x86)\Gpg4win\..\GnuPG\bin;C:\Program Files\LLVM\bin;C:\Program Files\Go\bin;C:\Users\light\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\light\AppData\Local\Programs\Python\Python313\;C:\Users\light\.local\bin;C:\Users\light\scoop\apps\gcc\current\bin;C:\Users\light\scoop\shims;C:\Users\light\.cargo\bin;C:\Users\light\AppData\Local\Microsoft\WindowsApps;C:\Users\light\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\light\AppData\Local\GitHubDesktop\bin;C:\Users\light\AppData\Local\Programs\Ollama;C:\ProgramData\mingw64\mingw64\bin;C:\Users\light\.dotnet\tools;C:\Users\light\AppData\Local\Microsoft\WinGet\Links;C:\Users\light\AppData\Roaming\npm;C:\Users\light\bin;C:\Users\light\.bun\bin;C:\Program Files (x86)\Gpg4win\bin;C:\Users\light\AppData\Local\gitkraken\bin;C:\Program Files\JetBrains\CLion 2025.1.1\bin;;C:\Users\light\.dotnet\tools;C:\Users\light\.vcpkg;C:\Users\light\go\bin;C:\Users\light\.rustup\toolchains\stable-x86_64-pc-windows-msvc\bin)
+cargo:rerun-if-env-changed=INCLUDE
+INCLUDE = None
+HOST = Some(x86_64-pc-windows-msvc)
+cargo:rerun-if-env-changed=CC_x86_64-pc-windows-msvc
+CC_x86_64-pc-windows-msvc = None
+cargo:rerun-if-env-changed=CC_x86_64_pc_windows_msvc
+CC_x86_64_pc_windows_msvc = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some(cmpxchg16b,fxsr,sse,sse2,sse3)
+DEBUG = Some(true)
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_pc_windows_msvc
+CFLAGS_x86_64_pc_windows_msvc = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-pc-windows-msvc
+CFLAGS_x86_64-pc-windows-msvc = None
+CARGO_ENCODED_RUSTFLAGS = Some()
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+agent.c
+bcrypt_pbkdf.c
+blowfish.c
+chacha.c
+channel.c
+cipher-chachapoly.c
+comp.c
+crypt.c
+crypto.c
+global.c
+hostkey.c
+keepalive.c
+kex.c
+knownhost.c
+mac.c
+misc.c
+packet.c
+pem.c
+poly1305.c
+publickey.c
+scp.c
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+session.c
+sftp.c
+transport.c
+userauth.c
+userauth_kbd_packet.c
+agent_win.c
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+exit code: 0
+cargo:rerun-if-env-changed=AR_x86_64-pc-windows-msvc
+AR_x86_64-pc-windows-msvc = None
+cargo:rerun-if-env-changed=AR_x86_64_pc_windows_msvc
+AR_x86_64_pc_windows_msvc = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = None
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64_pc_windows_msvc
+ARFLAGS_x86_64_pc_windows_msvc = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64-pc-windows-msvc
+ARFLAGS_x86_64-pc-windows-msvc = None
+cargo:rustc-link-lib=static=ssh2
+cargo:rustc-link-search=native=C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\build\libssh2-sys-f3b7a380263916ea\out\build
+cargo:rustc-link-lib=bcrypt
+cargo:rustc-link-lib=crypt32
+cargo:rustc-link-lib=user32
+cargo:rustc-link-lib=ntdll

@@ -1,6 +1,6 @@
 [project]
 name = "pyrmm"
-version = "0.1.8"
+dynamic = ["version"]
 description = "Magisk/Apatch/Kernelsu模块的工具集"
 readme = "README.MD"
 authors = [
@@ -15,10 +15,42 @@ dependencies = [
 ]
 
 [project.scripts]
-rmm = "pyrmm.cli.__main__:cli"
-rmmr = "pyrmm.cli.rmmr:cli"
+rmm = "pyrmm.cli.main:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+# 开发依赖
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-cov>=6.1.1",
+    "black>=25.1.0",
+    "isort>=6.0.0",
+    "maturin>=1.8.0",
+]
+
+# Maturin 配置（用于构建 Rust 扩展）
+[tool.maturin]
+# 指定 Rust 项目路径
+manifest-path = "rust/Cargo.toml"
+# Python 源码路径  
+python-source = "src"
+# 模块名称 - 作为 pyrmm.cli 的子模块
+module-name = "pyrmm.cli.rmmcore"
+# 构建配置
+strip = true
+# 二进制类型
+bindings = "pyo3"
+
+# 版本配置
+[tool.maturin.version]
+path = "src/pyrmm/__init__.py"
+
+# uv 工作区配置
+[tool.uv]
+package = true
+managed = true
+
 

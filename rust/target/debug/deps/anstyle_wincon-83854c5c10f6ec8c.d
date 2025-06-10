@@ -1,0 +1,10 @@
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libanstyle_wincon-83854c5c10f6ec8c.rmeta: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\ansi.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\stream.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\windows.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\libanstyle_wincon-83854c5c10f6ec8c.rlib: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\ansi.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\stream.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\windows.rs
+
+C:\Users\light\Documents\GitHub\RootManageModuleModel\rust\target\debug\deps\anstyle_wincon-83854c5c10f6ec8c.d: C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\lib.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\ansi.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\stream.rs C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\windows.rs
+
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\lib.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\ansi.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\stream.rs:
+C:\Users\light\.cargo\registry\src\mirrors.aliyun.com-0671735e7cc7f5e7\anstyle-wincon-3.0.9\src\windows.rs:
