@@ -46,7 +46,7 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Build with VitePress
         run: |
-          yarn docs:build
+          yarn build
           touch docs/.vitepress/dist/.nojekyll
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
