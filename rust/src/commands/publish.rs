@@ -9,6 +9,12 @@ pub fn build_command() -> Command {
     Command::new("publish")
         .about("发布模块到 GitHub Release")
         .arg(
+            Arg::new("token")
+                .long("token")
+                .help("GitHub Personal Access Token")
+                .value_name("TOKEN")
+        )
+        .arg(
             Arg::new("draft")
                 .long("draft")
                 .help("创建草稿发布")
@@ -48,19 +54,18 @@ pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     if let Some(token) = github_token {
         std::env::set_var("GITHUB_TOKEN", &token);
     }
-    
-    // 查找项目配置文件
+      // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
-    let project_config_path = crate::config::find_project_file(&current_dir)
-        .ok_or_else(|| anyhow::anyhow!("未找到项目配置文件 rmmproject.toml"))?;
+    let project_config_path = crate::config::find_project_file(&current_dir)?;
       // 加载项目配置
     let project_config = ProjectConfig::load_from_file(&project_config_path)?;
       // 加载 Rmake 配置（如果存在）
     let project_root = project_config_path.parent().unwrap();
     let rmake_config = RmakeConfig::load_from_dir(&project_root)?;
-    
-    // 获取版本信息
-    let (version, version_code) = crate::utils::generate_version_info()?;
+      // 获取版本信息（从项目配置中读取，而不是重新生成）
+    let version = project_config.version.clone()
+        .unwrap_or_else(|| "v0.1.0".to_string());
+    let version_code = project_config.version_code.clone();
       // 获取 Git 仓库信息
     let git_info = crate::utils::get_git_info(&project_root)
         .ok_or_else(|| anyhow::anyhow!("无法获取 Git 仓库信息"))?;

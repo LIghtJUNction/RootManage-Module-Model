@@ -5,12 +5,16 @@ GitHub 发布模块
 import os
 import sys
 import json
-import requests
 from pathlib import Path
-from typing import Optional, Dict, Any, List
 from github import Github, GithubException
 from github.Repository import Repository
 from github.GitRelease import GitRelease
+
+# 导入 Rust 扩展模块
+try:
+    from pyrmm.cli import rmmcore
+except ImportError:
+    rmmcore = None
 
 class GitHubPublisher:
     def __init__(self, token: str, repo_name: str):
@@ -23,8 +27,7 @@ class GitHubPublisher:
         """
         self.github = Github(token)
         self.repo_name = repo_name
-        self.repo: Repository = None
-        
+        self.repo: Repository | None = None
     def initialize_repo(self) -> bool:
         """初始化仓库连接"""
         try:
@@ -33,23 +36,7 @@ class GitHubPublisher:
         except GithubException as e:
             print(f"❌ 无法连接到仓库 {self.repo_name}: {e}")
             return False
-    
-    def get_fastest_proxy(self) -> Optional[str]:
-        """获取最快的 GitHub 代理"""
-        try:
-            response = requests.get("https://api.akams.cn/github", timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            if data.get("code") == 200 and "data" in data:
-                proxies = data["data"]
-                if proxies:
-                    # 返回第一个代理（API 已按速度排序）
-                    return proxies[0]["proxy"]
-        except Exception as e:
-            print(f"⚠️  获取代理失败: {e}")
-        
-        return None
+
     
     def apply_proxy_to_url(self, url: str, proxy: str) -> str:
         """将代理应用到 URL"""
@@ -70,7 +57,7 @@ class GitHubPublisher:
                       name: str,
                       body: str,
                       draft: bool = False,
-                      prerelease: bool = False) -> Optional[GitRelease]:
+                      prerelease: bool = False) -> GitRelease | None:
         """
         创建 GitHub Release
         
@@ -86,6 +73,9 @@ class GitHubPublisher:
         """
         try:
             print(f"📦 创建 Release: {version}")
+            if self.repo is None:
+                print("❌ 仓库未初始化，请先调用 initialize_repo()")
+                return None
             release = self.repo.create_git_release(
                 tag=version,
                 name=name,
@@ -99,6 +89,9 @@ class GitHubPublisher:
             if e.status == 422 and "already_exists" in str(e):
                 print(f"⚠️  Release {version} 已存在，尝试获取现有 Release")
                 try:
+                    if self.repo is None:
+                        print("❌ 仓库未初始化，请先调用 initialize_repo()")
+                        return None
                     release = self.repo.get_release(version)
                     print(f"✅ 获取到现有 Release: {release.html_url}")
                     return release
@@ -109,7 +102,7 @@ class GitHubPublisher:
                 print(f"❌ 创建 Release 失败: {e}")
                 return None
     
-    def upload_asset(self, release: GitRelease, file_path: Path, name: Optional[str] = None) -> bool:
+    def upload_asset(self, release: GitRelease, file_path: Path, name: str | None = None) -> bool:
         """
         上传文件到 Release
         
@@ -135,11 +128,8 @@ class GitHubPublisher:
                 if asset.name == asset_name:
                     print(f"⚠️  文件 {asset_name} 已存在，删除旧文件")
                     asset.delete_asset()
-                    break
-            
-            # 上传新文件
-            with open(file_path, 'rb') as f:
-                asset = release.upload_asset(f, name=asset_name)
+                    break            # 上传新文件
+            asset = release.upload_asset(str(file_path), name=asset_name)
             
             print(f"✅ 文件上传成功: {asset.browser_download_url}")
             return True
@@ -224,7 +214,7 @@ class GitHubPublisher:
             print(f"❌ 更新 Release 描述失败: {e}")
             return False
 
-def publish_to_github(config_data: Dict[str, Any]) -> bool:
+def publish_to_github(config_data: dict[str, str]) -> bool:
     """
     发布到 GitHub 的主函数
     
@@ -244,26 +234,38 @@ def publish_to_github(config_data: Dict[str, Any]) -> bool:
         return False
     
     # 解析配置
-    repo_name = config_data.get('repo_name')
-    version = config_data.get('version')
-    release_name = config_data.get('release_name')
-    release_body = config_data.get('release_body', '')
-    module_zip_path = config_data.get('module_zip_path')
-    source_tar_path = config_data.get('source_tar_path')
-    enable_proxy = config_data.get('enable_proxy', False)
-    draft = config_data.get('draft', False)
-    prerelease = config_data.get('prerelease', False)
-    
+    repo_name: str | None = config_data.get('repo_name')
+    version: str | None = config_data.get('version')
+    release_name: str | None = config_data.get('release_name')
+    release_body: str | None = config_data.get('release_body', '')
+    module_zip_path: str | None = config_data.get('module_zip_path')
+    source_tar_path: str | None = config_data.get('source_tar_path')
+    enable_proxy: bool | None = bool(config_data.get('enable_proxy', False))
+    draft: bool | None = bool(config_data.get('draft', False))
+    prerelease: bool | None = bool(config_data.get('prerelease', False))
+
     if not all([repo_name, version, release_name]):
         print("❌ 缺少必要的配置参数")
         return False
     
     # 初始化发布器
+    if not repo_name:
+        print("❌ 未提供仓库名称 (repo_name)")
+        return False
+
     publisher = GitHubPublisher(token, repo_name)
     if not publisher.initialize_repo():
         return False
     
     # 创建 Release
+    if not version:
+        print("❌ 未提供版本号 (version)")
+        return False
+    
+    if not release_name:
+        print("❌ 未提供 Release 名称 (release_name)")
+        return False
+    
     release = publisher.create_release(
         version=version,
         name=release_name,
@@ -285,11 +287,15 @@ def publish_to_github(config_data: Dict[str, Any]) -> bool:
     if source_tar_path and Path(source_tar_path).exists():
         if not publisher.upload_asset(release, Path(source_tar_path)):
             upload_success = False
-    
-    # 如果启用代理功能，添加代理链接
+      # 如果启用代理功能，添加代理链接
     if enable_proxy and upload_success:
         print("🔍 正在获取最快的 GitHub 代理...")
-        proxy = publisher.get_fastest_proxy()
+        proxy = None
+        if rmmcore is not None:
+            try:
+                proxy = rmmcore.get_fastest_proxy()
+            except Exception as e:
+                print(f"⚠️  获取代理失败: {e}")
         
         if proxy:
             print(f"✅ 选择代理: {proxy}")

@@ -4,3 +4,7 @@ pub mod sync;
 pub mod check;
 pub mod publish;
 pub mod config;
+pub mod run;
+pub mod device;
+pub mod clean;
+pub mod test;

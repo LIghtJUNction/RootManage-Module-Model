@@ -5,8 +5,8 @@ use std::env;
 mod config;
 mod commands;
 mod utils;
-mod github;
 mod proxy;
+mod adb;
 
 use config::RmmConfig;
 use utils::setup_logging;
@@ -45,9 +45,15 @@ fn run_cli(args: Vec<String>) -> Result<()> {
         }
         Some(("publish", sub_matches)) => {
             commands::publish::handle_publish(&config, sub_matches)?;
-        }
-        Some(("config", sub_matches)) => {
+        }        Some(("config", sub_matches)) => {
             commands::config::handle_config(&config, sub_matches)?;
+        }        Some(("run", sub_matches)) => {
+            commands::run::handle_run(&config, sub_matches)?;
+        }        Some(("device", sub_matches)) | Some(("devices", sub_matches)) => {
+            commands::device::handle_device(&config, sub_matches)?;
+        }
+        Some(("clean", sub_matches)) => {
+            commands::clean::handle_clean(&config, sub_matches)?;
         }
         _ => {
             println!("{}", DESCRIPTION);
@@ -81,6 +87,8 @@ fn build_cli() -> Command {
         .subcommand(commands::build::build_command())
         .subcommand(commands::sync::build_command())
         .subcommand(commands::check::build_command())
-        .subcommand(commands::publish::build_command())
-        .subcommand(commands::config::build_command())
+        .subcommand(commands::publish::build_command())        .subcommand(commands::config::build_command())
+        .subcommand(commands::run::build_command())
+        .subcommand(commands::device::build_command())
+        .subcommand(commands::clean::build_command())
 }

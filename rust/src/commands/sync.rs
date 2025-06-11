@@ -41,6 +41,12 @@ pub fn build_command() -> Command {
                 .default_value("3")
                 .help("搜索项目的最大目录深度")
         )
+        .arg(
+            Arg::new("fix-meta")
+                .long("fix-meta")
+                .action(ArgAction::SetTrue)
+                .help("验证并修复 meta.toml 文件格式")
+        )
 }
 
 /// 处理 sync 命令
@@ -55,10 +61,30 @@ pub fn handle_sync(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
 }
 
 /// 处理项目列表同步
-fn handle_sync_projects(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+fn handle_sync_projects(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     println!("🔄 开始同步项目列表...");
     
     let mut rmm_config = RmmConfig::load()?;
+    
+    // 检查是否需要修复 meta.toml 格式
+    let fix_meta = matches.get_flag("fix-meta");
+    if fix_meta {
+        println!("🔧 验证并修复 meta.toml 格式...");
+        let fixed = rmm_config.validate_and_fix_format()?;
+        if fixed {
+            rmm_config.save()?;
+            println!("✅ meta.toml 格式已修复并保存");
+        } else {
+            println!("✅ meta.toml 格式正常，无需修复");
+        }
+    }
+    
+    // 同步用户信息
+    println!("🔄 同步用户信息...");
+    if let Err(e) = rmm_config.update_user_info_from_git() {
+        eprintln!("⚠️  无法从 git 配置同步用户信息: {}", e);
+        eprintln!("提示: 可以手动设置 git 配置或编辑 meta.toml 文件");
+    }
     
     // 获取搜索路径
     let search_paths: Vec<std::path::PathBuf> = if let Some(paths) = matches.get_many::<String>("search-path") {
@@ -73,8 +99,7 @@ fn handle_sync_projects(config: &RmmConfig, matches: &ArgMatches) -> Result<()> 
         .unwrap()
         .parse()
         .map_err(|_| anyhow::anyhow!("无效的最大深度参数"))?;
-    
-    // 同步项目列表
+      // 同步项目列表
     rmm_config.sync_project_list(&search_paths, max_depth)?;
     
     println!("✅ 项目列表同步完成！");
@@ -157,6 +182,13 @@ fn sync_rmm_metadata(config: &RmmConfig, project_config: &mut ProjectConfig) -> 
     } else {
         println!("✅ RMM版本要求已是最新: {}", project_config.requires_rmm);
     }
+    
+    // 将当前项目添加到全局 meta.toml 的项目列表中
+    let mut rmm_config = RmmConfig::load()?;
+    let current_dir = std::env::current_dir()?;
+    
+    // 使用新的方法添加当前项目
+    rmm_config.add_current_project(&project_config.id, &current_dir)?;
     
     Ok(())
 }

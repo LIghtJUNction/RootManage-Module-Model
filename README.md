@@ -69,49 +69,30 @@ pyrmm init .
 
 # DEV
 
-### pyrmm 配置管理 ：已实现
-
-pyrmm config set <key>=<value> <key>=<value> ...
-pyrmm config get <key> <key> ...
-pyrmm config ls
-pyrmm config del <key> <key> ...
+### rootAVD:
+致谢：[rootAVD](https://gitlab.com/newbit/rootAVD)
+示例命令：
+.\rootAVD.bat "system-images\android-36\google_apis\x86_64\ramdisk.img"
 
 
+WIN + R 输入以下命令
 
-> envs
+%LOCALAPPDATA%\Android\Sdk\system-images
 
-
-> RMM_ROOT: 默认为：$HOME/data/adb/.rmm
-
-
-    > 其余变量均以toml格式存储在RMM_ROOT目录下的rmm.env文件中
+system-images\android-36\google_apis\x86_64\ramdisk.img 需要替换为实际路径
 
 
-    > 你可以使用 `pyrmm config` 命令来轻松管理这些变量
 
 
 
 
 
 ### RMM正式启动时间 2025-06-07 高考首日
-
-
 预祝各位考生金榜题名，前程似锦！
 
-
-
-
-
 让我们携手构建一个更庞大的模块生态系统！
-
-
 Let's build a bigger module ecosystem together!
-
-
-
 # License
-
-
 MIT License
 Copyright (c) 2025 LIghtJUNction
 

@@ -19,7 +19,9 @@ struct ProxyApiResponse {
     code: u32,
     msg: String,
     data: Vec<GithubProxy>,
+    #[allow(dead_code)]
     total: u32,
+    #[allow(dead_code)]
     update_time: String,
 }
 
@@ -78,6 +80,7 @@ pub fn apply_proxy_to_url(url: &str, proxy: Option<&GithubProxy>) -> String {
 }
 
 /// 测试代理连接性
+#[allow(dead_code)]
 pub async fn test_proxy_connectivity(proxy: &GithubProxy) -> Result<bool> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
@@ -88,40 +91,5 @@ pub async fn test_proxy_connectivity(proxy: &GithubProxy) -> Result<bool> {
     match client.head(&test_url).send().await {
         Ok(response) => Ok(response.status().is_success()),
         Err(_) => Ok(false),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[tokio::test]
-    async fn test_get_proxies() {
-        match get_github_proxies().await {
-            Ok(proxies) => {
-                println!("获取到 {} 个代理", proxies.len());
-                for proxy in proxies.iter().take(3) {
-                    println!("代理: {} (速度: {:.2})", proxy.url, proxy.speed);
-                }
-            }
-            Err(e) => {
-                println!("获取代理失败: {}", e);
-            }
-        }
-    }
-    
-    #[tokio::test]
-    async fn test_fastest_proxy() {
-        match get_fastest_proxy().await {
-            Ok(Some(proxy)) => {
-                println!("最快代理: {} (速度: {:.2})", proxy.url, proxy.speed);
-            }
-            Ok(None) => {
-                println!("没有可用代理");
-            }
-            Err(e) => {
-                println!("获取最快代理失败: {}", e);
-            }
-        }
     }
 }

@@ -72,12 +72,12 @@ fn check_project_config() -> Result<()> {
             println!("✓ 找到项目配置: {}", path.display());
             
             // 尝试加载配置
-            match ProjectConfig::load_from_file(&path) {
-                Ok(config) => {
+            match ProjectConfig::load_from_file(&path) {                Ok(config) => {
                     println!("✓ 配置文件格式正确");
                     println!("  项目名: {}", config.name);
                     println!("  项目ID: {}", config.id);
-                    println!("  版本: {}", config.version_code);
+                    println!("  版本: {}", config.version.as_ref().unwrap_or(&"未设置".to_string()));
+                    println!("  版本代码: {}", config.version_code);
                     println!("  作者: {}", config.authors.first().map(|a| a.name.as_str()).unwrap_or("未设置"));
                 }
                 Err(e) => {

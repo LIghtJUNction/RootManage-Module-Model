@@ -6,8 +6,11 @@ use std::env;
 mod config;
 mod commands;
 mod utils;
-mod github;
 mod proxy;
+mod adb;
+pub mod shellcheck;
+
+
 
 use config::RmmConfig;
 use utils::setup_logging;
@@ -62,13 +65,16 @@ fn run_cli(args: Vec<String>) -> Result<()> {
     };
     
     // 初始化配置
-    let config = RmmConfig::load()?;
-      // 路由到不同的命令处理器
+    let config = RmmConfig::load()?;    // 路由到不同的命令处理器
     match matches.subcommand() {        Some(("init", sub_matches)) => commands::init::handle_init(&config, sub_matches),
         Some(("build", sub_matches)) => commands::build::handle_build(&config, sub_matches),
         Some(("sync", sub_matches)) => commands::sync::handle_sync(&config, sub_matches),
         Some(("check", sub_matches)) => commands::check::handle_check(&config, sub_matches),
         Some(("publish", sub_matches)) => commands::publish::handle_publish(&config, sub_matches),
+        Some(("config", sub_matches)) => commands::config::handle_config(&config, sub_matches),
+        Some(("run", sub_matches)) => commands::run::handle_run(&config, sub_matches),
+        Some(("device", sub_matches)) => commands::device::handle_device(&config, sub_matches),
+        Some(("test", sub_matches)) => commands::test::handle_test(&config, sub_matches),
         _ => {
             // 如果没有子命令，显示帮助
             let mut app = build_cli();
@@ -105,7 +111,24 @@ fn build_cli() -> Command {
         .subcommand(commands::build::build_command())
         .subcommand(commands::sync::build_command())
         .subcommand(commands::check::build_command())
-        .subcommand(commands::publish::build_command())
+        .subcommand(commands::publish::build_command())        .subcommand(commands::config::build_command())
+        .subcommand(commands::run::build_command())
+        .subcommand(commands::device::build_command())
+        .subcommand(commands::test::build_command())
+}
+
+/// 获取最快的 GitHub 代理
+#[pyfunction]
+fn get_fastest_proxy() -> PyResult<Option<String>> {
+    let rt = tokio::runtime::Runtime::new().map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("创建异步运行时失败: {}", e))
+    })?;
+    
+    match rt.block_on(proxy::get_fastest_proxy()) {
+        Ok(Some(proxy)) => Ok(Some(proxy.url)),
+        Ok(None) => Ok(None),
+        Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("获取代理失败: {}", e)))
+    }
 }
 
 /// Python 模块定义
@@ -113,5 +136,6 @@ fn build_cli() -> Command {
 #[pyo3(name = "rmmcore")]
 fn rmmcore(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli, m)?)?;
+    m.add_function(wrap_pyfunction!(get_fastest_proxy, m)?)?;
     Ok(())
 }

@@ -6,11 +6,11 @@ readme = "README.MD"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "click>=8.2.1",
-    "pydantic>=2.11.5",
     "pygithub>=2.6.1",
+    "requests>=2.32.4",
     "toml>=0.10.2",
 ]
 

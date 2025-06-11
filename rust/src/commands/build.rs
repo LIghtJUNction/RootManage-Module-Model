@@ -2,6 +2,8 @@ use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::Path;
 use crate::config::{RmmConfig, ProjectConfig, RmakeConfig};
+use crate::utils::find_or_create_project_config;
+use crate::shellcheck;
 
 /// 构建 build 命令
 pub fn build_command() -> Command {
@@ -30,6 +32,12 @@ pub fn build_command() -> Command {
                 .help("启用调试模式构建")
         )
         .arg(
+            Arg::new("skip-shellcheck")
+                .long("skip-shellcheck")
+                .action(ArgAction::SetTrue)
+                .help("跳过 shellcheck 语法检查")
+        )
+        .arg(
             Arg::new("script")
                 .help("要运行的脚本名称（定义在 Rmake.toml 的 [scripts] 中）")
                 .value_name("SCRIPT_NAME")
@@ -40,7 +48,7 @@ pub fn build_command() -> Command {
 pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
-    let project_config_path = find_project_config(&current_dir)?;
+    let project_config_path = find_or_create_project_config(&current_dir)?;
     let project_root = project_config_path.parent().unwrap();
     
     // 检查是否要运行脚本
@@ -58,15 +66,19 @@ pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     
     // 保存更新后的配置
     project_config.save_to_dir(&project_config_path.parent().unwrap())?;
-    
-    // 获取选项
+      // 获取选项
     let output_dir = matches.get_one::<String>("output");
     let clean = matches.get_flag("clean");
     let debug = matches.get_flag("debug");
+    let skip_shellcheck = matches.get_flag("skip-shellcheck");
     
     if debug {
         println!("🐛 调试模式已启用");
-    }    // 确定输出目录 - 默认使用 .rmmp/dist，不复制到用户目录
+    }
+    
+    if skip_shellcheck {
+        println!("⚠️  已跳过 shellcheck 检查");
+    }// 确定输出目录 - 默认使用 .rmmp/dist，不复制到用户目录
     let build_output = if let Some(output) = output_dir {
         Path::new(output).to_path_buf()
     } else {
@@ -82,7 +94,7 @@ pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     std::fs::create_dir_all(&build_output)?;    // 构建项目
     let runtime = tokio::runtime::Runtime::new()?;
     runtime.block_on(async {
-        build_project(&project_config, &build_output, output_dir, debug).await
+        build_project(&project_config, &build_output, output_dir, debug, skip_shellcheck).await
     })?;
     
     println!("✅ 构建完成！输出目录: {}", build_output.display());
@@ -90,28 +102,8 @@ pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-/// 查找项目配置文件
-fn find_project_config(start_dir: &Path) -> Result<std::path::PathBuf> {
-    let mut current = start_dir;
-    
-    loop {
-        let config_path = current.join("rmmproject.toml");
-        if config_path.exists() {
-            return Ok(config_path);
-        }
-        
-        if let Some(parent) = current.parent() {
-            current = parent;
-        } else {
-            break;
-        }
-    }
-    
-    anyhow::bail!("未找到 rmmproject.toml 配置文件。请确保在 RMM 项目根目录中运行此命令。");
-}
-
 /// 构建项目
-async fn build_project(config: &ProjectConfig, _output_dir: &Path, user_output_dir: Option<&String>, _debug: bool) -> Result<()> {
+async fn build_project(config: &ProjectConfig, _output_dir: &Path, user_output_dir: Option<&String>, _debug: bool, skip_shellcheck: bool) -> Result<()> {
     println!("📦 构建模块: {}", config.name);
     
     let project_root = std::env::current_dir()?;
@@ -120,11 +112,16 @@ async fn build_project(config: &ProjectConfig, _output_dir: &Path, user_output_d
     let dist_dir = rmmp_dir.join("dist");
     
     // 加载 Rmake 配置
-    let rmake_config = crate::config::RmakeConfig::load_from_dir(&project_root)?;
-    
-    // 确保目录存在
+    let rmake_config = crate::config::RmakeConfig::load_from_dir(&project_root)?;    // 确保目录存在
     std::fs::create_dir_all(&build_dir)?;
     std::fs::create_dir_all(&dist_dir)?;
+    
+    // 运行 shellcheck 检查（在构建前进行，除非被跳过）
+    if !skip_shellcheck {
+        run_shellcheck_validation(&project_root)?;
+    } else {
+        println!("⚠️  已跳过 shellcheck 语法检查");
+    }
       // 清理构建目录
     if build_dir.exists() {
         std::fs::remove_dir_all(&build_dir)?;
@@ -289,8 +286,7 @@ versionCode={}
 author={}
 description={}
 updateJson={}
-"#,
-        config.id,
+"#,        config.id,
         config.name,
         version,
         config.version_code,
@@ -362,11 +358,10 @@ fn create_module_zip(build_dir: &Path, zip_path: &Path, rmake_config: Option<&cr
     }
     
     zip.finish()?;
-    
-    // 显示文件大小
+      // 显示文件大小
     let metadata = std::fs::metadata(zip_path)?;
-    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-    println!("✅ ZIP 包创建完成: {:.2} MB", size_mb);
+    let size_str = format_file_size(metadata.len());
+    println!("✅ ZIP 包创建完成: {}", size_str);
     
     Ok(())
 }
@@ -430,13 +425,28 @@ fn create_source_archive(project_root: &Path, archive_path: &Path) -> Result<()>
     
     // 完成归档
     tar.finish()?;
-    
-    // 显示文件大小
+      // 显示文件大小
     let metadata = std::fs::metadata(archive_path)?;
-    let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-    println!("✅ 源码归档创建完成: {:.2} MB", size_mb);
+    let size_str = format_file_size(metadata.len());
+    println!("✅ 源码归档创建完成: {}", size_str);
     
     Ok(())
+}
+
+/// 格式化文件大小
+fn format_file_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        let kb = bytes as f64 / 1024.0;
+        format!("{:.2} KB", kb)
+    } else if bytes < 1024 * 1024 * 1024 {
+        let mb = bytes as f64 / (1024.0 * 1024.0);
+        format!("{:.2} MB", mb)
+    } else {
+        let gb = bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        format!("{:.2} GB", gb)
+    }
 }
 
 /// 递归复制目录（带排除规则）
@@ -566,28 +576,27 @@ fn run_script(project_root: &Path, script_name: &str) -> Result<()> {
 }
 
 /// 生成 ZIP 文件名，支持变量替换
-fn generate_zip_filename(config: &ProjectConfig, rmake_config: Option<&RmakeConfig>) -> Result<String> {
-    let template = if let Some(rmake) = rmake_config {
+fn generate_zip_filename(config: &ProjectConfig, rmake_config: Option<&RmakeConfig>) -> Result<String> {    let template = if let Some(rmake) = rmake_config {
         if let Some(ref package) = rmake.package {
             if let Some(ref zip_name) = package.zip_name {
                 if zip_name == "default" {
-                    // 使用默认规则
-                    format!("{}.zip", config.id)
+                    // 使用默认规则：包含版本代码
+                    format!("{}-{}.zip", config.id, config.version_code)
                 } else {
                     // 使用自定义模板
                     zip_name.clone()
                 }
             } else {
-                // 没有指定 zip_name，使用默认规则
-                format!("{}.zip", config.id)
+                // 没有指定 zip_name，使用默认规则：包含版本代码
+                format!("{}-{}.zip", config.id, config.version_code)
             }
         } else {
-            // 没有 package 配置，使用默认规则
-            format!("{}.zip", config.id)
+            // 没有 package 配置，使用默认规则：包含版本代码
+            format!("{}-{}.zip", config.id, config.version_code)
         }
     } else {
-        // 没有 rmake 配置，使用默认规则
-        format!("{}.zip", config.id)
+        // 没有 rmake 配置，使用默认规则：包含版本代码
+        format!("{}-{}.zip", config.id, config.version_code)
     };
     
     // 执行变量替换
@@ -623,8 +632,7 @@ fn replace_template_variables(template: &str, config: &ProjectConfig) -> Result<
         .map(|a| a.email.as_str())
         .unwrap_or("unknown");
       // 定义变量映射
-    let variables = [
-        ("{id}", config.id.as_str()),
+    let variables = [        ("{id}", config.id.as_str()),
         ("{name}", config.name.as_str()),
         ("{version}", config.version.as_deref().unwrap_or("unknown")),
         ("{version_code}", config.version_code.as_str()),
@@ -645,4 +653,56 @@ fn replace_template_variables(template: &str, config: &ProjectConfig) -> Result<
     println!("📝 ZIP 文件名模板: '{}' -> '{}'", template, result);
     
     Ok(result)
+}
+
+/// 运行 shellcheck 验证
+fn run_shellcheck_validation(project_root: &Path) -> Result<()> {
+    println!("🔍 运行 Shellcheck 验证...");
+    
+    // 检查 shellcheck 是否可用
+    if !shellcheck::is_shellcheck_available() {
+        println!("⚠️  Shellcheck 未安装或不可用");
+        println!("   建议安装 shellcheck 以进行 shell 脚本语法检查");
+        println!("   安装方法:");
+        if cfg!(target_os = "windows") {
+            println!("     - Windows: 使用 scoop install shellcheck 或从 GitHub 下载");
+        } else if cfg!(target_os = "macos") {
+            println!("     - macOS: brew install shellcheck");
+        } else {
+            println!("     - Linux: 使用包管理器安装 (apt install shellcheck / yum install shellcheck)");
+        }
+        println!("   跳过 shellcheck 检查继续构建...");
+        return Ok(());
+    }
+    
+    // 显示 shellcheck 版本
+    match shellcheck::get_shellcheck_version() {
+        Ok(version) => println!("📋 Shellcheck 版本: {}", version),
+        Err(_) => println!("📋 Shellcheck 版本: 未知"),
+    }
+    
+    // 执行检查
+    match shellcheck::check_project(project_root, false) {
+        Ok((results, all_passed)) => {
+            if results.is_empty() {
+                println!("📋 项目中未发现 shell 脚本文件");
+                return Ok(());
+            }
+            
+            if all_passed {
+                println!("✅ Shellcheck 验证通过");
+            } else {
+                println!("❌ Shellcheck 验证失败！");
+                println!("   发现 shell 脚本语法错误，构建中止");
+                println!("   请修复错误后重新构建，或使用 'rmm test --shellcheck' 查看详细信息");
+                return Err(anyhow::anyhow!("Shell 脚本语法检查失败"));
+            }
+            
+            Ok(())
+        }
+        Err(e) => {
+            println!("❌ Shellcheck 检查失败: {}", e);
+            Err(anyhow::anyhow!("Shellcheck 执行失败: {}", e))
+        }
+    }
 }

@@ -8,32 +8,30 @@ pub fn get_rmm_root() -> Result<PathBuf> {
     // 优先使用环境变量
     if let Ok(rmm_root) = env::var("RMM_ROOT") {
         let path = PathBuf::from(rmm_root);
-        if path.exists() {
-            return Ok(path);
-        }
+        return Ok(path);
     }
     
-    // 默认路径：Android 环境
+    // 检查是否在Android环境（/data/adb 存在）
     let android_path = PathBuf::from("/data/adb/.rmm");
-    if android_path.exists() {
+    if android_path.parent().map(|p| p.exists()).unwrap_or(false) {
         return Ok(android_path);
     }
     
-    // 默认路径：用户主目录
-    if let Ok(home) = env::var("HOME") {
-        let home_path = PathBuf::from(home).join("data").join("adb").join(".rmm");
-        return Ok(home_path);
-    }
-    
-    // Windows 用户目录
+    // Windows 用户目录 - 使用 ~/data/adb/.rmm
     if let Ok(userprofile) = env::var("USERPROFILE") {
         let win_path = PathBuf::from(userprofile).join("data").join("adb").join(".rmm");
         return Ok(win_path);
     }
     
+    // Unix/Linux 用户主目录 - 使用 ~/data/adb/.rmm
+    if let Ok(home) = env::var("HOME") {
+        let home_path = PathBuf::from(home).join("data").join("adb").join(".rmm");
+        return Ok(home_path);
+    }
+    
     // 最后的备选方案：当前目录
     let current_dir = env::current_dir()?;
-    Ok(current_dir.join(".rmm"))
+    Ok(current_dir.join("data").join("adb").join(".rmm"))
 }
 
 /// 设置日志记录
@@ -122,8 +120,7 @@ fn parse_pyproject_version(pyproject_path: &Path) -> Result<String> {
 }
 
 /// 从 hatch 配置获取版本
-fn get_hatch_version(parsed: &toml::Value, pyproject_path: &Path) -> Result<String> {
-    if let Some(tool) = parsed.get("tool") {
+fn get_hatch_version(parsed: &toml::Value, pyproject_path: &Path) -> Result<String> {    if let Some(tool) = parsed.get("tool") {
         if let Some(hatch) = tool.get("hatch") {
             if let Some(version) = hatch.get("version") {
                 if let Some(path) = version.get("path") {
@@ -461,6 +458,7 @@ pub fn detect_git_repo_info() -> Result<Option<GitRepoInfo>> {
 pub struct GitRepoInfo {
     pub repo_root: PathBuf,
     pub is_in_repo_root: bool,
+    #[allow(dead_code)]
     pub remote_url: String,
     pub username: String,
     pub repo_name: String,
@@ -514,16 +512,15 @@ pub async fn generate_update_json(
     let (final_zip_url, final_changelog_url) = if let Some(rmake) = rmake_config {
         if let Some(proxy_config) = &rmake.proxy {
             if proxy_config.enabled {
-                let proxy = if let Some(custom_proxy) = &proxy_config.custom_proxy {
-                    // 使用自定义代理
-                    Some(crate::proxy::GithubProxy {
-                        url: custom_proxy.clone(),
-                        server: "custom".to_string(),
-                        ip: "".to_string(),
-                        location: "".to_string(),
-                        latency: 0,
-                        speed: 0.0,
-                    })
+                let proxy = if let Some(custom_proxy) = &proxy_config.custom_proxy {                // 使用自定义代理
+                Some(crate::proxy::GithubProxy {
+                    url: custom_proxy.clone(),
+                    server: "custom".to_string(),
+                    ip: "".to_string(),
+                    location: "".to_string(),
+                    latency: 0,
+                    speed: 0.0,
+                })
                 } else if proxy_config.auto_select.unwrap_or(true) {
                     // 自动选择最快代理
                     println!("🔍 正在获取最快的 GitHub 代理...");
@@ -573,5 +570,175 @@ pub async fn generate_update_json(
     println!("📄 生成 update.json: {}", update_json_path.display());
     println!("🔗 模块下载链接: {}", final_zip_url);
     
+    Ok(())
+}
+
+/// Git 用户信息结构
+#[derive(Debug, Clone)]
+pub struct GitUserInfo {
+    pub name: String,
+    pub email: String,
+}
+
+/// 从 git 配置中获取用户信息
+pub fn get_git_user_info() -> Result<GitUserInfo> {
+    // 首先尝试从环境变量获取
+    if let (Ok(name), Ok(email)) = (std::env::var("GIT_AUTHOR_NAME"), std::env::var("GIT_AUTHOR_EMAIL")) {
+        return Ok(GitUserInfo { name, email });
+    }
+    
+    if let (Ok(name), Ok(email)) = (std::env::var("GIT_COMMITTER_NAME"), std::env::var("GIT_COMMITTER_EMAIL")) {
+        return Ok(GitUserInfo { name, email });
+    }
+
+    // 尝试使用 git2 库从配置中获取
+    match get_git_user_from_config() {
+        Ok(user_info) => Ok(user_info),
+        Err(_) => {
+            // 如果无法从 git 配置获取，尝试从全局 git 配置获取
+            match get_git_user_from_command() {
+                Ok(user_info) => Ok(user_info),
+                Err(e) => Err(anyhow!(
+                    "无法获取 git 用户信息: {}。请设置 git 配置：\n\
+                     git config --global user.name \"Your Name\"\n\
+                     git config --global user.email \"your.email@example.com\"", e
+                ))
+            }
+        }
+    }
+}
+
+/// 使用 git2 库从配置中获取用户信息
+fn get_git_user_from_config() -> Result<GitUserInfo> {
+    // 尝试打开当前目录的 git 仓库
+    let repo = match git2::Repository::open(".") {
+        Ok(repo) => repo,
+        Err(_) => {
+            // 如果当前目录不是 git 仓库，尝试打开全局配置
+            return get_git_user_from_global_config();
+        }
+    };
+
+    // 获取仓库配置
+    let config = repo.config()?;
+    
+    let name = config.get_string("user.name")
+        .map_err(|_| anyhow!("未找到 user.name 配置"))?;
+    let email = config.get_string("user.email")
+        .map_err(|_| anyhow!("未找到 user.email 配置"))?;
+
+    Ok(GitUserInfo { name, email })
+}
+
+/// 从全局 git 配置获取用户信息
+fn get_git_user_from_global_config() -> Result<GitUserInfo> {
+    let config = git2::Config::open_default()?;
+    
+    let name = config.get_string("user.name")
+        .map_err(|_| anyhow!("未找到全局 user.name 配置"))?;
+    let email = config.get_string("user.email")
+        .map_err(|_| anyhow!("未找到全局 user.email 配置"))?;
+
+    Ok(GitUserInfo { name, email })
+}
+
+/// 通过命令行 git 获取用户信息（备用方案）
+fn get_git_user_from_command() -> Result<GitUserInfo> {
+    use std::process::Command;
+
+    let name_output = Command::new("git")
+        .args(&["config", "--global", "user.name"])
+        .output()
+        .map_err(|e| anyhow!("执行 git config 命令失败: {}", e))?;
+
+    let email_output = Command::new("git")
+        .args(&["config", "--global", "user.email"])
+        .output()
+        .map_err(|e| anyhow!("执行 git config 命令失败: {}", e))?;
+
+    if !name_output.status.success() {
+        return Err(anyhow!("git config user.name 命令失败"));
+    }
+
+    if !email_output.status.success() {
+        return Err(anyhow!("git config user.email 命令失败"));
+    }
+
+    let name = String::from_utf8(name_output.stdout)
+        .map_err(|e| anyhow!("解析 user.name 输出失败: {}", e))?
+        .trim()
+        .to_string();
+
+    let email = String::from_utf8(email_output.stdout)
+        .map_err(|e| anyhow!("解析 user.email 输出失败: {}", e))?
+        .trim()
+        .to_string();
+
+    if name.is_empty() || email.is_empty() {
+        return Err(anyhow!("git 用户名或邮箱为空"));
+    }
+
+    Ok(GitUserInfo { name, email })
+}
+
+/// 查找项目配置文件，如果不存在则创建默认的
+pub fn find_or_create_project_config(start_dir: &Path) -> Result<PathBuf> {
+    let mut current = start_dir;
+    
+    loop {
+        let config_path = current.join("rmmproject.toml");
+        if config_path.exists() {
+            return Ok(config_path);
+        }
+        
+        if let Some(parent) = current.parent() {
+            current = parent;
+        } else {
+            break;
+        }
+    }
+    
+    // 如果找不到配置文件，在当前目录创建默认的 rmmproject.toml
+    let config_path = start_dir.join("rmmproject.toml");
+    create_default_project_config(&config_path)?;
+    
+    println!("✨ 已创建默认的 rmmproject.toml 配置文件");
+    println!("💡 您可以编辑此文件来自定义项目设置");
+    
+    Ok(config_path)
+}
+
+/// 创建默认的项目配置文件
+pub fn create_default_project_config(config_path: &Path) -> Result<()> {
+    let dir_name = config_path.parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or("my_project");
+    
+    let default_config = format!(r#"# RMM 项目配置文件
+id = "{}"
+name = "{}"
+description = "一个 RMM 项目"
+version = "v0.1.0"
+versionCode = "1000000"
+requires_rmm = ">=0.2.0"
+readme = "README.MD"
+changelog = "CHANGELOG.MD"
+license = "LICENSE"
+updateJson = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json"
+dependencies = []
+
+[[authors]]
+name = "Your Name"
+email = "your.email@example.com"
+
+[scripts]
+build = "rmm build"
+
+[urls]
+github = "https://github.com/YOUR_USERNAME/YOUR_REPOSITORY"
+"#, dir_name, dir_name);
+
+    std::fs::write(config_path, default_config)?;
     Ok(())
 }

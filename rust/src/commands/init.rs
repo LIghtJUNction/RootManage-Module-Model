@@ -1,6 +1,7 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use anyhow::Result;
 use std::path::Path;
+use std::collections::HashMap;
 use crate::config::{RmmConfig, ProjectConfig};
 use crate::utils::{ensure_dir_exists, get_git_info};
 use std::fs;
@@ -46,30 +47,36 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     let yes = matches.get_flag("yes");
     let is_lib = matches.get_flag("lib");
     let is_ravd = matches.get_flag("ravd");
+      let path = Path::new(project_path);
     
-    let path = Path::new(project_path);
-    let project_name = path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unnamed_project");
+    // 获取项目名称，正确处理当前目录的情况
+    let project_name = if project_path == "." {
+        // 如果是当前目录，获取当前目录的名称
+        std::env::current_dir()?
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unnamed_project")
+    } else {
+        // 如果是其他路径，获取路径的最后一部分
+        path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unnamed_project")
+    };
     
     println!("🚀 正在初始化 RMM 项目: {}", project_name);
     println!("📁 项目路径: {}", path.display());
     
     // 确保项目目录存在
     ensure_dir_exists(path)?;
-    
-    // 检测 Git 信息
+      // 检测 Git 信息
     let git_info = get_git_info(path);
     
-    // 确定用户名
-    let username = if let Some(ref git) = git_info {
-        git.username.clone()
-    } else {
-        config.username.clone()
-    };
+    // 使用RMM配置中的用户信息作为默认值
+    let author_name = &config.username;
+    let author_email = &config.email;
     
     // 创建项目配置
-    let project_config = create_project_config(project_name, &username, &config.email, &config.version, git_info)?;
+    let project_config = create_project_config(project_name, author_name, author_email, &config.version, git_info)?;
     
     // 保存项目配置
     project_config.save_to_dir(path)?;
@@ -85,12 +92,15 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         create_basic_structure(path)?;
         println!("📦 已创建基础项目结构");
     }
-    
-    // 创建基础文件
-    create_basic_files(path, project_name, &username)?;
-    
-    // 创建 module.prop
+      // 创建基础文件
+    create_basic_files(path, project_name, author_name)?;
+      // 创建 module.prop
     create_module_prop(path, &project_config)?;
+    
+    // 将新创建的项目添加到全局元数据
+    let mut rmm_config = RmmConfig::load()?;
+    let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    rmm_config.add_current_project(project_name, &canonical_path)?;
     
     println!("✅ 项目 '{}' 初始化完成！", project_name);
     
@@ -111,24 +121,38 @@ fn create_project_config(
     rmm_version: &str,
     git_info: Option<crate::utils::GitInfo>,
 ) -> Result<ProjectConfig> {
-    let github_url = if let Some(ref git) = git_info {
-        format!("https://github.com/{}/{}", git.username, git.repo_name)
+    // 只有当项目在GitHub仓库中时才生成真实的GitHub URL
+    let (github_url, update_json) = if let Some(ref git) = git_info {
+        if git.remote_url.contains("github.com") {
+            // 在GitHub仓库中，生成真实URL
+            let github_url = format!("https://github.com/{}/{}", git.username, git.repo_name);
+            let update_json = if git.is_in_repo_root {
+                format!("https://raw.githubusercontent.com/{}/{}/main/update.json", git.username, git.repo_name)
+            } else {
+                // 如果不在仓库根目录，需要计算相对路径
+                format!("https://raw.githubusercontent.com/{}/{}/main/{}/update.json", git.username, git.repo_name, name)
+            };
+            (github_url, update_json)
+        } else {
+            // 非GitHub仓库，使用占位符
+            (
+                "https://github.com/YOUR_USERNAME/YOUR_REPOSITORY".to_string(),
+                "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json".to_string()
+            )
+        }
     } else {
-        format!("https://github.com/{}/{}", username, name)
+        // 没有Git仓库，使用占位符
+        (
+            "https://github.com/YOUR_USERNAME/YOUR_REPOSITORY".to_string(),
+            "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json".to_string()
+        )
     };
-    
-    let update_json = if let Some(ref git) = git_info {
-        format!("https://raw.githubusercontent.com/{}/{}/main/update.json", git.username, git.repo_name)
-    } else {
-        format!("https://raw.githubusercontent.com/{}/{}/main/update.json", username, name)
-    };
-    
-    Ok(ProjectConfig {
+      Ok(ProjectConfig {
         id: name.to_string(),
         name: name.to_string(),
         description: Some(format!("RMM项目 {}", name)),        requires_rmm: format!(">={}", rmm_version),
-        version: Some("v1.0.0".to_string()),
-        version_code: "1".to_string(),
+        version: Some("v0.1.0".to_string()),
+        version_code: "1000000".to_string(), // 使用合理的初始版本代码
         update_json,
         readme: "README.MD".to_string(),
         changelog: "CHANGELOG.MD".to_string(),
@@ -137,18 +161,25 @@ fn create_project_config(
         authors: vec![crate::config::Author {
             name: username.to_string(),
             email: email.to_string(),
-        }],
-        scripts: vec![crate::config::Script {
-            name: "build".to_string(),
-            command: "rmm build".to_string(),
-        }],
+        }],        
+        scripts: {
+            let mut scripts = HashMap::new();
+            scripts.insert("build".to_string(), "rmm build".to_string());
+            scripts
+        },
         urls: crate::config::Urls {
             github: github_url,
-        },
-        build: Some(crate::config::BuildConfig {
-            prebuild: Some("Rmake".to_string()),
-            build: Some("default".to_string()),
-            postbuild: Some("Rmake".to_string()),
+        },        build: Some(crate::config::BuildConfig {
+            prebuild: Some(vec!["Rmake".to_string()]),
+            build: Some(vec!["default".to_string()]),
+            postbuild: Some(vec!["Rmake".to_string()]),
+            exclude: Some(vec![
+                ".git".to_string(),
+                "target".to_string(),
+                "*.log".to_string(),
+                ".vscode".to_string(),
+                ".idea".to_string(),
+            ]),
         }),
         git: git_info.map(|gi| crate::config::GitInfo {
             git_root: gi.git_root,
@@ -275,7 +306,12 @@ MIT License - 查看 [LICENSE](LICENSE) 文件了解详情。
 "#, chrono::Utc::now().format("%Y-%m-%d"));
 
     // LICENSE
-    let license_content = r#"MIT License
+    let license_content = r#"
+# LICENSES
+
+
+# RMM License
+MIT License
 
 Copyright (c) 2025 LIghtJUNction
 
@@ -311,7 +347,7 @@ ui_print "- 正在安装 RMM 模块..."
 ui_print "- 模块目录: $MODDIR"
 
 # 设置权限
-set_perm_recursive $MODDIR 0 0 0755 0644
+set_perm_recursive "$MODDIR" 0 0 0755 0644
 
 # 自定义安装逻辑
 # 在这里添加您的安装步骤
@@ -339,9 +375,11 @@ ui_print "- 模块安装完成"
 
 fn create_module_prop(path: &Path, config: &ProjectConfig) -> Result<()> {
     let module_prop_content = format!(
-        "id={}\nname={}\nversion=v1.0.0\nversionCode=1\nauthor={}\ndescription={}\nupdateJson={}\n",
+        "id={}\nname={}\nversion={}\nversionCode={}\nauthor={}\ndescription={}\nupdateJson={}\n",
         config.id,
         config.name,
+        config.version.as_ref().unwrap_or(&"v0.1.0".to_string()),
+        config.version_code,
         config.authors.first().map(|a| &a.name).unwrap_or(&config.id),
         config.description.as_ref().unwrap_or(&config.name),
         config.update_json

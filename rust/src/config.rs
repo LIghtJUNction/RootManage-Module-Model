@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::utils::get_rmm_root;
+use crate::utils::{get_rmm_root, get_git_user_info};
 
 /// RMM 主配置结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,16 +44,19 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
             // 从环境变量加载GitHub token
             config.github_token = env::var("GITHUB_ACCESS_TOKEN").ok();
             
-            // 验证项目路径有效性并同步项目信息
-            config.validate_and_sync_projects()?;
+            // 不再自动从 git 配置更新全局用户信息，避免安全风险
             
-            // 保存更新后的配置
-            config.save()?;
+            // 只在明确要求同步时才验证项目路径，避免每次加载都清理项目
+            // config.validate_and_sync_projects()?;
             
-            config
-        } else {
+            config} else {
             let mut config = Self::default();
             config.github_token = env::var("GITHUB_ACCESS_TOKEN").ok();
+            
+            // 注意：不自动从 git 配置更新全局用户信息
+            // git 信息只应该用于项目级别的作者信息，避免安全风险
+            println!("⚠️  使用默认配置，请使用 'rmm config --user.name \"你的名字\"' 设置用户信息");
+            
             config.save()?;
             config
         };
@@ -63,18 +66,42 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
         
         Ok(config)
     }
-    
-    /// 保存配置到文件
+      /// 保存配置到文件
     pub fn save(&self) -> Result<()> {
         let config_path = Self::config_path()?;
         
         // 确保配置目录存在
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent)?;
+            
+            // 创建RMM必要的目录结构
+            Self::ensure_rmm_directories(parent)?;
         }
         
         let content = toml::to_string_pretty(self)?;
         fs::write(&config_path, content)?;
+        
+        Ok(())
+    }
+    
+    /// 确保RMM目录结构完整
+    fn ensure_rmm_directories(rmm_root: &Path) -> Result<()> {
+        let directories = [
+            "bin",      // 二进制文件
+            "cache",    // 缓存文件
+            "tmp",      // 临时文件
+            "data",     // 数据文件
+            "backup",   // 备份文件
+            "logs",     // 日志文件
+        ];
+        
+        for dir in &directories {
+            let dir_path = rmm_root.join(dir);
+            if !dir_path.exists() {
+                fs::create_dir_all(&dir_path)?;
+                println!("📁 创建目录: {}", dir_path.display());
+            }
+        }
         
         Ok(())
     }
@@ -142,8 +169,8 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
         println!("已同步项目元数据: {}", project_path.display());
         Ok(())
     }
-    
-    /// 添加项目到配置
+      /// 添加项目到配置
+    #[allow(dead_code)]
     pub fn add_project(&mut self, name: String, path: String) -> Result<()> {
         let project_path = Path::new(&path);
         
@@ -161,8 +188,8 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
         
         Ok(())
     }
-    
-    /// 移除项目
+      /// 移除项目
+    #[allow(dead_code)]
     pub fn remove_project(&mut self, name: &str) -> Result<bool> {
         let removed = self.projects.remove(name).is_some();
         if removed {
@@ -170,25 +197,16 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
         }
         Ok(removed)
     }
-    
-    /// 获取项目路径
+      /// 获取项目路径
+    #[allow(dead_code)]
     pub fn get_project_path(&self, name: &str) -> Option<&String> {
         self.projects.get(name)
     }
     
     /// 列出所有项目
+    #[allow(dead_code)]
     pub fn list_projects(&self) -> &HashMap<String, String> {
         &self.projects
-    }
-      /// 设置用户信息
-    pub fn set_user_info(&mut self, username: Option<String>, email: Option<String>) -> Result<()> {
-        if let Some(username) = username {
-            self.username = username;
-        }
-        if let Some(email) = email {
-            self.email = email;
-        }
-        self.save()
     }
     
     /// 发现指定目录下的所有 RMM 项目
@@ -344,6 +362,157 @@ impl RmmConfig {    /// 加载配置文件，如果不存在则创建默认配�
         
         Ok(())
     }
+    
+    /// 从 git 配置更新用户信息
+    pub fn update_user_info_from_git(&mut self) -> Result<()> {
+        // 只有当前是占位符值时才更新
+        let should_update = self.username == "username" || self.email == "email" || 
+                           self.username.is_empty() || self.email.is_empty();
+        
+        if should_update {
+            let git_user = get_git_user_info()?;
+            self.username = git_user.name;
+            self.email = git_user.email;
+            println!("✅ 已从 git 配置更新用户信息: {} <{}>", self.username, self.email);
+        }
+        
+        Ok(())
+    }
+    
+    /// 强制从 git 配置更新用户信息（即使不是占位符）
+    pub fn force_update_user_info_from_git(&mut self) -> Result<()> {
+        let git_user = get_git_user_info()?;
+        self.username = git_user.name;
+        self.email = git_user.email;
+        println!("✅ 已强制从 git 配置更新用户信息: {} <{}>", self.username, self.email);
+        Ok(())
+    }
+      /// 刷新配置（重新从文件加载）
+    #[allow(dead_code)]
+    pub fn refresh(&mut self) -> Result<()> {
+        let refreshed_config = Self::load()?;
+        *self = refreshed_config;
+        Ok(())
+    }
+
+    /// 检查配置文件是否有更新（基于修改时间）
+    #[allow(dead_code)]
+    pub fn has_config_changed(&self) -> Result<bool> {
+        let config_path = Self::config_path()?;
+        if !config_path.exists() {
+            return Ok(false);
+        }
+          let metadata = std::fs::metadata(&config_path)?;
+        if let Ok(_modified) = metadata.modified() {
+            // 这里可以存储上次加载的时间并比较
+            // 简化版本：总是返回true，表示需要检查
+            return Ok(true);
+        }
+        
+        Ok(false)
+    }
+    
+    /// 将当前项目添加到全局配置中
+    pub fn add_current_project(&mut self, project_id: &str, project_path: &Path) -> Result<()> {
+        let canonical_path = project_path.canonicalize()?;
+        let path_str = canonical_path.to_string_lossy().to_string();
+        
+        // 检查项目是否已存在（按路径）
+        let project_exists = self.projects.values().any(|path| {
+            Path::new(path).canonicalize().map(|p| p == canonical_path).unwrap_or(false)
+        });
+        
+        if !project_exists {
+            // 添加项目到列表
+            self.projects.insert(project_id.to_string(), path_str.clone());
+            self.save()?;
+            println!("➕ 已将项目添加到全局配置: {} -> {}", project_id, path_str);
+        } else {
+            // 检查是否需要更新项目ID映射
+            let current_id_path = self.projects.get(project_id);
+            if current_id_path.is_none() || current_id_path != Some(&path_str) {
+                // 移除旧的路径映射（如果存在不同ID指向同一路径）
+                let keys_to_remove: Vec<String> = self.projects.iter()
+                    .filter(|(_, path)| {
+                        Path::new(path).canonicalize().map(|p| p == canonical_path).unwrap_or(false)
+                    })
+                    .map(|(key, _)| key.clone())
+                    .collect();
+                
+                for key in keys_to_remove {
+                    if key != project_id {  // 不要移除当前项目ID
+                        self.projects.remove(&key);
+                    }
+                }
+                
+                // 添加或更新当前项目ID和路径的映射
+                self.projects.insert(project_id.to_string(), path_str.clone());
+                self.save()?;
+                println!("🔄 已更新项目映射: {} -> {}", project_id, path_str);
+            } else {
+                println!("✅ 项目已在全局配置中: {} -> {}", project_id, path_str);
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// 验证并修复 meta.toml 文件格式
+    pub fn validate_and_fix_format(&mut self) -> Result<bool> {
+        let mut fixed = false;
+        
+        // 检查项目部分的格式
+        let mut valid_projects = HashMap::new();
+        let mut invalid_entries = Vec::new();
+        
+        for (id, path) in &self.projects {
+            let path_obj = Path::new(path);
+            
+            // 检查路径是否存在
+            if !path_obj.exists() {
+                println!("⚠️  项目路径不存在: {} -> {}", id, path);
+                invalid_entries.push(id.clone());
+                continue;
+            }
+            
+            // 检查是否是有效的 RMM 项目
+            if !is_rmm_project(path_obj) {
+                println!("⚠️  无效的 RMM 项目: {} -> {}", id, path);
+                invalid_entries.push(id.clone());
+                continue;
+            }
+            
+            // 规范化路径
+            match path_obj.canonicalize() {
+                Ok(canonical_path) => {
+                    let canonical_str = canonical_path.to_string_lossy().to_string();
+                    if canonical_str != *path {
+                        println!("🔧 规范化路径: {} -> {}", path, canonical_str);
+                        fixed = true;
+                    }
+                    valid_projects.insert(id.clone(), canonical_str);
+                }
+                Err(_) => {
+                    println!("⚠️  无法规范化路径: {} -> {}", id, path);
+                    invalid_entries.push(id.clone());
+                }
+            }
+        }
+        
+        // 移除无效条目
+        for id in &invalid_entries {
+            self.projects.remove(id);
+            fixed = true;
+            println!("🗑️  移除无效项目: {}", id);
+        }
+        
+        // 更新有效项目
+        if fixed {
+            self.projects = valid_projects;
+        }
+        
+        Ok(fixed)
+    }
 }
 
 /// 项目配置结构
@@ -361,11 +530,14 @@ pub struct ProjectConfig {
     pub readme: String,
     pub changelog: String,
     pub license: String,
+    #[serde(default)]
     pub dependencies: Vec<Dependency>,
     pub authors: Vec<Author>,
-    pub scripts: Vec<Script>,
+    #[serde(default)]
+    pub scripts: HashMap<String, String>,
     pub urls: Urls,
     pub build: Option<BuildConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub git: Option<GitInfo>,
 }
 
@@ -382,21 +554,16 @@ pub struct Author {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Script {
-    pub name: String,
-    pub command: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Urls {
     pub github: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildConfig {
-    pub prebuild: Option<String>,
-    pub build: Option<String>,
-    pub postbuild: Option<String>,
+    pub prebuild: Option<Vec<String>>,
+    pub build: Option<Vec<String>>,
+    pub postbuild: Option<Vec<String>>,
+    pub exclude: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -419,8 +586,8 @@ impl ProjectConfig {
         let config: ProjectConfig = toml::from_str(&content)?;
         Ok(config)
     }
-    
-    /// 从项目目录加载配置
+      /// 从项目目录加载配置
+    #[allow(dead_code)]
     pub fn load_from_dir(project_path: &Path) -> Result<Self> {
         let config_file = project_path.join("rmmproject.toml");
         Self::load_from_file(&config_file)
@@ -433,186 +600,111 @@ impl ProjectConfig {
         fs::write(&config_file, content)?;
         Ok(())
     }
+
+    /// 从当前 Git 仓库信息添加作者到项目配置（不覆盖现有作者）
+    pub fn add_git_author_if_not_exists(&mut self, project_path: &Path) -> Result<()> {
+        // 只有在项目目录内的 Git 仓库才处理
+        if let Some(_git_info) = crate::utils::get_git_info(project_path) {
+            // 尝试从当前仓库的 Git 配置获取用户信息
+            if let Ok(current_git_user) = crate::utils::get_git_user_info() {
+                let new_author = Author {
+                    name: current_git_user.name.clone(),
+                    email: current_git_user.email.clone(),
+                };
+                
+                // 检查是否已经存在相同的作者
+                let author_exists = self.authors.iter().any(|author| {
+                    author.email == new_author.email || 
+                    (author.name == new_author.name && author.email == new_author.email)
+                });
+                
+                if !author_exists {
+                    self.authors.push(new_author);
+                    println!("✅ 已添加 Git 用户作为项目作者: {} <{}>", current_git_user.name, current_git_user.email);
+                    println!("💡 这只影响当前项目，不会修改全局配置");
+                } else {
+                    println!("ℹ️  Git 用户已是项目作者: {} <{}>", current_git_user.name, current_git_user.email);
+                }
+            }
+        }
+        
+        Ok(())
+    }
 }
 
-/// 构建配置结构 (.rmmp/Rmake.toml)
+/// Rmake 配置结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RmakeConfig {
-    pub build: RmakeBuildConfig,
-    pub package: Option<RmakePackageConfig>,
+    pub build: BuildConfig,
+    pub package: Option<PackageConfig>,
     pub scripts: Option<HashMap<String, String>>,
-    pub proxy: Option<RmakeProxyConfig>,
+    pub proxy: Option<ProxyConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RmakeBuildConfig {
-    pub prebuild: Option<Vec<String>>,
-    pub build: Option<Vec<String>>,
-    pub postbuild: Option<Vec<String>>,
-    pub exclude: Option<Vec<String>>,
-    pub include: Option<Vec<String>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RmakePackageConfig {
-    pub zip_name: Option<String>,
-    pub tar_name: Option<String>,
+pub struct PackageConfig {
     pub compression: Option<String>,
+    pub zip_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RmakeProxyConfig {
+pub struct ProxyConfig {
     pub enabled: bool,
     pub auto_select: Option<bool>,
     pub custom_proxy: Option<String>,
 }
 
 impl RmakeConfig {
-    /// 从项目目录加载构建配置
+    /// 从项目目录加载 Rmake 配置
     pub fn load_from_dir(project_path: &Path) -> Result<Option<Self>> {
-        let config_file = project_path.join(".rmmp").join("Rmake.toml");
-        if !config_file.exists() {
+        let rmake_path = project_path.join(".rmmp").join("Rmake.toml");
+        if !rmake_path.exists() {
             return Ok(None);
         }
         
-        let content = fs::read_to_string(&config_file)?;
+        let content = fs::read_to_string(&rmake_path)?;
         let config: RmakeConfig = toml::from_str(&content)?;
         Ok(Some(config))
     }
     
-    /// 保存构建配置
+    /// 保存配置到文件
     pub fn save_to_dir(&self, project_path: &Path) -> Result<()> {
         let rmmp_dir = project_path.join(".rmmp");
         fs::create_dir_all(&rmmp_dir)?;
         
-        let config_file = rmmp_dir.join("Rmake.toml");
+        let rmake_path = rmmp_dir.join("Rmake.toml");
         let content = toml::to_string_pretty(self)?;
-        fs::write(&config_file, content)?;
+        fs::write(&rmake_path, content)?;
         Ok(())
     }
 }
 
-/// 检查路径是否是有效的 RMM 项目
+/// 获取 RMM 版本
+pub fn get_rmm_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// 检查是否是 RMM 项目
 pub fn is_rmm_project(path: &Path) -> bool {
-    let project_file = path.join("rmmproject.toml");
-    project_file.exists() && project_file.is_file()
+    path.join("rmmproject.toml").exists()
 }
 
-/// 在当前目录或父目录中查找项目文件
-pub fn find_project_file(start_path: &Path) -> Option<PathBuf> {
-    let mut current = start_path;
+/// 查找项目配置文件
+pub fn find_project_file(start_dir: &Path) -> Result<PathBuf> {
+    let mut current = start_dir;
     
     loop {
-        let project_file = current.join("rmmproject.toml");
-        if project_file.exists() {
-            return Some(project_file);
+        let config_path = current.join("rmmproject.toml");
+        if config_path.exists() {
+            return Ok(config_path);
         }
         
-        match current.parent() {
-            Some(parent) => current = parent,
-            None => break,
-        }
-    }
-      None
-}
-
-/// 获取 RMM 版本号（动态从父包获取）
-fn get_rmm_version() -> String {
-    // 尝试从环境变量获取版本
-    if let Ok(version) = env::var("RMM_VERSION") {
-        return version;
-    }
-    
-    // 尝试从 Cargo.toml 获取版本
-    if let Ok(version) = env::var("CARGO_PKG_VERSION") {
-        return version;
-    }
-    
-    // 尝试读取父级 pyproject.toml
-    if let Ok(parent_version) = get_parent_package_version() {
-        return parent_version;
-    }
-    
-    // 默认版本
-    "0.1.0".to_string()
-}
-
-/// 从父级包的 pyproject.toml 获取版本
-fn get_parent_package_version() -> Result<String> {
-    // 查找父级 pyproject.toml
-    let current_dir = env::current_dir()?;
-    let mut search_path = current_dir.as_path();
-    
-    loop {
-        let pyproject_path = search_path.join("pyproject.toml");
-        if pyproject_path.exists() {
-            let content = fs::read_to_string(&pyproject_path)?;
-            
-            // 简单的 TOML 解析来提取版本
-            if let Ok(parsed) = toml::from_str::<toml::Value>(&content) {
-                if let Some(project) = parsed.get("project") {
-                    if let Some(version) = project.get("version") {
-                        if let Some(version_str) = version.as_str() {
-                            return Ok(version_str.to_string());
-                        }
-                    }
-                    // 检查动态版本
-                    if let Some(dynamic) = project.get("dynamic") {
-                        if let Some(dynamic_arr) = dynamic.as_array() {
-                            for item in dynamic_arr {
-                                if item.as_str() == Some("version") {
-                                    // 尝试从 __init__.py 读取版本
-                                    if let Ok(init_version) = get_version_from_init(search_path) {
-                                        return Ok(init_version);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        match search_path.parent() {
-            Some(parent) => search_path = parent,
-            None => break,
+        if let Some(parent) = current.parent() {
+            current = parent;
+        } else {
+            break;
         }
     }
     
-    Err(anyhow!("无法找到父级包版本"))
-}
-
-/// 从 __init__.py 读取版本
-fn get_version_from_init(package_root: &Path) -> Result<String> {
-    let init_paths = [
-        package_root.join("src").join("pyrmm").join("__init__.py"),
-        package_root.join("pyrmm").join("__init__.py"),
-        package_root.join("__init__.py"),
-    ];
-    
-    for init_path in &init_paths {
-        if init_path.exists() {
-            let content = fs::read_to_string(init_path)?;
-            
-            // 查找版本定义
-            for line in content.lines() {
-                let line = line.trim();
-                if line.starts_with("__version__") {
-                    // 提取版本字符串
-                    if let Some(start) = line.find('"') {
-                        if let Some(end) = line[start + 1..].find('"') {
-                            return Ok(line[start + 1..start + 1 + end].to_string());
-                        }
-                    }
-                    if let Some(start) = line.find('\'') {
-                        if let Some(end) = line[start + 1..].find('\'') {
-                            return Ok(line[start + 1..start + 1 + end].to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    Err(anyhow!("无法从 __init__.py 读取版本"))
+    anyhow::bail!("未找到 rmmproject.toml 配置文件")
 }
