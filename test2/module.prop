@@ -1,7 +1,0 @@
-id=test2
-name=test2
-version=v0.1.0
-versionCode=1000000
-author=LIghtJUNction
-description=RMM项目 test2
-updateJson=https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/test2/update.json

@@ -3,6 +3,7 @@ name = "pyrmm"
 dynamic = ["version"]
 description = "Magisk/Apatch/Kernelsu模块的工具集"
 readme = "README.MD"
+license = {file = "LICENSE"}
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
@@ -43,6 +44,8 @@ module-name = "pyrmm.cli.rmmcore"
 strip = true
 # 二进制类型
 bindings = "pyo3"
+# 包含的额外文件
+include = ["LICENSE", "README.md", "CHANGELOG.md"]
 
 
 

@@ -1,0 +1,149 @@
+name: Multi-Platform Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Install CMake (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential
+
+    - name: Install CMake (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install cmake
+
+    - name: Install CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: lukka/get-cmake@latest
+
+    - name: Install uv (Unix)
+      if: matrix.os != 'windows-latest'
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    - name: Install uv (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        irm https://astral.sh/uv/install.ps1 | iex
+        $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
+        echo "$env:USERPROFILE\.cargo\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Add uv to PATH (Unix)
+      if: matrix.os != 'windows-latest'
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          rust/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+
+    - name: Configure git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Sync dependencies
+      run: uv sync
+
+    - name: Install maturin
+      run: uv add --dev maturin
+
+    - name: Develop build
+      run: uv run maturin develop
+
+    - name: Build package
+      run: uv build
+
+    - name: Commit changes (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        git add .
+        if ! git diff --cached --quiet; then
+          git commit -m "Build for ${{ matrix.os }}"
+        else
+          echo "No changes to commit"
+        fi
+
+    - name: Commit changes (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        git add .
+        $status = git status --porcelain
+        if ($status) {
+          git commit -m "Build for ${{ matrix.os }}"
+        } else {
+          Write-Host "No changes to commit"
+        }
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.os }}
+        path: |
+          dist/
+          rust/target/wheels/
+        retention-days: 7
+
+  push-changes:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Pull latest changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git pull origin main
+
+    - name: Push changes
+      run: |
+        if git log origin/main..HEAD --oneline | grep -q .; then
+          git push origin main
+        else
+          echo "No new commits to push"
+        fi
