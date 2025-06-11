@@ -21,7 +21,7 @@ jobs:
             arch: x86_64          # ARM64 platforms (GitHub Actions supported)
           - os: ubuntu-latest
             arch: arm64
-          - os: macos-latest-xlarge
+          - os: macos-latest
             arch: arm64
     
     runs-on: ${{ matrix.os }}
