@@ -77,11 +77,17 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.arch }}-cargo-
-
     - name: Install Python dependencies
       run: |
         echo ${{ matrix.python-version }} > .python-version
         uv sync --dev
+
+    - name: Debug file existence
+      run: |
+        ls -la
+        echo "Checking for README.MD:"
+        test -f README.MD && echo "README.MD exists" || echo "README.MD not found"
+        test -f README.md && echo "README.md exists" || echo "README.md not found"
 
     - name: Build with maturin develop
       working-directory: ${{ github.workspace }}
