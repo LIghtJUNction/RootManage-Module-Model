@@ -44,15 +44,16 @@
 RMM (模块开发工具集) v0.1.7 之前 由纯python实现
 RMM v0.2.0 至今 由 Rust 混合 Python 实现速度大提升`
 核心特点：
-支持shellcheck静态sh语法检查 ，在build阶段发现错误
+> 支持shellcheck静态sh语法检查 ，在build阶段发现错误. 
+> 语法错误包含详细的错误信息和修复建议 
 全模块开发环节支持
 从新建模块 到 构建模块 到测试模块 到发布模块 
 甚至 ，发布模块时可以选择在release note选择添加代理加速下载链接
 
-不想下载？这样安装到手机太慢了！
+> 不想下载？这样安装到手机太慢了！
 我们还支持直接通过adb连接AVD测试机虚拟仿真与直接安装到真机！
 
-如果你是kernelsu用户，还支持不重启手机直接测试模块（因为ksud有这个功能）
+> 如果你是kernelsu用户，还支持不重启手机直接测试模块（因为ksud有这个功能）
 
 avd你可以参考下面的教程，本项目拷贝了rootAVD几个关键文件。
 并未将rootAVD内置于本项目，你需要参考[rootAVD教程](https://gitlab.com/newbit/rootAVD)对你的AVD进行root.
@@ -140,6 +141,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+> 如果你使用rmm构建模块，请勿移除rmm自动生成的license文件 
+> 请在license顶部添加您的license
+> 本项目采用MIT License 
+> 因此你可以将你开发的模块进行闭源处理
+> 并且允许将模块进行商业化处理
+> 唯一的要求是包含一份RMM MIT License的副本
 
 # 声明
 本开源项目旨在促进模块生态系统的发展和创新。
