@@ -176,7 +176,7 @@ fn check_project_structure() -> Result<()> {
         ("module.prop", "模块属性文件", true),
         ("customize.sh", "安装脚本", false),
         ("system/", "系统文件目录", false),
-        ("README.md", "项目说明", false),
+        ("README.MD", "项目说明", false),
         ("LICENSE", "许可证文件", false),
     ];
     

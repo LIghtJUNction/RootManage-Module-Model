@@ -45,7 +45,7 @@ strip = true
 # 二进制类型
 bindings = "pyo3"
 # 包含的额外文件
-include = ["LICENSE", "README.md", "CHANGELOG.md"]
+include = ["LICENSE", "README.MD", "CHANGELOG.MD"]
 
 
 

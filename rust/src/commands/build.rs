@@ -215,12 +215,11 @@ fn copy_module_files_to_build(
             println!("📋 使用 Rmake 排除规则: {:?}", excludes);
         }
     }
-    
-    // 复制必要的模块文件
+      // 复制必要的模块文件
     let essential_files = [
-        "README.md", 
+        "README.MD", 
         "LICENSE", 
-        "CHANGELOG.md",
+        "CHANGELOG.MD",
         "customize.sh",
         "service.sh",
         "post-fs-data.sh",

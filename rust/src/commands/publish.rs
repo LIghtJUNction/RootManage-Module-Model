@@ -84,9 +84,8 @@ pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     if !source_tar_path.exists() {
         anyhow::bail!("❌ 源码包不存在: {}\n请先运行 'rmm build' 构建项目", source_tar_path.display());
     }
-    
-    // 读取 CHANGELOG 作为 release body
-    let changelog_path = project_root.join("CHANGELOG.md");
+      // 读取 CHANGELOG 作为 release body
+    let changelog_path = project_root.join("CHANGELOG.MD");
     let release_body = if changelog_path.exists() {
         std::fs::read_to_string(&changelog_path).unwrap_or_else(|_| {
             format!("## {} 发布说明\n\n此版本包含最新的功能更新和修复。", version)

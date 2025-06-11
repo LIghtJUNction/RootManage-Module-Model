@@ -18,8 +18,7 @@ jobs:
           - os: windows-latest
             arch: x86_64
           - os: macos-latest
-            arch: x86_64
-          # ARM64 platforms (GitHub Actions supported)
+            arch: x86_64          # ARM64 platforms (GitHub Actions supported)
           - os: ubuntu-latest
             arch: arm64
           - os: macos-latest-xlarge
@@ -38,16 +37,18 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update 
-        sudo apt-get install -y cmake build-essential maturin 
+        sudo apt-get install -y cmake build-essential
 
     - name: Install CMake (macOS)
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-latest' || matrix.os == 'macos-latest-xlarge'
       run: |
-        brew install cmake maturin
+        brew install cmake
 
     - name: Install CMake (Windows)
       if: matrix.os == 'windows-latest'
-      uses: lukka/get-cmake@latest 
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: latest
 
 
     - name: Install uv (Unix)
