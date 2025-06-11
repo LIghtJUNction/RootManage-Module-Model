@@ -40,36 +40,46 @@
 - 支持快捷安装至物理机 ☑️
 - 支持 GPG 签名 ☑️
 
+## 快速介绍
+RMM (模块开发工具集) v0.1.7 之前 由纯python实现
+RMM v0.2.0 至今 由 Rust 混合 Python 实现速度大提升`
+核心特点：
+支持shellcheck静态sh语法检查 ，在build阶段发现错误
+全模块开发环节支持
+从新建模块 到 构建模块 到测试模块 到发布模块 
+甚至 ，发布模块时可以选择在release note选择添加代理加速下载链接
+
+不想下载？这样安装到手机太慢了！
+我们还支持直接通过adb连接AVD测试机虚拟仿真与直接安装到真机！
+
+如果你是kernelsu用户，还支持不重启手机直接测试模块（因为ksud有这个功能）
+
+avd你可以参考下面的教程，本项目拷贝了rootAVD几个关键文件。
+并未将rootAVD内置于本项目，你需要参考[rootAVD教程](https://gitlab.com/newbit/rootAVD)对你的AVD进行root.
+
+感谢 [rootAVD](https://gitlab.com/newbit/rootAVD) 的作者 newbit 提供的便捷root脚本。
+
+[Magick.zip版本v29](https://github.com/topjohnwu/Magisk/releases/download/v29.0/Magisk-v29.0.apk)
 
 
 ## 使用方法
+
+
 ### 安装 uv (推荐)
+>从pypi安装
+```bash
 uv tool install pyrmm 
-或者要使用AI功能，请使用以下命令：
-uv tool install pyrmm[ai]
+```
+> 或者 cd到本项目根目录
+``` bash
+uv tool install -e . --force 
+```
 
-(如果你是开发者，请使用 在项目根目录uv tool install -e .)
 
-### 使用pip
-pip install pyrmm
+### 用户手册
 
-### 使用 pyrmm
 
-pyrmm init my-first-magisk-module
-(= pyrmm init my-first-magisk-module)
-cd my-first-magisk-module
-pyrmm build
-pyrmm test
-
-推荐使用：
-pyrmm init .
-
-这样，项目根目录作为模块根目录
-单仓库单模块（推荐）
-
-# DEV
-
-### rootAVD:
+#### rootAVD:
 致谢：[rootAVD](https://gitlab.com/newbit/rootAVD)
 示例命令：
 .\rootAVD.bat "system-images\android-36\google_apis\x86_64\ramdisk.img"
@@ -81,9 +91,28 @@ WIN + R 输入以下命令
 
 system-images\android-36\google_apis\x86_64\ramdisk.img 需要替换为实际路径
 
+#### 模块仓库
+开发中 计划兼容现有模块仓库
+
+
+#### Magick模块MCP服务器
+计划中
 
 
 
+### 开发指南
+
+
+# DEV & 开发指南
+
+> git clone https://github.com/LIghtJUNction/RootManageModuleModel.git 
+> cd RootManageModuleModel
+> uv sync -U
+> uv build
+> maturin develop
+> uv tool install -e . --force
+> 
+依次执行上述命令
 
 
 
@@ -155,6 +184,20 @@ SOFTWARE.
 
 感谢你的支持与贡献！
 
+
+# 外部依赖
+- uv 
+- maturin 用来编译Rust python 扩展模块 基于pyo3
+- shellcheck 用来检查shell脚本语法
+- adb 用来连接AVD或物理机 
+- rootAVD 用来root AVD -- 可选 如果有测试需求
+
+# 环境变量
+- GITHUB_ACCESS_TOKEN: 用于访问GitHub API的令牌 如果未设置 无法使用发布release功能
+
+
+
+
 # 致谢名单
 > Credits
     Kernel-Assisted Superuser: The KernelSU idea.
@@ -163,3 +206,5 @@ SOFTWARE.
     Diamorphine: Some rootkit skills.
     KernelSU: The kernel based root solution.
     APATCH : The kernel based root solution.
+    RootAVD: The AVD root script.
+    ShellCheck: The shell script static analysis tool.

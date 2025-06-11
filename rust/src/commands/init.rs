@@ -47,20 +47,20 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     let yes = matches.get_flag("yes");
     let is_lib = matches.get_flag("lib");
     let is_ravd = matches.get_flag("ravd");
-      let path = Path::new(project_path);
-    
-    // 获取项目名称，正确处理当前目录的情况
+      let path = Path::new(project_path);    // 获取项目名称，正确处理当前目录的情况
     let project_name = if project_path == "." {
-        // 如果是当前目录，获取当前目录的名称
+        // 如果是当前目录，获取当前目录的名称并存储为 String
         std::env::current_dir()?
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("unnamed_project")
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "unnamed_project".to_string())
     } else {
         // 如果是其他路径，获取路径的最后一部分
         path.file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("unnamed_project")
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "unnamed_project".to_string())
     };
     
     println!("🚀 正在初始化 RMM 项目: {}", project_name);
@@ -74,9 +74,8 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     // 使用RMM配置中的用户信息作为默认值
     let author_name = &config.username;
     let author_email = &config.email;
-    
-    // 创建项目配置
-    let project_config = create_project_config(project_name, author_name, author_email, &config.version, git_info)?;
+      // 创建项目配置
+    let project_config = create_project_config(&project_name, author_name, author_email, &config.version, git_info)?;
     
     // 保存项目配置
     project_config.save_to_dir(path)?;
@@ -91,16 +90,14 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     } else {
         create_basic_structure(path)?;
         println!("📦 已创建基础项目结构");
-    }
-      // 创建基础文件
-    create_basic_files(path, project_name, author_name)?;
+    }    // 创建基础文件
+    create_basic_files(path, &project_name, author_name)?;
       // 创建 module.prop
     create_module_prop(path, &project_config)?;
-    
-    // 将新创建的项目添加到全局元数据
+      // 将新创建的项目添加到全局元数据
     let mut rmm_config = RmmConfig::load()?;
     let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    rmm_config.add_current_project(project_name, &canonical_path)?;
+    rmm_config.add_current_project(&project_name, &canonical_path)?;
     
     println!("✅ 项目 '{}' 初始化完成！", project_name);
     

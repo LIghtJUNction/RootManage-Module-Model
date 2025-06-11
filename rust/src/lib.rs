@@ -10,8 +10,6 @@ mod proxy;
 mod adb;
 pub mod shellcheck;
 
-
-
 use config::RmmConfig;
 use utils::setup_logging;
 

@@ -3,7 +3,6 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::Path;
 use crate::config::{RmmConfig, ProjectConfig, RmakeConfig};
 use crate::utils::find_or_create_project_config;
-use crate::shellcheck;
 
 /// 构建 build 命令
 pub fn build_command() -> Command {
@@ -660,7 +659,7 @@ fn run_shellcheck_validation(project_root: &Path) -> Result<()> {
     println!("🔍 运行 Shellcheck 验证...");
     
     // 检查 shellcheck 是否可用
-    if !shellcheck::is_shellcheck_available() {
+    if !crate::shellcheck::is_shellcheck_available() {
         println!("⚠️  Shellcheck 未安装或不可用");
         println!("   建议安装 shellcheck 以进行 shell 脚本语法检查");
         println!("   安装方法:");
@@ -676,13 +675,12 @@ fn run_shellcheck_validation(project_root: &Path) -> Result<()> {
     }
     
     // 显示 shellcheck 版本
-    match shellcheck::get_shellcheck_version() {
+    match crate::shellcheck::get_shellcheck_version() {
         Ok(version) => println!("📋 Shellcheck 版本: {}", version),
         Err(_) => println!("📋 Shellcheck 版本: 未知"),
     }
-    
-    // 执行检查
-    match shellcheck::check_project(project_root, false) {
+      // 执行检查
+    match crate::shellcheck::check_project(project_root, false) {
         Ok((results, all_passed)) => {
             if results.is_empty() {
                 println!("📋 项目中未发现 shell 脚本文件");

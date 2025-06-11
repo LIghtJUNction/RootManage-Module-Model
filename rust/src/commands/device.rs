@@ -383,8 +383,6 @@ fn handle_check_module(adb: &mut AdbManager, matches: &ArgMatches) -> Result<()>
 
 /// 完整测试模块
 fn handle_test_module(adb: &mut AdbManager, matches: &ArgMatches) -> Result<()> {
-    use std::io::{self, Write};
-    
     println!("🧪 开始 RMM 模块完整测试流程...\n");
     
     // 1. 设备选择

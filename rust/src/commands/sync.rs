@@ -6,8 +6,8 @@ use crate::config::{RmmConfig, ProjectConfig};
 /// 构建 sync 命令
 pub fn build_command() -> Command {
     Command::new("sync")
-        .about("同步项目依赖和配置")
-        .long_about("同步 RMM 项目的依赖项和配置文件，或同步项目列表")
+        .about("同步项目列表和依赖")
+        .long_about("同步 RMM 项目列表（默认行为）和项目的依赖项及配置文件")
         .arg(
             Arg::new("force")
                 .short('f')
@@ -16,16 +16,30 @@ pub fn build_command() -> Command {
                 .help("强制重新同步所有依赖")
         )
         .arg(
+            Arg::new("verbose")
+                .short('v')
+                .long("verbose")
+                .action(ArgAction::SetTrue)
+                .help("启用详细输出")
+        )
+        .arg(
             Arg::new("dev")
                 .long("dev")
                 .action(ArgAction::SetTrue)
                 .help("同步开发依赖")
         )
         .arg(
+            Arg::new("quiet")
+                .short('q')
+                .long("quiet")
+                .action(ArgAction::SetTrue)
+                .help("静默模式，只输出错误")
+        )
+        .arg(
             Arg::new("projects")
                 .long("projects")
                 .action(ArgAction::SetTrue)
-                .help("同步项目列表（发现新项目，移除无效项目）")
+                .help("仅同步项目列表（发现新项目，移除无效项目），跳过依赖同步")
         )
         .arg(
             Arg::new("search-path")
@@ -51,13 +65,16 @@ pub fn build_command() -> Command {
 
 /// 处理 sync 命令
 pub fn handle_sync(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
-    // 检查是否是项目列表同步模式
-    if matches.get_flag("projects") {
-        return handle_sync_projects(config, matches);
+    // 默认行为：总是同步项目列表
+    handle_sync_projects(config, matches)?;
+    
+    // 如果没有明确指定 --projects 参数，也执行依赖同步
+    if !matches.get_flag("projects") {
+        println!("\n🔄 继续同步项目依赖...");
+        handle_sync_dependencies(config, matches)?;
     }
     
-    // 原有的项目依赖同步逻辑
-    handle_sync_dependencies(config, matches)
+    Ok(())
 }
 
 /// 处理项目列表同步
@@ -107,7 +124,8 @@ fn handle_sync_projects(_config: &RmmConfig, matches: &ArgMatches) -> Result<()>
 }
 
 /// 处理项目依赖同步
-fn handle_sync_dependencies(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {    println!("🔄 开始同步项目...");
+fn handle_sync_dependencies(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+    println!("🔄 开始同步项目依赖...");
 
     // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
