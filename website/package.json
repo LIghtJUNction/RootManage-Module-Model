@@ -13,7 +13,12 @@
   "scripts": {
     "dev": "vitepress dev docs",
     "build": "vitepress build docs",
-    "preview": "vitepress preview docs"
+    "preview": "vitepress preview docs",
+    "bundle": "node bundle-simple.js",
+    "build:bundle": "npm run build && npm run bundle"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "vite": "^6.3.5"
+  }
 }

@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Not needed if lastUpdated is not enabled
+          fetch-depth: 0 # Not needed if lastUpdated is not enabled      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -41,14 +41,30 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+      - name: Copy logo to docs assets
+        run: |
+          mkdir -p docs/assets
+          cp ../assets/logo.png docs/assets/
       - name: Build with VitePress
         run: |
           yarn build
           touch docs/.vitepress/dist/.nojekyll
+      - name: Ensure logo is in build output
+        run: |
+          mkdir -p docs/.vitepress/dist/assets
+          cp ../assets/logo.png docs/.vitepress/dist/assets/
+      - name: Create single HTML bundle
+        run: yarn bundle
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/docs/.vitepress/dist
+      - name: Upload single HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: single-html-bundle
+          path: website/dist-single/index.html
+          retention-days: 30
 
   # Deployment job
   deploy:
