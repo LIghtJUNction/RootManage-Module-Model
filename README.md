@@ -2,13 +2,9 @@
 
 ---
 
-
-
 ![](assets/logo.png)
 
 ---
-
-
 
 # RMM 传统模式
 
@@ -249,3 +245,6 @@ SOFTWARE.
 > APATCH : The kernel based root solution.
 > RootAVD: The AVD root script.
 > ShellCheck: The shell script static analysis tool.
+
+
+![](assets/20250612_052803_1749675378348sm0dl0tc.png)

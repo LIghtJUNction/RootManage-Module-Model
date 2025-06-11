@@ -27,7 +27,7 @@ title: 部署指南
    ```bash
    npm run dev
    ```
-4. 浏览器打开 http://localhost:5173 查看效果。
+4. 注意：文中不应出现本地链接。请将 `http://localhost:5173` 替换为文档内有效链接或移除。
 
 ## 生成静态文件
 
