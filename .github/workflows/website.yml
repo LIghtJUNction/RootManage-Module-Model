@@ -28,6 +28,7 @@ jobs:
     defaults:
       run:
         working-directory: ./website
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,34 +37,35 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: latest
+          node-version: 20
+          cache: 'npm'
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm install
       - name: Copy logo to docs assets
         run: |
           mkdir -p docs/assets
           cp ../assets/logo.png docs/assets/
       - name: Build with VitePress
         run: |
-          yarn build
+          npm run build
           touch docs/.vitepress/dist/.nojekyll
       - name: Ensure logo is in build output
         run: |
           mkdir -p docs/.vitepress/dist/assets
           cp ../assets/logo.png docs/.vitepress/dist/assets/
       - name: Create single HTML bundle
-        run: yarn bundle
-      - name: Upload artifact
+        run: npm run bundle
+      - name: Upload artifact for GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: website/docs/.vitepress/dist
-      - name: Upload single HTML artifact
+          path: ./website/docs/.vitepress/dist
+      - name: Upload single HTML bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: single-html-bundle
-          path: website/dist-single/index.html
+          path: ./website/dist-single/index.html
           retention-days: 30
 
   # Deployment job
