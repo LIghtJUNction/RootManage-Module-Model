@@ -1,0 +1,42 @@
+# Rmake 配置文件 - 自定义构建行为
+
+[build]
+# 构建前执行的步骤
+prebuild = [
+    "echo 正在准备构建...",
+]
+
+# 构建步骤 - 留空使用默认构建流程
+build = []
+
+# 构建后执行的步骤
+postbuild = [
+    "echo 构建完成，准备生成包文件..."
+]
+
+# 排除的文件和目录
+exclude = [
+    ".git",
+    ".vscode",
+    ".idea",
+    "target",
+    "*.log"
+]
+
+[package]
+# 自定义 ZIP 文件名模板
+zip_name = "{id}-{version}-{short_hash}-{date}.zip"    
+# 压缩级别 (0-9)
+compression = "9"
+
+[scripts]
+# 自定义脚本命令            
+clean = "rm -rf .rmmp/build/* .rmmp/dist/*"
+test = "echo 运行测试脚本"
+check = "shellcheck customize.sh"
+
+[proxy]
+# GitHub 代理设置
+enabled = true
+auto_select = true
+# custom_proxy = "https://ghproxy.com/"

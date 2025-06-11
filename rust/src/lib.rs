@@ -40,6 +40,27 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
     }
 }
 
+/// 调用 Python 发布函数
+#[pyfunction]
+fn publish_to_github(config_json: String) -> PyResult<bool> {
+    use pyo3::types::PyModule;
+    
+    pyo3::Python::with_gil(|py| {        // 导入 publisher 模块
+        let publisher_module = PyModule::import(py, "pyrmm.publisher")?;
+        
+        // 导入 json 模块
+        let json = PyModule::import(py, "json")?;
+        
+        // 调用 json.loads 函数
+        let config_dict = json.getattr("loads")?.call1((config_json,))?;
+        
+        // 调用 publish_to_github 函数
+        let result = publisher_module.getattr("publish_to_github")?.call1((config_dict,))?;
+        
+        Ok(result.extract::<bool>()?)
+    })
+}
+
 /// 运行 CLI 的核心逻辑
 fn run_cli(args: Vec<String>) -> Result<()> {
     setup_logging()?;
@@ -135,5 +156,6 @@ fn get_fastest_proxy() -> PyResult<Option<String>> {
 fn rmmcore(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli, m)?)?;
     m.add_function(wrap_pyfunction!(get_fastest_proxy, m)?)?;
+    m.add_function(wrap_pyfunction!(publish_to_github, m)?)?;
     Ok(())
 }

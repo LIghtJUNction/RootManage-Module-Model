@@ -7,6 +7,7 @@ mod commands;
 mod utils;
 mod proxy;
 mod adb;
+mod shellcheck;
 
 use config::RmmConfig;
 use utils::setup_logging;

@@ -9,7 +9,7 @@ from pathlib import Path
 from github import Github, GithubException
 from github.Repository import Repository
 from github.GitRelease import GitRelease
-
+from .getproxy import ProxyManager
 # 导入 Rust 扩展模块
 try:
     from pyrmm.cli import rmmcore
@@ -37,7 +37,6 @@ class GitHubPublisher:
             print(f"❌ 无法连接到仓库 {self.repo_name}: {e}")
             return False
 
-    
     def apply_proxy_to_url(self, url: str, proxy: str) -> str:
         """将代理应用到 URL"""
         if not proxy or not url:
@@ -293,7 +292,7 @@ def publish_to_github(config_data: dict[str, str]) -> bool:
         proxy = None
         if rmmcore is not None:
             try:
-                proxy = rmmcore.get_fastest_proxy()
+                proxy = ProxyManager.get_fastest_proxy()
             except Exception as e:
                 print(f"⚠️  获取代理失败: {e}")
         

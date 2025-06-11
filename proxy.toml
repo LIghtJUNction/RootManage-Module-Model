@@ -1,0 +1,581 @@
+[success]
+code = 200
+msg = "success"
+total = 72
+update_time = "2025-06-11 15:33:04"
+[[success.data]]
+url = "https://gh.qninq.cn"
+server = "nginx"
+ip = "2a05:dfc1:8b71:62a1:be24:11ff:fee7:2a"
+location = "Hong Kong  "
+latency = 110
+speed = 3.49
+
+[[success.data]]
+url = "https://gh.b52m.cn"
+server = "nginx"
+ip = "47.76.41.43"
+location = "Hong Kong  Hong Kong"
+latency = 1060
+speed = 3.33
+
+[[success.data]]
+url = "https://gh.ddlc.top"
+server = "cloudflare"
+ip = "104.19.89.51"
+location = "  "
+latency = 213
+speed = 2.83
+
+[[success.data]]
+url = "https://github.whrstudio.top"
+server = "nginx/1.20.1"
+ip = "45.205.28.94"
+location = "United States New York New York"
+latency = 446
+speed = 2.7
+
+[[success.data]]
+url = "https://gp-us.fyan.top"
+server = "nginx"
+ip = "98.142.241.227"
+location = "Canada  "
+latency = 535
+speed = 2.66
+
+[[success.data]]
+url = "https://ghproxy.cfd"
+server = "cloudflare"
+ip = "104.21.41.29"
+location = "  "
+latency = 468
+speed = 2.36
+
+[[success.data]]
+url = "https://gh.nxnow.top"
+server = "nginx/1.22.1"
+ip = "154.17.236.34"
+location = "United States California Los Angeles"
+latency = 697
+speed = 2.02
+
+[[success.data]]
+url = "https://github.proxy.class3.fun"
+server = "openresty"
+ip = "154.9.253.115"
+location = "Hong Kong  Hong Kong"
+latency = 105
+speed = 1.9
+
+[[success.data]]
+url = "https://gitproxy1.127731.xyz"
+server = "cloudflare"
+ip = "172.67.153.236"
+location = "  "
+latency = 1120
+speed = 1.89
+
+[[success.data]]
+url = "https://gh.7761.cf"
+server = "cloudflare"
+ip = "2606:4700:8d90::3c9a:3032"
+location = "United States  "
+latency = 364
+speed = 1.71
+
+[[success.data]]
+url = "https://ghp.keleyaa.com"
+server = "cloudflare"
+ip = "2606:4700:3031::6815:2e0d"
+location = "  "
+latency = 528
+speed = 1.66
+
+[[success.data]]
+url = "https://ghproxy.cn"
+server = "cloudflare"
+ip = "2606:4700:3036::6815:291d"
+location = "  "
+latency = 161
+speed = 1.66
+
+[[success.data]]
+url = "https://gh.monlor.com"
+server = "cloudflare"
+ip = "2606:4700:3036::ac43:dafa"
+location = "  "
+latency = 1095
+speed = 1.66
+
+[[success.data]]
+url = "https://slink.ltd"
+server = "cloudflare"
+ip = "104.21.24.191"
+location = "  "
+latency = 650
+speed = 1.64
+
+[[success.data]]
+url = "https://ghproxy.bravemail666.eu.org"
+server = "cloudflare"
+ip = "2606:4700:3030::ac43:987d"
+location = "  "
+latency = 610
+speed = 1.56
+
+[[success.data]]
+url = "https://gh-proxy.net"
+server = "cloudflare"
+ip = "104.19.60.221"
+location = "  "
+latency = 472
+speed = 1.53
+
+[[success.data]]
+url = "https://github.tianrld.top"
+server = "cloudflare"
+ip = "2606:4700:3033::6815:3dea"
+location = "  "
+latency = 645
+speed = 1.49
+
+[[success.data]]
+url = "https://gh.xx9527.cn"
+server = "cloudflare"
+ip = "2606:4700:3036::6815:5fb6"
+location = "  "
+latency = 536
+speed = 1.43
+
+[[success.data]]
+url = "https://gh.944446.xyz"
+server = "cloudflare"
+ip = "2606:4700:3031::6815:5102"
+location = "  "
+latency = 809
+speed = 1.43
+
+[[success.data]]
+url = "https://ghp.arslantu.xyz"
+server = "cloudflare"
+ip = "2606:4700:3036::6815:5e17"
+location = "  "
+latency = 748
+speed = 1.39
+
+[[success.data]]
+url = "https://gh-proxy.com"
+server = "cloudflare"
+ip = "2606:4700:3035::ac43:84b5"
+location = "  "
+latency = 396
+speed = 1.36
+
+[[success.data]]
+url = "https://jiashu.1win.eu.org"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:1001"
+location = "  "
+latency = 878
+speed = 1.36
+
+[[success.data]]
+url = "https://gh.chjina.com"
+server = "cloudflare"
+ip = "2606:4700:3035::6815:3b2d"
+location = "  "
+latency = 811
+speed = 1.33
+
+[[success.data]]
+url = "https://gh-proxy.linioi.com"
+server = "cloudflare"
+ip = "2606:4700:3037::ac43:dd3c"
+location = "  "
+latency = 867
+speed = 1.32
+
+[[success.data]]
+url = "https://github-proxy.lixxing.top"
+server = "cloudflare"
+ip = "104.21.37.85"
+location = "  "
+latency = 956
+speed = 1.23
+
+[[success.data]]
+url = "https://tvv.tw"
+server = "cloudflare"
+ip = "172.67.140.253"
+location = "  "
+latency = 659
+speed = 1.23
+
+[[success.data]]
+url = "https://goppx.com"
+server = "cloudflare"
+ip = "2606:4700:3033::6815:48ac"
+location = "  "
+latency = 579
+speed = 1.19
+
+[[success.data]]
+url = "https://github-proxy.com"
+server = "Apache/2.4.52 (Ubuntu)"
+ip = "64.225.49.234"
+location = "United States New Jersey Clifton"
+latency = 616
+speed = 1.18
+
+[[success.data]]
+url = "https://github.tbedu.top"
+server = "cloudflare"
+ip = "172.67.142.239"
+location = "  "
+latency = 806
+speed = 1.18
+
+[[success.data]]
+url = "https://g.blfrp.cn"
+server = "nginx/1.14.1"
+ip = "138.2.49.211"
+location = "Japan Osaka Osaka"
+latency = 201
+speed = 1.14
+
+[[success.data]]
+url = "https://gitproxy.mrhjx.cn"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:5001"
+location = "  "
+latency = 477
+speed = 1.13
+
+[[success.data]]
+url = "https://github.kkproxy.dpdns.org"
+server = "cloudflare"
+ip = "2606:4700:3031::6815:4f0f"
+location = "  "
+latency = 645
+speed = 1.13
+
+[[success.data]]
+url = "https://ghf.无名氏.top"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:1001"
+location = "  "
+latency = 710
+speed = 1.12
+
+[[success.data]]
+url = "https://gh.zwnes.xyz"
+server = "cloudflare"
+ip = "2606:4700:3037::ac43:d48b"
+location = "  "
+latency = 608
+speed = 1.11
+
+[[success.data]]
+url = "https://gh.catmak.name"
+server = "nginx"
+ip = "140.238.18.229"
+location = "South Korea Seoul Seoul"
+latency = 572
+speed = 1.1
+
+[[success.data]]
+url = "https://hub.gitmirror.com"
+server = "cloudflare"
+ip = "104.18.125.104"
+location = "  "
+latency = 189
+speed = 1.06
+
+[[success.data]]
+url = "https://ghm.078465.xyz"
+server = "cloudflare"
+ip = "172.67.156.216"
+location = "  "
+latency = 1404
+speed = 1.05
+
+[[success.data]]
+url = "https://ghproxy.imciel.com"
+server = "cloudflare"
+ip = "2606:4700:3035::ac43:decd"
+location = "  "
+latency = 918
+speed = 0.99
+
+[[success.data]]
+url = "https://ghfile.geekertao.top"
+server = "cloudflare"
+ip = "104.19.31.186"
+location = "  "
+latency = 1898
+speed = 0.88
+
+[[success.data]]
+url = "https://ghpxy.hwinzniej.top"
+server = "cloudflare"
+ip = "2606:4700:3031::6815:4a24"
+location = "  "
+latency = 510
+speed = 0.85
+
+[[success.data]]
+url = "https://github.limoruirui.com"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:7001"
+location = "  "
+latency = 539
+speed = 0.8
+
+[[success.data]]
+url = "https://gh.jasonzeng.dev"
+server = "cloudflare"
+ip = "2606:4700:3030::ac43:dd5a"
+location = "  "
+latency = 559
+speed = 0.68
+
+[[success.data]]
+url = "https://github.ednovas.xyz"
+server = "cloudflare"
+ip = "2606:4700:3031::6815:2783"
+location = "  "
+latency = 690
+speed = 0.66
+
+[[success.data]]
+url = "https://github.cmsz.dpdns.org"
+server = "cloudflare"
+ip = "2606:4700:9ae5::60a7:501e"
+location = "United States  "
+latency = 1505
+speed = 0.66
+
+[[success.data]]
+url = "https://firewall.lxstd.org"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:6001"
+location = "  "
+latency = 973
+speed = 0.64
+
+[[success.data]]
+url = "https://ghproxy.cxkpro.top"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:5001"
+location = "  "
+latency = 930
+speed = 0.64
+
+[[success.data]]
+url = "https://j.1lin.dpdns.org"
+server = "cloudflare"
+ip = "2606:4700:3036::6815:11bc"
+location = "  "
+latency = 643
+speed = 0.64
+
+[[success.data]]
+url = "https://github.acmsz.top"
+server = "cloudflare"
+ip = "2606:4700:9642::3ec8:c23"
+location = "United States  "
+latency = 834
+speed = 0.6
+
+[[success.data]]
+url = "https://g.cachecdn.ggff.net"
+server = "cloudflare"
+ip = "2606:4700:8393:1258:11f2:6ddc:127e:92ee"
+location = "United States  "
+latency = 423
+speed = 0.53
+
+[[success.data]]
+url = "https://github.chenc.dev"
+server = "Windows-Azure-Blob/1.0 Microsoft-HTTPAPI/2.0"
+ip = "240d:c000:f05f:8900:ba88:336:7c7a:0"
+location = "Singapore  "
+latency = 990
+speed = 0.5
+
+[[success.data]]
+url = "https://github.3x25.com"
+server = "cloudflare"
+ip = "172.67.204.184"
+location = "  "
+latency = 1267
+speed = 0.49
+
+[[success.data]]
+url = "https://fastgit.cc"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:7001"
+location = "  "
+latency = 364
+speed = 0.43
+
+[[success.data]]
+url = "https://gh.idayer.com"
+server = "cloudflare"
+ip = "2606:4700:3034::ac43:be9b"
+location = "  "
+latency = 1511
+speed = 0.43
+
+[[success.data]]
+url = "https://j.1win.ggff.net"
+server = "cloudflare"
+ip = "2606:4700:3036::6815:3613"
+location = "  "
+latency = 575
+speed = 0.42
+
+[[success.data]]
+url = "https://ghproxy.1888866.xyz"
+server = "cloudflare"
+ip = "2606:4700:3036::ac43:cf2c"
+location = "  "
+latency = 697
+speed = 0.41
+
+[[success.data]]
+url = "https://api-gh.muran.eu.org"
+server = "cloudflare"
+ip = "2606:4700:1d:202e:3728:9ee8:de4c:7ee4"
+location = "  "
+latency = 1002
+speed = 0.34
+
+[[success.data]]
+url = "https://gp.zkitefly.eu.org"
+server = "cloudflare"
+ip = "2606:4700:3030::6815:6001"
+location = "  "
+latency = 828
+speed = 0.26
+
+[[success.data]]
+url = "https://gh.sparkmemory.top"
+server = "Caddy"
+ip = "45.152.67.241"
+location = "United Kingdom England London"
+latency = 105
+speed = 0.24
+
+[[success.data]]
+url = "https://git.886.be"
+server = "cloudflare"
+ip = "2606:4700:3035::6815:24f0"
+location = "  "
+latency = 695
+speed = 0.16
+
+[[success.data]]
+url = "https://gh.llkk.cc"
+server = "cloudflare"
+ip = "2606:4700:b:cac0:2a17:e653:683f:bd09"
+location = "  "
+latency = 648
+speed = 0.12
+
+[[success.data]]
+url = "https://proxy.yaoyaoling.net"
+server = "nginx"
+ip = "104.233.162.24"
+location = "Japan Tokyo Tokyo"
+latency = 451
+speed = 0.09
+
+[[success.data]]
+url = "https://github.moeyy.xyz"
+server = "cloudflare"
+ip = "2606:4700:964b::5818:4de2"
+location = "United States  "
+latency = 112
+speed = 0.08
+
+[[success.data]]
+url = "https://ghproxy.monkeyray.net"
+server = "nginx"
+ip = "148.135.124.113"
+location = "United States California Los Angeles"
+latency = 790
+speed = 0.08
+
+[[success.data]]
+url = "https://gh.xxooo.cf"
+server = "cloudflare"
+ip = "2606:4700:3017:98:aeb0:307c:e845:677f"
+location = "  "
+latency = 1138
+speed = 0.03
+
+[[success.data]]
+url = "https://gh.tt.ma"
+server = "openresty"
+ip = "2403:71c0:2000:1208::a"
+location = "Japan Tokyo Tokyo"
+latency = 662
+speed = 0.01
+
+[[success.data]]
+url = "https://git.yylx.win"
+server = "Windows-Azure-Blob/1.0 Microsoft-HTTPAPI/2.0"
+ip = "185.199.109.133"
+location = "United States California "
+latency = 282
+speed = 0.01
+
+[[success.data]]
+url = "https://git.rakuyou.uk"
+server = ""
+ip = "199.59.243.228"
+location = "United States  "
+latency = 448
+speed = 0
+
+[[success.data]]
+url = "https://ghps.cc"
+server = ""
+ip = "199.59.243.228"
+location = "United States  "
+latency = 991
+speed = 0
+
+[[success.data]]
+url = "https://github.tmby.shop"
+server = ""
+ip = "199.59.243.228"
+location = "United States  "
+latency = 826
+speed = 0
+
+[[success.data]]
+url = "https://mirror.ghproxy.com"
+server = "nginx"
+ip = "140.238.17.201"
+location = "South Korea Seoul Seoul"
+latency = 393
+speed = 0
+
+[[success.data]]
+url = "https://down.npee.cn"
+server = "cloudflare"
+ip = "2606:4700:3034::6815:426c"
+location = "  "
+latency = 465
+speed = 0
+
+[[success.data]]
+url = "https://gh.con.sh"
+server = "cloudflare"
+ip = "2606:4700:310c::ac42:2edc"
+location = "  "
+latency = 414
+speed = 0
+

@@ -2,8 +2,9 @@ use clap::{Arg, ArgMatches, Command};
 use anyhow::Result;
 use crate::config::{RmmConfig, ProjectConfig, RmakeConfig};
 use std::path::Path;
-use std::process::Command as StdCommand;
 use serde_json::json;
+use pyo3::prelude::*;
+use pyo3::types::PyModule;
 
 pub fn build_command() -> Command {
     Command::new("publish")
@@ -143,57 +144,43 @@ pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     if matches.get_flag("prerelease") {
         println!("🧪 模式: 预发布版本");
     }
-    
-    // 查找 Python 发布脚本
-    let publisher_script = find_publisher_script(&project_root)?;
-    
-    // 调用 Python 发布脚本
+      // 查找 Python 发布脚本
+    // let publisher_script = find_publisher_script(&project_root)?;
+      // 调用 Python 发布函数 (通过 Rust 扩展模块)
     println!("🔄 正在发布...");
-    let output = StdCommand::new("python")
-        .arg(&publisher_script)
-        .arg(&config_data.to_string())
-        .output()?;
+    let result = pyo3::Python::with_gil(|py| -> Result<bool> {
+        // 导入 publisher 模块
+        let publisher_module = PyModule::import(py, "pyrmm.publisher")
+            .map_err(|e| anyhow::anyhow!("导入发布模块失败: {}", e))?;        // 将 JSON 配置转换为 Python 字典
+        let json_str = config_data.to_string();
+        
+        // 导入 json 模块
+        let json = PyModule::import(py, "json")
+            .map_err(|e| anyhow::anyhow!("导入 json 模块失败: {}", e))?;
+        
+        // 调用 json.loads 函数
+        let config_dict = json.getattr("loads")
+            .map_err(|e| anyhow::anyhow!("获取 json.loads 函数失败: {}", e))?
+            .call1((json_str,))
+            .map_err(|e| anyhow::anyhow!("JSON 解析失败: {}", e))?;
+        
+        // 调用 publish_to_github 函数
+        let result = publisher_module
+            .getattr("publish_to_github")
+            .map_err(|e| anyhow::anyhow!("找不到 publish_to_github 函数: {}", e))?
+            .call1((config_dict,))
+            .map_err(|e| anyhow::anyhow!("调用发布函数失败: {}", e))?;
+          // 提取返回值
+        result.extract::<bool>()
+            .map_err(|e| anyhow::anyhow!("提取返回值失败: {}", e))
+    })?;
     
-    if output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        if !stdout.trim().is_empty() {
-            print!("{}", stdout);
-        }
+    if result {
         println!("✅ 发布完成！");
         Ok(())
     } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        
-        if !stdout.trim().is_empty() {
-            print!("{}", stdout);
-        }
-        
-        if !stderr.trim().is_empty() {
-            anyhow::bail!("发布失败: {}", stderr);
-        } else {
-            anyhow::bail!("发布失败，原因未知");
-        }
+        anyhow::bail!("❌ 发布失败");
     }
-}
-
-/// 查找 Python 发布脚本路径
-fn find_publisher_script(project_root: &Path) -> Result<std::path::PathBuf> {
-    // 搜索路径列表
-    let search_paths = [
-        project_root.join("src").join("pyrmm").join("publisher.py"),
-        project_root.parent().unwrap().join("src").join("pyrmm").join("publisher.py"),
-        std::env::current_dir()?.join("src").join("pyrmm").join("publisher.py"),
-        std::env::current_dir()?.parent().unwrap().join("src").join("pyrmm").join("publisher.py"),
-    ];
-    
-    for path in &search_paths {
-        if path.exists() {
-            return Ok(path.clone());
-        }
-    }
-    
-    anyhow::bail!("未找到 Python 发布脚本 publisher.py");
 }
 
 /// 在构建目录中寻找最新的模块文件
