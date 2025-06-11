@@ -85,7 +85,7 @@ jobs:
 
     - name: Build with maturin develop
       run: |
-        uv run maturin develop ${{ matrix.cross == true && '--target aarch64-unknown-linux-gnu' || '' }}
+        maturin develop ${{ matrix.cross == true && '--target aarch64-unknown-linux-gnu' || '' }}
 
     - name: Build with uv build
       run: |
