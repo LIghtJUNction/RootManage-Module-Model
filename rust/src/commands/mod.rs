@@ -8,3 +8,4 @@ pub mod run;
 pub mod device;
 pub mod clean;
 pub mod test;
+pub mod completion;

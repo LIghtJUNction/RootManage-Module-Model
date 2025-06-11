@@ -1,7 +1,0 @@
-id=test-rmmp
-name=test-rmmp
-version=v0.1.0-cb012ae9
-versionCode=2025061110
-author=LIghtJUNction
-description=RMM项目 test-rmmp
-updateJson=https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/test-rmmp/update.json
