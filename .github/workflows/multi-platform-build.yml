@@ -11,7 +11,19 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          # x86_64 platforms
+          - os: ubuntu-latest
+            arch: x86_64
+          - os: windows-latest
+            arch: x86_64
+          - os: macos-latest
+            arch: x86_64
+          # ARM64 platforms (GitHub Actions supported)
+          - os: ubuntu-latest
+            arch: arm64
+          - os: macos-latest-xlarge
+            arch: arm64
     
     runs-on: ${{ matrix.os }}
     
@@ -54,7 +66,14 @@ jobs:
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.arch == 'arm64' && 'aarch64-unknown-linux-gnu' || '' }}
 
+    - name: Install cross compilation tools (ARM64)
+      if: matrix.arch == 'arm64' && matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
     - name: Cache Rust dependencies
       uses: actions/cache@v4
       with:
@@ -64,7 +83,7 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           rust/target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache uv dependencies
       uses: actions/cache@v4
@@ -72,24 +91,22 @@ jobs:
         path: |
           ~/.cache/uv
           .venv
-        key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+        key: ${{ runner.os }}-${{ matrix.arch }}-uv-${{ hashFiles('uv.lock') }}
 
     - name: Configure git
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-
     - name: Sync dependencies
       run: uv sync
 
-    - name: Install maturin
-      run: uv add --dev maturin
+    - name: Install build tools
+      run: |
+        uv add --dev maturin
+        uv add --dev build
 
-    - name: Develop build
-      run: uv run maturin develop
-
-    - name: Build package
-      run: uv build
+    - name: Build wheel with maturin
+      run: uv run maturin build --release
 
     - name: Commit changes (Unix)
       if: matrix.os != 'windows-latest'

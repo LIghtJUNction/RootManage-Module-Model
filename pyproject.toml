@@ -2,7 +2,7 @@
 name = "pyrmm"
 dynamic = ["version"]
 description = "Magisk/Apatch/Kernelsu模块的工具集"
-readme = "README.MD"
+readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
