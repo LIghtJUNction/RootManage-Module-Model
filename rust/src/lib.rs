@@ -40,6 +40,29 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
     }
 }
 
+/// CLI 函数，返回详细的执行结果，用于 MCP 服务器
+#[pyfunction]
+#[pyo3(signature = (args=None))]
+fn cli_with_output(args: Option<Vec<String>>) -> PyResult<Option<String>> {
+    // 构建参数列表，始终以程序名开头
+    let mut final_args = vec!["rmm".to_string()];
+    
+    // 如果提供了参数，直接使用；否则从环境变量获取
+    if let Some(provided_args) = args {
+        final_args.extend(provided_args);
+    } else {
+        // 从命令行获取参数，跳过第一个（程序名）
+        final_args.extend(env::args().skip(1));
+    }
+      match run_cli_with_output(final_args) {
+        Ok(output) => Ok(output),
+        Err(e) => {
+            eprintln!("错误: {}", e);
+            Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
+        }
+    }
+}
+
 /// 调用 Python 发布函数
 #[pyfunction]
 fn publish_to_github(config_json: String) -> PyResult<bool> {
@@ -85,21 +108,194 @@ fn run_cli(args: Vec<String>) -> Result<()> {
     
     // 初始化配置
     let config = RmmConfig::load()?;    // 路由到不同的命令处理器
-    match matches.subcommand() {        Some(("init", sub_matches)) => commands::init::handle_init(&config, sub_matches),
-        Some(("build", sub_matches)) => commands::build::handle_build(&config, sub_matches),
-        Some(("sync", sub_matches)) => commands::sync::handle_sync(&config, sub_matches),
-        Some(("check", sub_matches)) => commands::check::handle_check(&config, sub_matches),
-        Some(("publish", sub_matches)) => commands::publish::handle_publish(&config, sub_matches),        Some(("config", sub_matches)) => commands::config::handle_config(&config, sub_matches),
-        Some(("run", sub_matches)) => commands::run::handle_run(&config, sub_matches),
-        Some(("device", sub_matches)) => commands::device::handle_device(&config, sub_matches),
-        Some(("clean", sub_matches)) => commands::clean::handle_clean(&config, sub_matches),
-        Some(("test", sub_matches)) => commands::test::handle_test(&config, sub_matches),
-        Some(("completion", sub_matches)) => commands::completion::handle_completion(&config, sub_matches),
+    match matches.subcommand() {        
+        Some(("init", sub_matches)) => {
+            match commands::init::handle_init(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("build", sub_matches)) => {
+            match commands::build::handle_build(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("sync", sub_matches)) => {
+            match commands::sync::handle_sync(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("check", sub_matches)) => {
+            // check 命令返回 String，我们需要特殊处理
+            match commands::check::handle_check(&config, sub_matches) {
+                Ok(_result) => {
+                    // 在这里 _result 是 String，但我们不需要打印它，因为命令内部已经处理了输出
+                    Ok(())
+                },
+                Err(e) => Err(e)
+            }
+        },
+        Some(("publish", sub_matches)) => {
+            match commands::publish::handle_publish(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },        Some(("config", sub_matches)) => {
+            match commands::config::handle_config(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("run", sub_matches)) => {
+            match commands::run::handle_run(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("device", sub_matches)) => {
+            match commands::device::handle_device(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("clean", sub_matches)) => {
+            match commands::clean::handle_clean(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },        Some(("test", sub_matches)) => {
+            match commands::test::handle_test(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("completion", sub_matches)) => {
+            match commands::completion::handle_completion(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("mcp", sub_matches)) => {
+            match commands::mcp::handle_mcp(&config, sub_matches) {
+                Ok(_result) => Ok(()),
+                Err(e) => Err(e)
+            }
+        },
         _ => {
             // 如果没有子命令，显示帮助
             let mut app = build_cli();
             app.print_help()?;
             Ok(())
+        }
+    }
+}
+
+/// 运行 CLI 的核心逻辑，返回详细的输出结果
+fn run_cli_with_output(args: Vec<String>) -> Result<Option<String>> {
+    setup_logging()?;
+    
+    let app = build_cli();
+    
+    // 使用 get_matches_from 而不是 try_get_matches_from
+    // 这样 clap 会自动处理 --help 和 --version 并正常退出
+    let matches = match app.try_get_matches_from(args) {
+        Ok(matches) => matches,
+        Err(err) => {
+            // 如果是帮助或版本信息，正常输出并退出
+            if err.kind() == clap::error::ErrorKind::DisplayHelp ||
+               err.kind() == clap::error::ErrorKind::DisplayVersion {
+                print!("{}", err);
+                return Ok(None);
+            }
+            // 其他错误则返回错误
+            return Err(err.into());
+        }
+    };
+    
+    // 初始化配置
+    let config = RmmConfig::load()?;
+
+    // 路由到不同的命令处理器，并收集输出结果
+    match matches.subcommand() {        
+        Some(("init", sub_matches)) => {
+            match commands::init::handle_init(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("build", sub_matches)) => {
+            match commands::build::handle_build(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("sync", sub_matches)) => {
+            match commands::sync::handle_sync(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("check", sub_matches)) => {
+            match commands::check::handle_check(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("publish", sub_matches)) => {
+            match commands::publish::handle_publish(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("config", sub_matches)) => {
+            match commands::config::handle_config(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("run", sub_matches)) => {
+            match commands::run::handle_run(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("device", sub_matches)) => {
+            match commands::device::handle_device(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("clean", sub_matches)) => {
+            match commands::clean::handle_clean(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("test", sub_matches)) => {
+            match commands::test::handle_test(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("completion", sub_matches)) => {
+            match commands::completion::handle_completion(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        Some(("mcp", sub_matches)) => {
+            match commands::mcp::handle_mcp(&config, sub_matches) {
+                Ok(result) => Ok(Some(result)),
+                Err(e) => Err(e)
+            }
+        },
+        _ => {
+            // 如果没有子命令，显示帮助
+            let mut app = build_cli();
+            app.print_help()?;
+            Ok(Some("帮助信息已显示".to_string()))
         }
     }
 }
@@ -134,9 +330,9 @@ pub fn build_cli() -> Command {
         .subcommand(commands::publish::build_command())        .subcommand(commands::config::build_command())
         .subcommand(commands::run::build_command())
         .subcommand(commands::device::build_command())
-        .subcommand(commands::clean::build_command())
-        .subcommand(commands::test::build_command())
+        .subcommand(commands::clean::build_command())        .subcommand(commands::test::build_command())
         .subcommand(commands::completion::build_command())
+        .subcommand(commands::mcp::build_command())
 }
 
 /// 获取最快的 GitHub 代理
@@ -158,6 +354,7 @@ fn get_fastest_proxy() -> PyResult<Option<String>> {
 #[pyo3(name = "rmmcore")]
 fn rmmcore(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli, m)?)?;
+    m.add_function(wrap_pyfunction!(cli_with_output, m)?)?;
     m.add_function(wrap_pyfunction!(get_fastest_proxy, m)?)?;
     m.add_function(wrap_pyfunction!(publish_to_github, m)?)?;
     Ok(())

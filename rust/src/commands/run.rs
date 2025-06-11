@@ -25,7 +25,7 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 run 命令
-pub fn handle_run(_config: &crate::config::RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_run(_config: &crate::config::RmmConfig, matches: &ArgMatches) -> Result<String> {
     // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
     let project_config_path = find_or_create_project_config(&current_dir)?;
@@ -71,12 +71,11 @@ pub fn handle_run(_config: &crate::config::RmmConfig, matches: &ArgMatches) -> R
             for (name, command) in &project_config.scripts {
                 println!("  {} : {}", name, command);
             }
-            println!("");
-            println!("💡 运行脚本: rmm run <script_name>");
+            println!("");            println!("💡 运行脚本: rmm run <script_name>");
         }
     }
     
-    Ok(())
+    Ok("脚本执行完成".to_string())
 }
 
 /// 执行脚本命令

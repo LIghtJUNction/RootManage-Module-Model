@@ -2,12 +2,13 @@ use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::Path;
 use crate::config::{RmmConfig, ProjectConfig};
+use crate::shellcheck;
 
 /// 构建 check 命令
 pub fn build_command() -> Command {
     Command::new("check")
-        .about("检查项目状态和 GitHub 连接")
-        .long_about("检查 RMM 项目的配置、依赖和 GitHub 连接状态")
+        .about("检查项目状态、语法和 GitHub 连接")
+        .long_about("检查 RMM 项目的配置、依赖、shell 脚本语法和 GitHub 连接状态")
         .arg(
             Arg::new("all")
                 .short('a')
@@ -29,35 +30,75 @@ pub fn build_command() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("检查依赖项")
         )
+        .arg(
+            Arg::new("skip-shellcheck")
+                .long("skip-shellcheck")
+                .action(ArgAction::SetTrue)
+                .help("跳过 shell 脚本语法检查")
+        )
 }
 
 /// 处理 check 命令
-pub fn handle_check(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_check(config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     println!("🔍 开始检查项目状态...");
 
     let check_all = matches.get_flag("all");
     let check_github = matches.get_flag("github") || check_all;
     let check_deps = matches.get_flag("deps") || check_all;
+    let skip_shellcheck = matches.get_flag("skip-shellcheck");
+    
+    let mut result_output = String::new();
     
     // 基本项目检查
-    check_project_config()?;
+    result_output.push_str("📋 项目配置检查:\n");
+    match check_project_config() {
+        Ok(_) => result_output.push_str("✅ 项目配置正常\n"),
+        Err(e) => result_output.push_str(&format!("❌ 项目配置错误: {}\n", e)),
+    }
+    
+    // Shell 脚本语法检查 (默认启用)
+    if !skip_shellcheck {
+        result_output.push_str("\n🐚 Shell 脚本语法检查:\n");
+        match check_shell_syntax() {
+            Ok(shell_result) => {
+                result_output.push_str(&shell_result);
+                result_output.push_str("\n");
+            }
+            Err(e) => {
+                result_output.push_str(&format!("❌ Shell 脚本检查失败: {}\n", e));
+            }
+        }
+    }
     
     // GitHub 连接检查
     if check_github {
-        check_github_connection(config)?;
+        result_output.push_str("\n🐙 GitHub 连接检查:\n");
+        match check_github_connection(config) {
+            Ok(_) => result_output.push_str("✅ GitHub 连接正常\n"),
+            Err(e) => result_output.push_str(&format!("❌ GitHub 连接错误: {}\n", e)),
+        }
     }
     
     // 依赖检查
     if check_deps {
-        check_dependencies()?;
+        result_output.push_str("\n📦 依赖检查:\n");
+        match check_dependencies() {
+            Ok(_) => result_output.push_str("✅ 依赖检查完成\n"),
+            Err(e) => result_output.push_str(&format!("❌ 依赖检查错误: {}\n", e)),
+        }
     }
     
     // 项目结构检查
-    check_project_structure()?;
+    result_output.push_str("\n📁 项目结构检查:\n");
+    match check_project_structure() {
+        Ok(_) => result_output.push_str("✅ 项目结构正常\n"),
+        Err(e) => result_output.push_str(&format!("❌ 项目结构错误: {}\n", e)),
+    }
     
     println!("✅ 检查完成！");
+    result_output.push_str("\n✅ 检查完成！");
     
-    Ok(())
+    Ok(result_output)
 }
 
 /// 检查项目配置
@@ -212,4 +253,52 @@ fn find_project_config(start_dir: &Path) -> Result<std::path::PathBuf> {
     }
     
     anyhow::bail!("未找到 rmmproject.toml 配置文件");
+}
+
+/// 检查 Shell 脚本语法
+fn check_shell_syntax() -> Result<String> {
+    println!("\n🐚 检查 Shell 脚本语法...");
+    
+    let current_dir = std::env::current_dir()?;
+    
+    // 检查 shellcheck 是否可用
+    if !shellcheck::is_shellcheck_available() {
+        let warning_msg = "⚠️  shellcheck 工具未安装或不可用，跳过语法检查";
+        println!("{}", warning_msg);
+        return Ok(warning_msg.to_string());
+    }
+    
+    // 运行 shellcheck
+    match shellcheck::check_project(&current_dir, true) {
+        Ok((results, all_passed)) => {
+            let formatted_output = shellcheck::format_results(&results, true);
+            
+            if all_passed {
+                let success_msg = if results.is_empty() {
+                    "✅ 未发现 Shell 脚本文件"
+                } else {
+                    "✅ Shell 脚本语法检查通过"
+                };
+                println!("{}", success_msg);
+                
+                // 返回详细结果
+                if results.is_empty() {
+                    Ok(success_msg.to_string())
+                } else {
+                    Ok(format!("{}\n\n{}", success_msg, formatted_output))
+                }
+            } else {
+                let error_msg = "❌ Shell 脚本语法检查发现问题";
+                println!("{}", error_msg);
+                
+                // 返回详细错误信息
+                Ok(format!("{}\n\n{}", error_msg, formatted_output))
+            }
+        }
+        Err(e) => {
+            let error_msg = format!("❌ Shell 脚本语法检查失败: {}", e);
+            println!("{}", &error_msg);
+            Err(anyhow::anyhow!(error_msg))
+        }
+    }
 }

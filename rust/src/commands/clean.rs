@@ -54,7 +54,7 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 clean 命令
-pub fn handle_clean(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_clean(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     let all = matches.get_flag("all");
     let logs_only = matches.get_flag("logs");
     let cache_only = matches.get_flag("cache");
@@ -125,14 +125,12 @@ pub fn handle_clean(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
                 
                 let mut input = String::new();
                 io::stdin().read_line(&mut input)?;
-                
-                if !matches!(input.trim().to_lowercase().as_str(), "y" | "yes" | "是") {
+                  if !matches!(input.trim().to_lowercase().as_str(), "y" | "yes" | "是") {
                     println!("❌ 清理已取消");
-                    return Ok(());
+                    return Ok("清理已取消".to_string());
                 }
             }
-            
-            println!("\n✅ 清理完成!");
+              println!("\n✅ 清理完成!");
             println!("  已删除文件: {} 个", file_count);
             println!("  释放空间: {:.2} MB", size_mb);
         } else {
@@ -140,7 +138,7 @@ pub fn handle_clean(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         }
     }
 
-    Ok(())
+    Ok("项目清理完成".to_string())
 }
 
 /// 清理目录下的文件

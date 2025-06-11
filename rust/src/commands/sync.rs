@@ -64,7 +64,7 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 sync 命令
-pub fn handle_sync(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_sync(config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     // 默认行为：总是同步项目列表
     handle_sync_projects(config, matches)?;
     
@@ -74,7 +74,7 @@ pub fn handle_sync(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         handle_sync_dependencies(config, matches)?;
     }
     
-    Ok(())
+    Ok("项目同步成功".to_string())
 }
 
 /// 处理项目列表同步

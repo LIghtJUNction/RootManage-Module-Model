@@ -10,6 +10,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.2.1",
+    "mcp[cli]>=1.9.3",
     "pygithub>=2.6.1",
     "requests>=2.32.4",
     "toml>=0.10.2",

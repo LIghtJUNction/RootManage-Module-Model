@@ -52,13 +52,12 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 completion 命令
-pub fn handle_completion(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_completion(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     let shell = matches.get_one::<SupportedShell>("shell").unwrap();
     let shell_type: Shell = shell.clone().into();
     
     // 获取主命令
-    let mut cmd = crate::build_cli();
-    let name = cmd.get_name().to_string();
+    let mut cmd = crate::build_cli();    let name = cmd.get_name().to_string();
     
     // 生成补全脚本
     if let Some(output_path) = matches.get_one::<String>("output") {
@@ -67,14 +66,15 @@ pub fn handle_completion(_config: &RmmConfig, matches: &ArgMatches) -> Result<()
         generate(shell_type, &mut cmd, name, &mut file);
         println!("✅ 补全脚本已生成到: {}", output_path);
         print_installation_instructions(shell, Some(output_path));
-    } else {
+        Ok("补全脚本生成成功".to_string())
+    } 
+    else {
         // 输出到标准输出
         generate(shell_type, &mut cmd, name, &mut io::stdout());
         eprintln!();
         print_installation_instructions(shell, None);
+        Ok("补全脚本输出完成".to_string())
     }
-    
-    Ok(())
 }
 
 /// 打印安装说明

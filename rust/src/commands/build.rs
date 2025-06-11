@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use std::path::Path;
-use crate::config::{RmmConfig, ProjectConfig, RmakeConfig};
+use crate::config::{RmmConfig, ProjectConfig, RmakeConfig, create_default_rmake_config};
 use crate::utils::find_or_create_project_config;
 
 /// 构建 build 命令
@@ -44,7 +44,7 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 build 命令
-pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
     let project_config_path = find_or_create_project_config(&current_dir)?;
@@ -95,10 +95,9 @@ pub fn handle_build(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     runtime.block_on(async {
         build_project(&project_config, &build_output, output_dir, debug, skip_shellcheck).await
     })?;
+      println!("✅ 构建完成！输出目录: {}", build_output.display());
     
-    println!("✅ 构建完成！输出目录: {}", build_output.display());
-    
-    Ok(())
+    Ok("项目构建成功".to_string())
 }
 
 /// 构建项目
@@ -111,7 +110,20 @@ async fn build_project(config: &ProjectConfig, _output_dir: &Path, user_output_d
     let dist_dir = rmmp_dir.join("dist");
     
     // 加载 Rmake 配置
-    let rmake_config = crate::config::RmakeConfig::load_from_dir(&project_root)?;    // 确保目录存在
+    let rmake_config = match crate::config::RmakeConfig::load_from_dir(&project_root)? {
+        Some(config) => Some(config),
+        None => {
+            println!("📝 未找到 Rmake.toml，创建默认配置...");
+            let default_config = create_default_rmake_config();
+            // project_root 是项目根目录
+            default_config.save_to_dir(&project_root)?;
+            let rmake_path = project_root.join(".rmmp").join("Rmake.toml"); // 用于打印信息
+            println!("✅ 已创建默认 Rmake.toml: {}", rmake_path.display());
+            Some(default_config)
+        }
+    };
+
+    // 确保目录存在
     std::fs::create_dir_all(&build_dir)?;
     std::fs::create_dir_all(&dist_dir)?;
     
@@ -508,7 +520,7 @@ fn execute_build_steps(
 }
 
 /// 运行 Rmake.toml 中定义的脚本
-fn run_script(project_root: &Path, script_name: &str) -> Result<()> {
+fn run_script(project_root: &Path, script_name: &str) -> Result<String> {
     println!("🔧 运行脚本: {}", script_name);
     
     // 加载 Rmake 配置
@@ -567,14 +579,14 @@ fn run_script(project_root: &Path, script_name: &str) -> Result<()> {
             println!("{}", stdout.trim());
         }
     }
-    
     println!("✅ 脚本 '{}' 执行完成", script_name);
     
-    Ok(())
+    Ok(format!("脚本 '{}' 执行成功", script_name))
 }
 
 /// 生成 ZIP 文件名，支持变量替换
-fn generate_zip_filename(config: &ProjectConfig, rmake_config: Option<&RmakeConfig>) -> Result<String> {    let template = if let Some(rmake) = rmake_config {
+fn generate_zip_filename(config: &ProjectConfig, rmake_config: Option<&RmakeConfig>) -> Result<String> {
+    let template = if let Some(rmake) = rmake_config {
         if let Some(ref package) = rmake.package {
             if let Some(ref zip_name) = package.zip_name {
                 if zip_name == "default" {
@@ -630,7 +642,8 @@ fn replace_template_variables(template: &str, config: &ProjectConfig) -> Result<
         .map(|a| a.email.as_str())
         .unwrap_or("unknown");
       // 定义变量映射
-    let variables = [        ("{id}", config.id.as_str()),
+    let variables = [        
+        ("{id}", config.id.as_str()),
         ("{name}", config.name.as_str()),
         ("{version}", config.version.as_deref().unwrap_or("unknown")),
         ("{version_code}", config.version_code.as_str()),

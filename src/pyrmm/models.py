@@ -5,7 +5,7 @@ This file defines the type structure for RMM projects, configuration files,
 and core data models used throughout the system.
 """
 
-from typing import Dict, List, Optional, Any, TypedDict, Literal
+from typing import Dict, List, Optional, TypedDict, Literal
 from pathlib import Path
 
 

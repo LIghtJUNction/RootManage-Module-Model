@@ -2,7 +2,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use anyhow::Result;
 use std::path::Path;
 use std::collections::HashMap;
-use crate::config::{RmmConfig, ProjectConfig};
+use crate::config::{RmmConfig, ProjectConfig, create_default_rmake_config};
 use crate::utils::{ensure_dir_exists, get_git_info};
 use std::fs;
 
@@ -42,7 +42,7 @@ pub fn build_command() -> Command {
         )
 }
 
-pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     let project_path = matches.get_one::<String>("path").unwrap();
     let yes = matches.get_flag("yes");
     let is_lib = matches.get_flag("lib");
@@ -89,17 +89,18 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         println!("🎮 已创建 RAVD 项目结构");
     } else {
         create_basic_structure(path)?;
-        println!("📦 已创建基础项目结构");
-    }    // 创建基础文件
+        println!("📦 已创建基础项目结构");    }    // 创建基础文件
     create_basic_files(path, &project_name, author_name)?;
+    
+    // 创建 Rmake.toml
+    create_rmake_toml(path, &project_name)?;
       // 创建 module.prop
     create_module_prop(path, &project_config)?;
       // 将新创建的项目添加到全局元数据
     let mut rmm_config = RmmConfig::load()?;
     let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
     rmm_config.add_current_project(&project_name, &canonical_path)?;
-    
-    println!("✅ 项目 '{}' 初始化完成！", project_name);
+      println!("✅ 项目 '{}' 初始化完成！", project_name);
     
     if !yes {
         println!("\n💡 提示:");
@@ -108,7 +109,7 @@ pub fn handle_init(config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         println!("  - 编辑 'rmmproject.toml' 配置项目信息");
     }
     
-    Ok(())
+    Ok(format!("项目 {} 初始化成功", project_name))
 }
 
 fn create_project_config(
@@ -147,7 +148,8 @@ fn create_project_config(
       Ok(ProjectConfig {
         id: name.to_string(),
         name: name.to_string(),
-        description: Some(format!("RMM项目 {}", name)),        requires_rmm: format!(">={}", rmm_version),
+        description: Some(format!("RMM项目 {}", name)),        
+        requires_rmm: format!(">={}", rmm_version),
         version: Some("v0.1.0".to_string()),
         version_code: "1000000".to_string(), // 使用合理的初始版本代码
         update_json,
@@ -386,5 +388,14 @@ fn create_module_prop(path: &Path, config: &ProjectConfig) -> Result<()> {
     fs::write(&module_prop_path, module_prop_content)?;
     println!("✅ 创建文件: module.prop");
 
+    Ok(())
+}
+
+fn create_rmake_toml(path: &Path, _project_name: &str) -> Result<()> {
+    // 使用默认的 RmakeConfig 生成 Rmake.toml
+    let default_config = create_default_rmake_config();
+    // save_to_dir 会创建 .rmmp 目录并写入 Rmake.toml
+    default_config.save_to_dir(path)?;
+    println!("✅ 创建默认 .rmmp/Rmake.toml");
     Ok(())
 }

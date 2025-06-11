@@ -24,7 +24,7 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 test 命令
-pub fn handle_test(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_test(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     let current_dir = std::env::current_dir()?;
     let verbose = matches.get_flag("verbose");
     let shellcheck_only = matches.get_flag("shellcheck");
@@ -43,16 +43,13 @@ pub fn handle_test(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
     if !shellcheck_only {
         // 预留其他测试类型的空间
         println!("📋 其他测试类型将在未来版本中添加");
-    }
-    
-    if all_tests_passed {
+    }    if all_tests_passed {
         println!("✅ 所有测试通过！");
+        Ok("项目测试通过".to_string())
     } else {
         println!("❌ 部分测试失败！");
-        std::process::exit(1);
+        Ok("项目测试失败".to_string())
     }
-    
-    Ok(())
 }
 
 /// 运行 shellcheck 测试

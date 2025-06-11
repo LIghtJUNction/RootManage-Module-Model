@@ -36,7 +36,7 @@ pub fn build_command() -> Command {
         )
 }
 
-pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     println!("🚀 准备发布模块到 GitHub...");
     
     // 检查 GitHub token (优先级: --token > GITHUB_ACCESS_TOKEN > GITHUB_TOKEN)
@@ -173,10 +173,9 @@ pub fn handle_publish(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
         result.extract::<bool>()
             .map_err(|e| anyhow::anyhow!("提取返回值失败: {}", e))
     })?;
-    
-    if result {
+      if result {
         println!("✅ 发布完成！");
-        Ok(())
+        Ok("项目发布成功".to_string())
     } else {
         anyhow::bail!("❌ 发布失败");
     }

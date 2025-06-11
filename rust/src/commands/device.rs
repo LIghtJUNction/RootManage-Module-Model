@@ -199,33 +199,65 @@ pub fn build_command() -> Command {
 }
 
 /// 处理 device 命令
-pub fn handle_device(_config: &RmmConfig, matches: &ArgMatches) -> Result<()> {
+pub fn handle_device(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
     // 检查 ADB 是否可用
     if !check_adb_available() {
-        println!("❌ ADB 不可用");
-        println!("💡 请确保:");
+        println!("❌ ADB 不可用");        println!("💡 请确保:");
         println!("  1. 已安装 Android SDK Platform Tools");
         println!("  2. ADB 已添加到系统 PATH");
         println!("  3. 运行 'adb version' 确认安装");
-        return Ok(());
+        return Ok("ADB 不可用".to_string());
     }
 
     let mut adb = AdbManager::new();
     adb.start_server()?;    match matches.subcommand() {
-        Some(("list", _)) => handle_list_devices(&mut adb),
-        Some(("info", sub_matches)) => handle_device_info(&mut adb, sub_matches),
-        Some(("shell", sub_matches)) => handle_shell_command(&mut adb, sub_matches),
-        Some(("install", sub_matches)) => handle_install_module(&mut adb, sub_matches),
-        Some(("uninstall", sub_matches)) => handle_uninstall_module(&mut adb, sub_matches),
-        Some(("push", sub_matches)) => handle_push_file(&mut adb, sub_matches),
-        Some(("pull", sub_matches)) => handle_pull_file(&mut adb, sub_matches),
-        Some(("reboot", sub_matches)) => handle_reboot_device(&mut adb, sub_matches),
-        Some(("logs", sub_matches)) => handle_get_logs(&mut adb, sub_matches),
-        Some(("check", sub_matches)) => handle_check_module(&mut adb, sub_matches),
-        Some(("test", sub_matches)) => handle_test_module(&mut adb, sub_matches),
+        Some(("list", _)) => {
+            handle_list_devices(&mut adb)?;
+            Ok("设备列表获取成功".to_string())
+        },
+        Some(("info", sub_matches)) => {
+            handle_device_info(&mut adb, sub_matches)?;
+            Ok("设备信息获取成功".to_string())
+        },
+        Some(("shell", sub_matches)) => {
+            handle_shell_command(&mut adb, sub_matches)?;
+            Ok("命令执行成功".to_string())
+        },
+        Some(("install", sub_matches)) => {
+            handle_install_module(&mut adb, sub_matches)?;
+            Ok("模块安装成功".to_string())
+        },
+        Some(("uninstall", sub_matches)) => {
+            handle_uninstall_module(&mut adb, sub_matches)?;
+            Ok("模块卸载成功".to_string())
+        },
+        Some(("push", sub_matches)) => {
+            handle_push_file(&mut adb, sub_matches)?;
+            Ok("文件推送成功".to_string())
+        },
+        Some(("pull", sub_matches)) => {
+            handle_pull_file(&mut adb, sub_matches)?;
+            Ok("文件拉取成功".to_string())
+        },
+        Some(("reboot", sub_matches)) => {
+            handle_reboot_device(&mut adb, sub_matches)?;
+            Ok("设备重启成功".to_string())
+        },
+        Some(("logs", sub_matches)) => {
+            handle_get_logs(&mut adb, sub_matches)?;
+            Ok("日志获取成功".to_string())
+        },
+        Some(("check", sub_matches)) => {
+            handle_check_module(&mut adb, sub_matches)?;
+            Ok("模块检查完成".to_string())
+        },
+        Some(("test", sub_matches)) => {
+            handle_test_module(&mut adb, sub_matches)?;
+            Ok("模块测试完成".to_string())
+        },
         _ => {
             println!("使用 'rmm device --help' 查看可用命令");
-            Ok(())
+            Ok("设备命令执行完成".to_string())
         }
     }
 }
@@ -634,7 +666,8 @@ fn install_module_with_manager(adb: &mut AdbManager, device_id: &str, module_pat
     // 先推送模块文件
     adb.push_file(device_id, module_path, "/data/local/tmp/test_module.zip")?;
     
-    match root_manager {        "Magisk" => {
+    match root_manager {        
+        "Magisk" => {
             println!("🎭 使用 Magisk 安装模块");
             let output = adb.exec_shell(device_id, &[
                 "su", "-c", "cd /data/local/tmp && magisk --install-module test_module.zip 2>&1"
@@ -832,7 +865,8 @@ fn verify_installation(adb: &mut AdbManager, device_id: &str, root_manager: &str
         return Ok(());
     }
       // Root 管理器特定验证
-    match root_manager {        "Magisk" => {
+    match root_manager {        
+        "Magisk" => {
             // 显示已安装的 Magisk 模块
             if let Ok(output) = adb.exec_shell(device_id, &["su", "-c", "ls -la /data/adb/modules/"]) {
                 println!("🎭 Magisk 已安装模块目录:");
@@ -1166,8 +1200,6 @@ fn get_installed_modules(adb: &mut AdbManager, device_id: &str, root_manager: &s
             // 通用方法：检查所有可能的模块目录
             let dirs = vec![
                 "/data/adb/modules/",
-                "/data/adb/ksu/modules/",
-                "/data/adb/ap/modules/",
             ];
             
             for dir in dirs {

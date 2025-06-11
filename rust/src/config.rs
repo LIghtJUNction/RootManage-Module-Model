@@ -708,3 +708,35 @@ pub fn find_project_file(start_dir: &Path) -> Result<PathBuf> {
     
     anyhow::bail!("未找到 rmmproject.toml 配置文件")
 }
+
+/// 返回默认的 Rmake 配置
+pub fn create_default_rmake_config() -> RmakeConfig {
+    use std::collections::HashMap;
+
+    let mut scripts = HashMap::new();
+    scripts.insert("test".to_string(), "echo 'Running tests...'".to_string());
+    scripts.insert("lint".to_string(), "echo 'Linting code...'".to_string());
+
+    RmakeConfig {
+        build: BuildConfig {
+            prebuild: Some(vec!["echo 'Pre-build step'".to_string()]),
+            build: Some(vec!["echo 'Main build step'".to_string()]),
+            postbuild: Some(vec!["echo 'Post-build step'".to_string()]),
+            exclude: Some(vec![
+                ".git".to_string(),
+                "target".to_string(),
+                "*.log".to_string(),
+                ".vscode".to_string(),
+                ".idea".to_string(),
+                "node_modules".to_string(),
+                "__pycache__".to_string(),
+            ]),
+        },
+        package: Some(PackageConfig {
+            compression: Some("default".to_string()),
+            zip_name: Some("default".to_string()),
+        }),
+        scripts: Some(scripts),
+        proxy: None,
+    }
+}

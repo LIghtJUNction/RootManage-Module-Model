@@ -5,6 +5,7 @@ RMM CLI 模块
 """
 
 import sys
+import argparse
 from collections.abc import Callable
 
 def _find_rust_module():
@@ -32,6 +33,7 @@ if rmmcore is None:
         "运行 'maturin develop' 来构建扩展。"
     )
 
+
 # 包装 CLI 函数以处理参数
 def cli(args=None):
     """
@@ -44,7 +46,7 @@ def cli(args=None):
     if args is None:
         args = sys.argv[1:]
     
-    # 调用 Rust 实现的 CLI 函数
+    # 所有命令都调用 Rust 实现的 CLI 函数
     return rmmcore.cli(args)
 
 __all__ = ['cli']

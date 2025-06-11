@@ -52,9 +52,17 @@ fn run_cli(args: Vec<String>) -> Result<()> {
             commands::run::handle_run(&config, sub_matches)?;
         }        Some(("device", sub_matches)) | Some(("devices", sub_matches)) => {
             commands::device::handle_device(&config, sub_matches)?;
-        }
-        Some(("clean", sub_matches)) => {
+        }        Some(("clean", sub_matches)) => {
             commands::clean::handle_clean(&config, sub_matches)?;
+        }
+        Some(("test", sub_matches)) => {
+            commands::test::handle_test(&config, sub_matches)?;
+        }
+        Some(("completion", sub_matches)) => {
+            commands::completion::handle_completion(&config, sub_matches)?;
+        }
+        Some(("mcp", sub_matches)) => {
+            commands::mcp::handle_mcp(&config, sub_matches)?;
         }
         _ => {
             println!("{}", DESCRIPTION);
@@ -84,12 +92,17 @@ fn build_cli() -> Command {
                 .value_name("TOKEN")
                 .help("GitHub Personal Access Token")
                 .global(true),
-        )        .subcommand(commands::init::build_command())
+        )        
+        .subcommand(commands::init::build_command())
         .subcommand(commands::build::build_command())
         .subcommand(commands::sync::build_command())
         .subcommand(commands::check::build_command())
-        .subcommand(commands::publish::build_command())        .subcommand(commands::config::build_command())
+        .subcommand(commands::publish::build_command())
+        .subcommand(commands::config::build_command())
         .subcommand(commands::run::build_command())
         .subcommand(commands::device::build_command())
         .subcommand(commands::clean::build_command())
+        .subcommand(commands::test::build_command())
+        .subcommand(commands::completion::build_command())
+        .subcommand(commands::mcp::build_command())
 }

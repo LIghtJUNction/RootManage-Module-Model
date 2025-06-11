@@ -1785,7 +1785,7 @@ dependencies = [
 
 [[package]]
 name = "rmm"
-version = "0.2.2"
+version = "0.2.5"
 dependencies = [
  "adb_client",
  "anyhow",
