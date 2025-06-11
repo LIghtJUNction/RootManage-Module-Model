@@ -15,7 +15,7 @@ title: 同步命令
 rmm sync
 
 # 仅同步项目列表，不更新项目元数据
-rmm sync --projects-only
+rmm sync --projects
 
 # 指定最大搜索深度为 2
 rmm sync --max-depth 2
@@ -23,5 +23,5 @@ rmm sync --max-depth 2
 
 ## 选项
 
-- `--projects-only`：仅同步项目列表，跳过元数据更新。
+- `--projects`：仅同步项目列表，跳过元数据更新。
 - `--max-depth <N>`：搜索项目的最大目录深度。
