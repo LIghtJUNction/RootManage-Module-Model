@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction, Command};
 use anyhow::Result;
-use crate::config::RmmConfig;
-use pyo3::prelude::*;
+use crate::commands::utils::core::config::RmmConfig;
+use pyo3::types::{PyAnyMethods, PyDictMethods};
 
 pub fn build_command() -> Command {
     Command::new("mcp")

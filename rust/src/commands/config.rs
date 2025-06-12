@@ -1,6 +1,7 @@
-use clap::{Arg, ArgMatches, Command, ArgAction};
+
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use anyhow::Result;
-use crate::config::RmmConfig;
+use crate::commands::utils::core::config::RmmConfig;
 
 pub fn build_command() -> Command {
     Command::new("config")
@@ -38,7 +39,7 @@ pub fn build_command() -> Command {
         )
 }
 
-pub fn handle_config(_config: &RmmConfig, matches: &ArgMatches) -> Result<String> {
+pub fn handle_config(_config: &RmmConfig, matches: &ArgMatches) -> Result<String, anyhow::Error> {
     let mut config = RmmConfig::load().unwrap_or_default();
     let mut updated = false;
 

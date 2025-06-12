@@ -1,9 +1,11 @@
-use anyhow::Result;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use std::path::Path;
-use crate::config::{RmmConfig, ProjectConfig};
+use anyhow::Result;
+use crate::commands::utils::core::config::{RmmConfig, ProjectConfig, get_rmm_version};
+use crate::commands::utils::core::common::ProjectManager;
+use crate::commands::utils::core::executor::SyncManager;
 
 /// 构建 sync 命令
+
 pub fn build_command() -> Command {
     Command::new("sync")
         .about("同步项目列表和依赖")
@@ -87,13 +89,9 @@ fn handle_sync_projects(_config: &RmmConfig, matches: &ArgMatches) -> Result<()>
     let fix_meta = matches.get_flag("fix-meta");
     if fix_meta {
         println!("🔧 验证并修复 meta.toml 格式...");
-        let fixed = rmm_config.validate_and_fix_format()?;
-        if fixed {
-            rmm_config.save()?;
-            println!("✅ meta.toml 格式已修复并保存");
-        } else {
-            println!("✅ meta.toml 格式正常，无需修复");
-        }
+        rmm_config.validate_and_fix_format()?;
+        rmm_config.save()?;
+        println!("✅ meta.toml 格式已修复并保存");
     }
     
     // 同步用户信息
@@ -112,12 +110,13 @@ fn handle_sync_projects(_config: &RmmConfig, matches: &ArgMatches) -> Result<()>
     };
     
     // 获取最大深度
-    let max_depth: usize = matches.get_one::<String>("max-depth")
+    let _max_depth: usize = matches.get_one::<String>("max-depth")
         .unwrap()
         .parse()
         .map_err(|_| anyhow::anyhow!("无效的最大深度参数"))?;
-      // 同步项目列表
-    rmm_config.sync_project_list(&search_paths, max_depth)?;
+    
+    // 同步项目列表
+    rmm_config.sync_project_list(&search_paths)?;
     
     println!("✅ 项目列表同步完成！");
     Ok(())
@@ -129,7 +128,7 @@ fn handle_sync_dependencies(config: &RmmConfig, matches: &ArgMatches) -> Result<
 
     // 查找项目配置文件
     let current_dir = std::env::current_dir()?;
-    let project_config_path = find_project_config(&current_dir)?;
+    let project_config_path = ProjectManager::find_project_file(&current_dir)?;
     
     println!("📁 项目配置: {}", project_config_path.display());
     
@@ -148,82 +147,27 @@ fn handle_sync_dependencies(config: &RmmConfig, matches: &ArgMatches) -> Result<
         println!("🔧 包含开发依赖");
     }
     
-    // 更新版本信息
-    crate::utils::update_project_version(&mut project_config)?;
+    // 更新版本信息 - 注意这里使用项目配置中的版本而非 RMM 工具版本
+    let project_version = project_config.version.clone().unwrap_or_else(|| "0.1.0".to_string());
+    SyncManager::update_project_version(&mut project_config, &project_version)?;
     
-    // 同步RMM版本信息
-    sync_rmm_metadata(config, &mut project_config)?;
+    // 更新 requires_rmm 字段为当前 RMM 版本
+    project_config.requires_rmm = get_rmm_version();
     
-    // 同步依赖
-    sync_dependencies(&project_config, force, dev)?;
+    // 同步依赖项 - 这里简化处理，实际应该有更复杂的依赖同步逻辑
+    println!("📦 同步依赖项...");
+    if project_config.dependencies.is_empty() {
+        println!("  无依赖项需要同步");
+    } else {
+        for dep in &project_config.dependencies {
+            println!("  - {} ({})", dep.name, dep.version);
+        }
+    }
     
     // 保存更新后的配置
     project_config.save_to_dir(&project_config_path.parent().unwrap())?;
     
     println!("✅ 同步完成！");
-    
-    Ok(())
-}
-
-
-
-/// 查找项目配置文件
-fn find_project_config(start_dir: &Path) -> Result<std::path::PathBuf> {
-    let mut current = start_dir;
-    
-    loop {
-        let config_path = current.join("rmmproject.toml");
-        if config_path.exists() {
-            return Ok(config_path);
-        }
-        
-        if let Some(parent) = current.parent() {
-            current = parent;
-        } else {
-            break;
-        }
-    }
-    
-    anyhow::bail!("未找到 rmmproject.toml 配置文件。请确保在 RMM 项目根目录中运行此命令。");
-}
-
-/// 同步RMM元数据
-fn sync_rmm_metadata(config: &RmmConfig, project_config: &mut ProjectConfig) -> Result<()> {
-    println!("📋 同步RMM元数据...");
-    
-    // 更新requires_rmm版本
-    let old_version = project_config.requires_rmm.clone();
-    project_config.requires_rmm = config.version.clone();
-    
-    if old_version != project_config.requires_rmm {
-        println!("🔄 更新RMM版本要求: {} -> {}", old_version, project_config.requires_rmm);
-    } else {
-        println!("✅ RMM版本要求已是最新: {}", project_config.requires_rmm);
-    }
-    
-    // 将当前项目添加到全局 meta.toml 的项目列表中
-    let mut rmm_config = RmmConfig::load()?;
-    let current_dir = std::env::current_dir()?;
-    
-    // 使用新的方法添加当前项目
-    rmm_config.add_current_project(&project_config.id, &current_dir)?;
-    
-    Ok(())
-}
-
-/// 同步依赖
-fn sync_dependencies(config: &ProjectConfig, _force: bool, _include_dev: bool) -> Result<()> {
-    println!("📦 同步依赖项...");
-    
-    // 显示当前依赖
-    if !config.dependencies.is_empty() {
-        println!("依赖项:");
-        for dep in &config.dependencies {
-            println!("  - {} ({})", dep.name, dep.version);
-        }
-    } else {
-        println!("  无依赖项");
-    }
     
     Ok(())
 }

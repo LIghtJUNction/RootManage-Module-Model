@@ -1,24 +1,24 @@
 id = "TEST"
 name = "TEST"
 description = "RMM项目 TEST"
-requires_rmm = "0.2.5"
-version = "v0.1.0-1951b008"
-versionCode = "2025061202"
-updateJson = "https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/TEST/update.json"
+requires_rmm = "0.2.6"
+version = "v0.1.0"
+versionCode = "1000000"
+updateJson = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json"
 readme = "README.MD"
 changelog = "CHANGELOG.MD"
 license = "LICENSE"
 dependencies = []
 
 [[authors]]
-name = "LIghtJUNction"
-email = "LIghtJUNction.me@gmail.com"
+name = "username"
+email = "email"
 
 [scripts]
 build = "rmm build"
 
 [urls]
-github = "https://github.com/LIghtJUNction/RootManageModuleModel"
+github = "https://github.com/YOUR_USERNAME/YOUR_REPOSITORY"
 
 [build]
 prebuild = ["Rmake"]
@@ -33,8 +33,8 @@ exclude = [
 ]
 
 [git]
-git_root = ""
-remote_url = "https://github.com/LIghtJUNction/RootManageModuleModel.git"
-username = "LIghtJUNction"
-repo_name = "RootManageModuleModel"
-is_in_repo_root = false
+git_root = 'C:\Users\light\Documents\GitHub\RootManageModuleModel\TEST'
+remote_url = ""
+username = "Unknown User"
+repo_name = "user@example.com"
+is_in_repo_root = true

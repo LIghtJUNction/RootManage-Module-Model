@@ -10,3 +10,4 @@ pub mod clean;
 pub mod test;
 pub mod completion;
 pub mod mcp;
+pub mod utils;

@@ -1,7 +1,7 @@
 id=TEST
 name=TEST
-version=v0.1.0-1951b008
-versionCode=2025061201
-author=LIghtJUNction
+version=v0.1.0
+versionCode=1000000
+author=username
 description=RMM项目 TEST
-updateJson=https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/TEST/update.json
+updateJson=https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json

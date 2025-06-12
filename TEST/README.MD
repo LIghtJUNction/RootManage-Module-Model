@@ -44,7 +44,7 @@ MIT License - 查看 [LICENSE](LICENSE) 文件了解详情。
 
 ## 作者
 
-- LIghtJUNction
+- username
 
 ---
 

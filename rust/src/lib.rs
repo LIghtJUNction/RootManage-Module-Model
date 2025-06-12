@@ -1,19 +1,29 @@
+// PyO3 imports
 use pyo3::prelude::*;
-use clap::{Arg, ArgAction, Command};
-use anyhow::Result;
+use pyo3::{pyfunction, pymodule, wrap_pyfunction, PyResult, PyErr, Bound};
+
+// Standard library imports
 use std::env;
 
-mod config;
-mod commands;
-mod utils;
-mod proxy;
-mod adb;
-pub mod shellcheck;
+// Clap imports for CLI
+use clap::{Command, Arg, ArgAction};
 
-use config::RmmConfig;
-use utils::setup_logging;
+// Anyhow for error handling
+use anyhow::Result;
+
+// Module declarations
+mod commands;
+
+// Import configuration and utility types
+use commands::utils::core::config::RmmConfig;
 
 const DESCRIPTION: &str = "RMM: 高性能 Magisk/APatch/KernelSU 模块开发工具";
+
+/// 设置日志记录
+fn setup_logging() -> Result<()> {
+    // 简单的日志设置
+    Ok(())
+}
 
 /// 主 CLI 函数，直接从 Python 调用
 #[pyfunction]
@@ -29,7 +39,8 @@ fn cli(args: Option<Vec<String>>) -> PyResult<()> {
         // 从命令行获取参数，跳过第一个（程序名）
         final_args.extend(env::args().skip(1));
     }
-      match run_cli(final_args) {
+    
+    match run_cli(final_args) {
         Ok(_) => Ok(()),
         Err(e) => {
             // 不要在这里打印错误，因为 clap 已经处理了输出
@@ -54,34 +65,14 @@ fn cli_with_output(args: Option<Vec<String>>) -> PyResult<Option<String>> {
         // 从命令行获取参数，跳过第一个（程序名）
         final_args.extend(env::args().skip(1));
     }
-      match run_cli_with_output(final_args) {
+    
+    match run_cli_with_output(final_args) {
         Ok(output) => Ok(output),
         Err(e) => {
             eprintln!("错误: {}", e);
             Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{}", e)))
         }
     }
-}
-
-/// 调用 Python 发布函数
-#[pyfunction]
-fn publish_to_github(config_json: String) -> PyResult<bool> {
-    use pyo3::types::PyModule;
-    
-    pyo3::Python::with_gil(|py| {        // 导入 publisher 模块
-        let publisher_module = PyModule::import(py, "pyrmm.publisher")?;
-        
-        // 导入 json 模块
-        let json = PyModule::import(py, "json")?;
-        
-        // 调用 json.loads 函数
-        let config_dict = json.getattr("loads")?.call1((config_json,))?;
-        
-        // 调用 publish_to_github 函数
-        let result = publisher_module.getattr("publish_to_github")?.call1((config_dict,))?;
-        
-        Ok(result.extract::<bool>()?)
-    })
 }
 
 /// 运行 CLI 的核心逻辑
@@ -107,8 +98,10 @@ fn run_cli(args: Vec<String>) -> Result<()> {
     };
     
     // 初始化配置
-    let config = RmmConfig::load()?;    // 路由到不同的命令处理器
-    match matches.subcommand() {        
+    let config = RmmConfig::load()?;
+    
+    // 路由到不同的命令处理器
+    match matches.subcommand() {
         Some(("init", sub_matches)) => {
             match commands::init::handle_init(&config, sub_matches) {
                 Ok(_result) => Ok(()),
@@ -142,7 +135,8 @@ fn run_cli(args: Vec<String>) -> Result<()> {
                 Ok(_result) => Ok(()),
                 Err(e) => Err(e)
             }
-        },        Some(("config", sub_matches)) => {
+        },
+        Some(("config", sub_matches)) => {
             match commands::config::handle_config(&config, sub_matches) {
                 Ok(_result) => Ok(()),
                 Err(e) => Err(e)
@@ -165,7 +159,8 @@ fn run_cli(args: Vec<String>) -> Result<()> {
                 Ok(_result) => Ok(()),
                 Err(e) => Err(e)
             }
-        },        Some(("test", sub_matches)) => {
+        },
+        Some(("test", sub_matches)) => {
             match commands::test::handle_test(&config, sub_matches) {
                 Ok(_result) => Ok(()),
                 Err(e) => Err(e)
@@ -218,7 +213,7 @@ fn run_cli_with_output(args: Vec<String>) -> Result<Option<String>> {
     let config = RmmConfig::load()?;
 
     // 路由到不同的命令处理器，并收集输出结果
-    match matches.subcommand() {        
+    match matches.subcommand() {
         Some(("init", sub_matches)) => {
             match commands::init::handle_init(&config, sub_matches) {
                 Ok(result) => Ok(Some(result)),
@@ -295,7 +290,7 @@ fn run_cli_with_output(args: Vec<String>) -> Result<Option<String>> {
             // 如果没有子命令，显示帮助
             let mut app = build_cli();
             app.print_help()?;
-            Ok(Some("帮助信息已显示".to_string()))
+            Ok(None)
         }
     }
 }
@@ -303,50 +298,38 @@ fn run_cli_with_output(args: Vec<String>) -> Result<Option<String>> {
 /// 构建 CLI 应用程序
 pub fn build_cli() -> Command {
     Command::new("rmm")
-        .version(env!("CARGO_PKG_VERSION"))
+        .version("0.2.6")
         .about(DESCRIPTION)
-        .long_about("RMM (Root Module Manager) 是一个高性能的 Magisk/APatch/KernelSU 模块开发工具，使用 Rust 编写以提供卓越的性能。")
-        .arg_required_else_help(false)
-        .subcommand_required(false)
+        .long_about("RMM 是一个高性能的 Magisk/APatch/KernelSU 模块开发工具，\
+                   提供模块初始化、构建、测试、发布等完整开发流程支持。")
         .arg(
             Arg::new("verbose")
-                .short('v')
                 .long("verbose")
+                .short('v')
+                .help("显示详细输出")
                 .action(ArgAction::SetTrue)
                 .global(true)
-                .help("启用详细输出")
         )
         .arg(
             Arg::new("quiet")
-                .short('q')
                 .long("quiet")
-                .action(ArgAction::SetTrue)                
+                .short('q')
+                .help("静默模式")
+                .action(ArgAction::SetTrue)
                 .global(true)
-                .help("静默模式，只输出错误")
-        )        .subcommand(commands::init::build_command())
+        )
+        .subcommand(commands::init::build_command())
         .subcommand(commands::build::build_command())
         .subcommand(commands::sync::build_command())
         .subcommand(commands::check::build_command())
-        .subcommand(commands::publish::build_command())        .subcommand(commands::config::build_command())
+        .subcommand(commands::publish::build_command())
+        .subcommand(commands::config::build_command())
         .subcommand(commands::run::build_command())
         .subcommand(commands::device::build_command())
-        .subcommand(commands::clean::build_command())        .subcommand(commands::test::build_command())
+        .subcommand(commands::clean::build_command())
+        .subcommand(commands::test::build_command())
         .subcommand(commands::completion::build_command())
         .subcommand(commands::mcp::build_command())
-}
-
-/// 获取最快的 GitHub 代理
-#[pyfunction]
-fn get_fastest_proxy() -> PyResult<Option<String>> {
-    let rt = tokio::runtime::Runtime::new().map_err(|e| {
-        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("创建异步运行时失败: {}", e))
-    })?;
-    
-    match rt.block_on(proxy::get_fastest_proxy()) {
-        Ok(Some(proxy)) => Ok(Some(proxy.url)),
-        Ok(None) => Ok(None),
-        Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("获取代理失败: {}", e)))
-    }
 }
 
 /// Python 模块定义
@@ -355,7 +338,5 @@ fn get_fastest_proxy() -> PyResult<Option<String>> {
 fn rmmcore(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli, m)?)?;
     m.add_function(wrap_pyfunction!(cli_with_output, m)?)?;
-    m.add_function(wrap_pyfunction!(get_fastest_proxy, m)?)?;
-    m.add_function(wrap_pyfunction!(publish_to_github, m)?)?;
     Ok(())
 }

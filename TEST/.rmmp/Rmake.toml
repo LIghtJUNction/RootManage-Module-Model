@@ -1,7 +1,5 @@
 [build]
-prebuild = ["echo 'Pre-build step'"]
-build = ["echo 'Main build step'"]
-postbuild = ["echo 'Post-build step'"]
+output_dir = "dist"
 exclude = [
     ".git",
     "target",
@@ -11,15 +9,34 @@ exclude = [
     "node_modules",
     "__pycache__",
 ]
+include = []
+pre_build = ["echo 'Pre-build step'"]
+post_build = ["echo 'Post-build step'"]
 
 [package]
-compression = "default"
+compression = "deflate"
 zip_name = "default"
 
 [scripts]
-lint = "echo 'Linting code...'"
-test = "echo 'Running tests...'"
 
 [proxy]
 enabled = true
 auto_select = true
+
+[source_package]
+include = []
+exclude = [
+    ".git/",
+    ".rmmp/",
+    "target/",
+    "dist/",
+    "build/",
+    "__pycache__/",
+    "*.pyc",
+    "*.pyd",
+    "*.zip",
+    "*.tar.gz",
+    "*.log",
+    ".DS_Store",
+]
+name_template = "{id}-{version_code}-source.tar.gz"
