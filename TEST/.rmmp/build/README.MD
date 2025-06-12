@@ -1,4 +1,4 @@
-# rmmp
+# TEST
 
 一个基于 RMM (Root Module Manager) 的模块项目。
 

@@ -1,7 +1,0 @@
-id=rmmp
-name=rmmp
-version=v0.1.0
-versionCode=1000000
-author=LIghtJUNction
-description=RMM项目 rmmp
-updateJson=https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/rmmp/update.json

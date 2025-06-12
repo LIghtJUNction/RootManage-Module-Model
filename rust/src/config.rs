@@ -730,6 +730,7 @@ pub fn create_default_rmake_config() -> RmakeConfig {
                 ".idea".to_string(),
                 "node_modules".to_string(),
                 "__pycache__".to_string(),
+                ".github".to_string()
             ]),
         },
         package: Some(PackageConfig {
@@ -737,6 +738,10 @@ pub fn create_default_rmake_config() -> RmakeConfig {
             zip_name: Some("default".to_string()),
         }),
         scripts: Some(scripts),
-        proxy: None,
+        proxy: Some(ProxyConfig {
+            enabled: true,
+            auto_select: Some(true),
+            custom_proxy: None,
+        }),
     }
 }

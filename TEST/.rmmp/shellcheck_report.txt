@@ -1,5 +1,5 @@
 # Shellcheck 检查报告
-检查时间: 2025-06-11 20:09:41 UTC
+检查时间: 2025-06-12 09:40:17 UTC
 检查工具: shellcheck
 
 ## 汇总信息
@@ -11,7 +11,7 @@
 
 ## 详细结果
 
-### 文件: C:\Users\light\Documents\GitHub\RootManageModuleModel\rmmp\customize.sh
+### 文件: C:\Users\light\Documents\GitHub\RootManageModuleModel\TEST\customize.sh
 ✅ 状态: 通过
 
 #### 详细信息:

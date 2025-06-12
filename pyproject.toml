@@ -10,7 +10,7 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.2.1",
-    "mcp[cli]>=1.9.3",
+    "mcp[cli]>=1.9.4",
     "pygithub>=2.6.1",
     "requests>=2.32.4",
     "toml>=0.10.2",
@@ -27,7 +27,7 @@ build-backend = "maturin"
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.0",
-    "pytest-cov>=6.1.1",
+    "pytest-cov>=6.2.0",
     "black>=25.1.0",
     "isort>=6.0.0",
     "maturin>=1.8.0",
@@ -45,8 +45,6 @@ module-name = "pyrmm.cli.rmmcore"
 strip = true
 # 二进制类型
 bindings = "pyo3"
-
-
 
 # uv 工作区配置
 [tool.uv]
