@@ -9,4 +9,5 @@ __version__: str = "0.2.6"
 __author__: str = "LIghtJUNction"
 __PubKey__: str = ""
 
+
 __all__ = ["__version__", "__author__", "__PubKey__"]

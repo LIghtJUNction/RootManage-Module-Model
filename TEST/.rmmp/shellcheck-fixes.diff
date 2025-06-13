@@ -1,0 +1,15 @@
+
+=== \\?\C:\Users\light\Documents\GitHub\DEV\RootManageModuleModel-DEV\TEST\.rmmp\build\customize.sh ===
+--- \\?\C:\Users\light\Documents\GitHub\DEV\RootManageModuleModel-DEV\TEST\.rmmp\build\customize.sh
++++ \\?\C:\Users\light\Documents\GitHub\DEV\RootManageModuleModel-DEV\TEST\.rmmp\build\customize.sh
+@@ -23,7 +23,7 @@
+ esac
+ 
+ # 根据Android版本进行处理
+-if [ $API -lt 29 ]; then
++if [ "$API" -lt 29 ]; then
+     ui_print "- Android 10以下版本"
+ else
+     ui_print "- Android 10及以上版本"
+
+

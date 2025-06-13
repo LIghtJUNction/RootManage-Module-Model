@@ -1,0 +1,7 @@
+id=TEST
+name=TEST Module
+version=v1.0.0
+versionCode=2025061301
+author=test
+description=A rmm project: TEST
+updateJson=https://github.com/LIghtJUNction/RootManageModuleModel/releases/latest/download/update.json
