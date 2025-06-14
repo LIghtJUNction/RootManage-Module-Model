@@ -23,6 +23,7 @@ case $ARCH in
 esac
 
 # 根据Android版本进行处理
+# 示例shellcheck 自动修复 $API -> "$API"
 if [ "$API" -lt 29 ]; then
     ui_print "- Android 10以下版本"
 else

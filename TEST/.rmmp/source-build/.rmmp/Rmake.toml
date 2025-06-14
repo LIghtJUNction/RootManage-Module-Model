@@ -1,16 +1,14 @@
 [build]
-include = ['../.gitignore']
+include = ['# 额外包含的文件或目录，如："extra/"']
 exclude = [
     ".git",
     ".rmmp",
-    "system",
     "*.tmp",
-    "RE*",
     "*.log",
 ]
-prebuild = ["echo 'Starting build !!!!'"]
+prebuild = ["echo 'Starting build'"]
 build = ["rmm"]
-postbuild = ["echo 'Build completed !!!!'"]
+postbuild = ["echo 'Build completed'"]
 
 [build.src]
 include = ['# 源代码额外包含的文件，如："docs/"']
@@ -22,6 +20,4 @@ exclude = [
 ]
 
 [build.scripts]
-install = "rmm build && rmm device install"
-clean = "Remove-Item '.rmmp\\build' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item '.rmmp\\dist' -Recurse -Force -ErrorAction SilentlyContinue; New-Item -Path '.rmmp\\build' -ItemType Directory -Force; New-Item -Path '.rmmp\\dist' -ItemType Directory -Force"
-test = "rmm build && rmm test"
+clean = '''Remove-Item '.rmmp\build' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item '.rmmp\dist' -Recurse -Force -ErrorAction SilentlyContinue; New-Item -Path '.rmmp\build' -ItemType Directory -Force; New-Item -Path '.rmmp\dist' -ItemType Directory -Force'''

@@ -170,7 +170,7 @@ def echo(message: str = "world") -> str:
 @mcp.tool()
 def getRmmMeta():
     """
-    获取 RMM (Magisk 模块项目管理) 的元数据。
+    获取 RMM 的元数据。
     """
     return mcp.META
 
@@ -178,7 +178,7 @@ def getRmmMeta():
 @mcp.tool()
 def getRmmProjects():
     """
-    获取 RMM (Magisk 模块项目管理) 的项目列表。
+    获取 RMM 的项目列表。
     """
     return mcp.projects
 

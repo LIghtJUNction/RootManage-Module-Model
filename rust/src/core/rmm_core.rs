@@ -345,9 +345,11 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
 
         let content = toml::to_string_pretty(meta)
             .with_context(|| "Failed to serialize meta config")?;
-        
-        fs::write(&meta_path, content)
+            fs::write(&meta_path, content)
             .with_context(|| format!("Failed to write meta.toml to {}", meta_path.display()))?;
+
+        // 确保scripts文件夹存在
+        self.ensure_scripts_directory_exists()?;
 
         // 更新缓存
         {
@@ -368,58 +370,229 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
             .with_context(|| "Failed to parse meta.toml")?;
 
         Ok(parsed.get(key).cloned())
-    }
-
-    /// 功能五：给定项目名，返回路径
+    }    /// 功能五：给定项目名，返回路径
     pub fn get_project_path(&self, project_name: &str) -> Result<Option<PathBuf>> {
         let meta = self.get_meta_config()?;
         Ok(meta.projects.get(project_name).map(|p| PathBuf::from(p)))
     }
 
-    /// 功能六：检查各个项目是否有效（判断对应文件夹是否存在且包含 rmmproject.toml 文件）
+    /// 确保scripts文件夹和scripts/meta.toml文件存在
+    fn ensure_scripts_directory_exists(&self) -> Result<()> {
+        let rmm_root = self.get_rmm_root();
+        let scripts_dir = rmm_root.join("scripts");
+        let scripts_meta_path = scripts_dir.join("meta.toml");
+        
+        // 创建scripts目录
+        if !scripts_dir.exists() {
+            fs::create_dir_all(&scripts_dir)
+                .with_context(|| format!("Failed to create scripts directory {}", scripts_dir.display()))?;
+            println!("📁 创建scripts目录: {}", scripts_dir.display());
+        }
+        
+        // 确保scripts/meta.toml文件存在
+        if !scripts_meta_path.exists() {
+            // 创建默认的scripts/meta.toml内容
+            let default_scripts_meta = r#"# RMM Scripts Meta Configuration
+# 此文件用于管理RMM脚本
+# 脚本文件存放在当前目录下，文件名格式：hash.扩展名
+
+# 脚本索引格式："username/ID" = "hash"
+[scripts]
+# 示例：
+# "user1/build-helper" = "a1b2c3d4e5f6g7h8"
+# "user2/post-install" = "e9f0a1b2c3d4e5f6"
+
+# 脚本元数据
+[metadata]
+# 每个脚本的详细信息
+# [metadata."username/ID"]
+# author = "作者名"
+# description = "脚本描述"
+# type = "prebuild|build|postbuild"
+# version = "1.0.0"
+# hash = "文件hash值"
+# extension = "sh|ps1|py|js"
+# created = "2025-06-14"
+# updated = "2025-06-14"
+
+# 示例元数据：
+# [metadata."example/build-script"]
+# author = "example_user"
+# description = "示例构建脚本"
+# type = "build"
+# version = "1.0.0"
+# hash = "a1b2c3d4e5f6g7h8"
+# extension = "sh"
+# created = "2025-06-14"
+# updated = "2025-06-14"
+"#;
+            
+            fs::write(&scripts_meta_path, default_scripts_meta)
+                .with_context(|| format!("Failed to create scripts/meta.toml at {}", scripts_meta_path.display()))?;
+            println!("📄 创建scripts/meta.toml: {}", scripts_meta_path.display());
+        }
+        
+        Ok(())
+    }/// 功能六：检查各个项目是否有效（判断对应文件夹是否存在且包含 rmmproject.toml 文件）
     pub fn check_projects_validity(&self) -> Result<HashMap<String, bool>> {
         let meta = self.get_meta_config()?;
         let mut results = HashMap::new();
+        let mut canonical_paths = std::collections::HashSet::new();
 
         for (name, path) in &meta.projects {
             let project_path = PathBuf::from(path);
-            let is_valid = project_path.exists() && 
-                          project_path.is_dir() && 
-                          project_path.join("rmmproject.toml").exists();
-            results.insert(name.clone(), is_valid);
+            
+            // 1. 检查项目名称是否符合规范
+            let name_valid = is_valid_project_name(name);
+            if !name_valid {
+                #[cfg(debug_assertions)]
+                eprintln!("❌ 项目名称 '{}' 不符合规范", name);
+                results.insert(name.clone(), false);
+                continue;
+            }
+            
+            // 2. 黑名单检查 - 排除构建相关目录和系统目录
+            let blacklisted_names = [
+                "build", "source-build", "dist", "target", "node_modules", 
+                ".git", ".vscode", "tmp", "temp", "cache", "output",
+                ".rmmp", "out", "bin", "obj", ".next", "coverage"
+            ];
+            if blacklisted_names.contains(&name.as_str()) {
+                #[cfg(debug_assertions)]
+                eprintln!("🚫 项目名称 '{}' 在黑名单中", name);
+                results.insert(name.clone(), false);
+                continue;
+            }
+            
+            // 3. 检查路径是否为 .rmmp 的子目录（构建产物）
+            if project_path.ancestors().any(|ancestor| {
+                ancestor.file_name().map_or(false, |name| name == ".rmmp")
+            }) {
+                #[cfg(debug_assertions)]
+                eprintln!("🚫 项目路径 '{}' 位于 .rmmp 构建目录下", path);
+                results.insert(name.clone(), false);
+                continue;
+            }
+            
+            // 4. 检查项目路径和文件是否存在
+            let path_valid = project_path.exists() && 
+                           project_path.is_dir() && 
+                           project_path.join("rmmproject.toml").exists() &&
+                           project_path.join(".rmmp").exists() &&
+                           project_path.join(".rmmp").join("Rmake.toml").exists();
+            
+            if !path_valid {
+                #[cfg(debug_assertions)]
+                eprintln!("❌ 项目路径 '{}' 无效或缺少必要文件", path);
+                results.insert(name.clone(), false);
+                continue;
+            }
+            
+            // 5. 检查路径重复（使用 canonicalize 解析真实路径）
+            if let Ok(canonical_path) = project_path.canonicalize() {
+                if canonical_paths.contains(&canonical_path) {
+                    #[cfg(debug_assertions)]
+                    eprintln!("🚫 项目 '{}' 路径重复: {}", name, canonical_path.display());
+                    results.insert(name.clone(), false);
+                    continue;
+                }
+                canonical_paths.insert(canonical_path);
+            }
+            
+            // 所有检查都通过
+            results.insert(name.clone(), true);
         }
 
         Ok(results)
-    }
-
-    /// 功能七：给定一个路径和遍历深度，扫描路径下是否含有 rmmp(project)
+    }    /// 功能七：给定一个路径和遍历深度，扫描路径下是否含有 rmmp(project)
     pub fn scan_projects(&self, scan_path: &Path, max_depth: Option<usize>) -> Result<Vec<ProjectScanResult>> {
         let mut results = Vec::new();
+        let mut canonical_paths = std::collections::HashSet::new(); // 防止重复路径
         
         let walker = if let Some(depth) = max_depth {
             WalkDir::new(scan_path).max_depth(depth)
         } else {
             WalkDir::new(scan_path)
         };
-
+        
         for entry in walker.into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
+            
+            // 跳过 .rmmp 目录下的所有子目录（这些是构建产物）
+            if path.ancestors().any(|ancestor| {
+                ancestor.file_name().map_or(false, |name| name == ".rmmp")
+            }) {
+                #[cfg(debug_assertions)]
+                eprintln!("⏭️  跳过 .rmmp 目录下的路径: {}", path.display());
+                continue;
+            }
             
             // 检查是否包含 rmmproject.toml
             let project_file = path.join("rmmproject.toml");
             if project_file.exists() {
-                let name = path.file_name()
+                // 修复项目名称提取逻辑 - 使用 canonicalize 解析真实路径
+                let canonical_path = match path.canonicalize() {
+                    Ok(p) => p,
+                    Err(_) => {
+                        #[cfg(debug_assertions)]
+                        eprintln!("⚠️  无法解析路径: {}", path.display());
+                        continue;
+                    }
+                };
+                
+                // 检查路径是否已存在
+                if canonical_paths.contains(&canonical_path) {
+                    #[cfg(debug_assertions)]
+                    eprintln!("⏭️  跳过重复路径: {}", canonical_path.display());
+                    continue;
+                }
+                
+                let name = canonical_path.file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("unknown")
                     .to_string();
                 
+                // 调试信息：打印正在验证的项目名称
+                #[cfg(debug_assertions)]
+                eprintln!("🔍 正在验证项目名称: '{}' 在路径: {} (canonical: {})", name, path.display(), canonical_path.display());
+                
+                // 黑名单检查 - 排除构建相关目录
+                let blacklisted_names = [
+                    "build", "source-build", "dist", "target", "node_modules", 
+                    ".git", ".vscode", "tmp", "temp", "cache", "output",
+                    ".rmmp", "out", "bin", "obj", ".next", "coverage"
+                ];
+                if blacklisted_names.contains(&name.as_str()) {
+                    #[cfg(debug_assertions)]
+                    eprintln!("🚫 项目名称 '{}' 在黑名单中，跳过", name);
+                    continue;
+                }
+                
+                // 验证项目名称格式：必须符合 ^[a-zA-Z][a-zA-Z0-9._-]+$
+                if !is_valid_project_name(&name) {
+                    #[cfg(debug_assertions)]
+                    eprintln!("❌ 项目名称 '{}' 不符合命名规则，跳过", name);
+                    continue; // 跳过不符合命名规则的项目
+                }
+                
+                #[cfg(debug_assertions)]
+                eprintln!("✅ 项目名称 '{}' 验证通过", name);
+                
+                // 检查是否是完整的 RMM 项目
+                let rmmp_dir = path.join(".rmmp");
+                let rmake_file = rmmp_dir.join("Rmake.toml");
+                let is_valid = rmmp_dir.exists() && rmake_file.exists();
+                
                 // 获取 Git 信息
                 let git_info = GitAnalyzer::analyze_git_info(path).ok().flatten();
                 
+                // 记录这个路径以防重复
+                canonical_paths.insert(canonical_path.clone());
+                
                 results.push(ProjectScanResult {
                     name,
-                    path: path.to_path_buf(),
-                    is_valid: true,
+                    path: canonical_path, // 使用标准化的路径
+                    is_valid,
                     git_info,
                 });
             }
@@ -1021,5 +1194,44 @@ impl RmmCore {    /// 从meta配置中移除项目
             let mut cache = self.git_cache.lock().unwrap();
             cache.clear();
         }
+    }
+}
+
+/// 验证项目名称是否符合规范
+/// 规则：^[a-zA-Z][a-zA-Z0-9._-]+$
+/// - 必须以字母开头
+/// - 后续字符可以是字母、数字、点、下划线或连字符
+fn is_valid_project_name(name: &str) -> bool {
+    use regex::Regex;
+    
+    // 创建正则表达式
+    let re = Regex::new(r"^[a-zA-Z][a-zA-Z0-9._-]+$").unwrap();
+    
+    // 验证名称
+    re.is_match(name) && name.len() >= 2 // 至少2个字符
+}
+
+#[cfg(test)]
+mod project_name_tests {
+    use super::is_valid_project_name;
+
+    #[test]
+    fn test_valid_project_names() {
+        assert!(is_valid_project_name("TEST"));
+        assert!(is_valid_project_name("my_project"));
+        assert!(is_valid_project_name("Project-123"));
+        assert!(is_valid_project_name("app.module"));
+        assert!(is_valid_project_name("MyApp_v1.0"));
+        assert!(is_valid_project_name("A1"));
+    }
+
+    #[test]
+    fn test_invalid_project_names() {
+        assert!(!is_valid_project_name("123project")); // 数字开头
+        assert!(!is_valid_project_name(".hidden"));    // 点开头
+        assert!(!is_valid_project_name("-dash"));      // 连字符开头
+        assert!(!is_valid_project_name("_underscore"));// 下划线开头
+        assert!(!is_valid_project_name("A"));          // 太短        assert!(!is_valid_project_name(""));           // 空字符串        assert!(!is_valid_project_name("project name"));// 包含空格
+        assert!(!is_valid_project_name("project@name"));// 包含非法字符
     }
 }
