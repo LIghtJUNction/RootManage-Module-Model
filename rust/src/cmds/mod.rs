@@ -58,12 +58,6 @@ pub enum Commands {
         max_depth: Option<usize>,
     },
     
-    /// 📜 脚本管理命令
-    Script {
-        #[command(subcommand)]
-        action: ScriptAction,
-    },
-    
     /// 显示版本信息
     Version,
     
@@ -71,91 +65,3 @@ pub enum Commands {
     #[command(external_subcommand)]
     External(Vec<String>),
 }
-
-/// 脚本管理子命令
-#[derive(Debug, Subcommand)]
-pub enum ScriptAction {
-    /// 🚀 初始化新的脚本项目
-    Init {
-        /// 脚本ID（同时作为文件夹名）
-        script_id: String,
-        
-        /// 脚本类型
-        #[arg(value_enum)]
-        script_type: ScriptType,
-        
-        /// 作者名（可选）
-        #[arg(short, long)]
-        author: Option<String>,
-        
-        /// 作者邮箱（可选）
-        #[arg(short, long)]
-        email: Option<String>,
-    },
-    
-    /// 📦 发布脚本到仓库
-    Publish {
-        /// 脚本路径（可选，默认为当前目录）
-        #[arg(short, long)]
-        script_path: Option<String>,
-    },
-    
-    /// 🔍 搜索脚本
-    Search {
-        /// 搜索关键词
-        query: String,
-    },
-    
-    /// 📥 安装脚本
-    Install {
-        /// 脚本标识符（username/script_id）
-        script_id: String,
-    },
-    
-    /// 🗑️ 卸载脚本
-    Uninstall {
-        /// 脚本标识符（username/script_id）
-        script_id: String,
-    },
-    
-    /// 📋 列出已安装的脚本
-    List,
-    
-    /// ▶️ 运行脚本
-    Run {
-        /// 脚本标识符（username/script_id）
-        script_id: String,
-        
-        /// 传递给脚本的参数
-        #[arg(trailing_var_arg = true)]
-        args: Vec<String>,
-    },
-}
-
-/// 脚本类型枚举
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum ScriptType {
-    /// 构建前脚本
-    Prebuild,
-    /// 构建脚本
-    Build,
-    /// 构建后脚本
-    Postbuild,
-    /// 发布脚本
-    Publish,
-    /// 更新脚本
-    Update,
-}
-
-impl std::fmt::Display for ScriptType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ScriptType::Prebuild => write!(f, "prebuild"),
-            ScriptType::Build => write!(f, "build"),
-            ScriptType::Postbuild => write!(f, "postbuild"),
-            ScriptType::Publish => write!(f, "publish"),
-            ScriptType::Update => write!(f, "update"),
-        }
-    }
-}
-
