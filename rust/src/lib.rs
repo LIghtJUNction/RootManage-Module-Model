@@ -203,59 +203,6 @@ fn cli() -> PyResult<()> {
                 }
             }        },
         
-        // 脚本管理命令
-        Some(Commands::Script { action }) => {
-            use cmds::{ScriptAction, ScriptType};
-            match action {
-                ScriptAction::Init { script_id, script_type, author, email } => {
-                    // 获取当前目录
-                    let current_dir = std::env::current_dir().map_err(|e| 
-                        pyo3::exceptions::PyRuntimeError::new_err(format!("无法获取当前目录: {}", e))
-                    )?;
-                    
-                    // 处理作者信息
-                    let author_name = author.unwrap_or_else(|| "Unknown".to_string());
-                    let author_email = email.unwrap_or_else(|| "unknown@example.com".to_string());
-                    
-                    // 创建脚本项目目录
-                    let script_path = current_dir.join(&script_id);
-                    if !script_path.exists() {
-                        std::fs::create_dir_all(&script_path).map_err(|e| 
-                            pyo3::exceptions::PyRuntimeError::new_err(format!("创建目录失败: {}", e))
-                        )?;
-                    }
-                    
-                    match cmds::init::init_script_project(&script_path, &script_id, &script_type.to_string(), &author_name, &author_email) {
-                        Ok(_) => {
-                            println!("✅ 脚本项目创建成功！");
-                        },
-                        Err(e) => {
-                            eprintln!("❌ 脚本项目创建失败: {}", e);
-                            return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("脚本项目创建失败: {}", e)));
-                        }
-                    }
-                },
-                ScriptAction::Publish { script_path: _ } => {
-                    println!("🚧 脚本发布功能开发中...");
-                },
-                ScriptAction::Search { query: _ } => {
-                    println!("🚧 脚本搜索功能开发中...");
-                },
-                ScriptAction::Install { script_id: _ } => {
-                    println!("🚧 脚本安装功能开发中...");
-                },
-                ScriptAction::Uninstall { script_id: _ } => {
-                    println!("🚧 脚本卸载功能开发中...");
-                },
-                ScriptAction::List => {
-                    println!("🚧 脚本列表功能开发中...");
-                },
-                ScriptAction::Run { script_id: _, args: _ } => {
-                    println!("🚧 脚本运行功能开发中...");
-                },
-            }
-        },
-        
         // 显示版本信息
         Some(Commands::Version) => {
             RmmBox::rmm_version();

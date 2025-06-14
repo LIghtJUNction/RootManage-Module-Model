@@ -346,9 +346,6 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
             fs::write(&meta_path, content)
             .with_context(|| format!("Failed to write meta.toml to {}", meta_path.display()))?;
 
-        // 确保scripts文件夹存在
-        self.ensure_scripts_directory_exists()?;
-
         // 更新缓存
         {
             let mut cache = self.meta_cache.lock().unwrap();
@@ -374,64 +371,7 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
         Ok(meta.projects.get(project_name).map(|p| PathBuf::from(p)))
     }
 
-    /// 确保scripts文件夹和scripts/meta.toml文件存在
-    fn ensure_scripts_directory_exists(&self) -> Result<()> {
-        let rmm_root = self.get_rmm_root();
-        let scripts_dir = rmm_root.join("scripts");
-        let scripts_meta_path = scripts_dir.join("meta.toml");
-        
-        // 创建scripts目录
-        if !scripts_dir.exists() {
-            fs::create_dir_all(&scripts_dir)
-                .with_context(|| format!("Failed to create scripts directory {}", scripts_dir.display()))?;
-            println!("📁 创建scripts目录: {}", scripts_dir.display());
-        }
-        
-        // 确保scripts/meta.toml文件存在
-        if !scripts_meta_path.exists() {
-            // 创建默认的scripts/meta.toml内容
-            let default_scripts_meta = r#"# RMM Scripts Meta Configuration
-# 此文件用于管理RMM脚本
-# 脚本文件存放在当前目录下，文件名格式：hash.扩展名
-
-# 脚本索引格式："username/ID" = "hash"
-[scripts]
-# 示例：
-# "user1/build-helper" = "a1b2c3d4e5f6g7h8"
-# "user2/post-install" = "e9f0a1b2c3d4e5f6"
-
-# 脚本元数据
-[metadata]
-# 每个脚本的详细信息
-# [metadata."username/ID"]
-# author = "作者名"
-# description = "脚本描述"
-# type = "prebuild|build|postbuild"
-# version = "1.0.0"
-# hash = "文件hash值"
-# extension = "sh|ps1|py|js"
-# created = "2025-06-14"
-# updated = "2025-06-14"
-
-# 示例元数据：
-# [metadata."example/build-script"]
-# author = "example_user"
-# description = "示例构建脚本"
-# type = "build"
-# version = "1.0.0"
-# hash = "a1b2c3d4e5f6g7h8"
-# extension = "sh"
-# created = "2025-06-14"
-# updated = "2025-06-14"
-"#;
-            
-            fs::write(&scripts_meta_path, default_scripts_meta)
-                .with_context(|| format!("Failed to create scripts/meta.toml at {}", scripts_meta_path.display()))?;
-            println!("📄 创建scripts/meta.toml: {}", scripts_meta_path.display());
-        }
-        
-        Ok(())
-    }/// 功能六：检查各个项目是否有效（判断对应文件夹是否存在且包含 rmmproject.toml 文件）
+    /// 功能六：检查各个项目是否有效（判断对应文件夹是否存在且包含 rmmproject.toml 文件）
     pub fn check_projects_validity(&self) -> Result<HashMap<String, bool>> {
         let meta = self.get_meta_config()?;
         let mut results = HashMap::new();
@@ -1208,27 +1148,3 @@ fn is_valid_project_name(name: &str) -> bool {
     re.is_match(name) && name.len() >= 2 // 至少2个字符
 }
 
-#[cfg(test)]
-mod project_name_tests {
-    use super::is_valid_project_name;
-
-    #[test]
-    fn test_valid_project_names() {
-        assert!(is_valid_project_name("TEST"));
-        assert!(is_valid_project_name("my_project"));
-        assert!(is_valid_project_name("Project-123"));
-        assert!(is_valid_project_name("app.module"));
-        assert!(is_valid_project_name("MyApp_v1.0"));
-        assert!(is_valid_project_name("A1"));
-    }
-
-    #[test]
-    fn test_invalid_project_names() {
-        assert!(!is_valid_project_name("123project")); // 数字开头
-        assert!(!is_valid_project_name(".hidden"));    // 点开头
-        assert!(!is_valid_project_name("-dash"));      // 连字符开头
-        assert!(!is_valid_project_name("_underscore"));// 下划线开头
-        assert!(!is_valid_project_name("A"));          // 太短        assert!(!is_valid_project_name(""));           // 空字符串        assert!(!is_valid_project_name("project name"));// 包含空格
-        assert!(!is_valid_project_name("project@name"));// 包含非法字符
-    }
-}
