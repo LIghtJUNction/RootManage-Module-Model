@@ -1,6 +1,6 @@
 {
-  "changelog": "https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/TEST/CHANGELOG.MD",
-  "version": "v0.1.0-1951b008",
-  "versionCode": 2025061201,
-  "zipUrl": "https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/main/TEST/TEST-2025061201.zip"
+  "changelog": "https://raw.githubusercontent.com/LIghtJUNction/RootManageModuleModel/dev/TEST/CHANGELOG.md",
+  "version": "v0.1.0-619d59e4",
+  "versionCode": 2025061401,
+  "zipUrl": "https://github.com/LIghtJUNction/RootManageModuleModel/releases/latest/download/TEST-2025061401.zip"
 }

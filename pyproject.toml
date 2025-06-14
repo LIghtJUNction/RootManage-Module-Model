@@ -3,7 +3,7 @@ name = "pyrmm"
 dynamic = ["version"]
 description = "Magisk/Apatch/Kernelsu模块的工具集"
 readme = "README.MD"
-license = {file = "LICENSE"}
+license = "LICENSE"
 authors = [
     { name = "LIghtJUNction", email = "LIghtJUNction.me@gmail.com" }
 ]
@@ -17,7 +17,8 @@ dependencies = [
 ]
 
 [project.scripts]
-rmm = "pyrmm.cli:cli"
+rmm = "pyrmm.cli.rmmcore:cli"
+rmmcp = "pyrmm.ai.rmmcp:rmmcp"
 
 [build-system]
 requires = ["maturin>=1.8,<2.0"]
@@ -45,6 +46,13 @@ module-name = "pyrmm.cli.rmmcore"
 strip = true
 # 二进制类型
 bindings = "pyo3"
+# 交叉编译目标平台
+
+include = [
+    { path = "rust-toolchain.toml", format = ["sdist", "wheel"] },
+    { path = "LICENSE", format = "sdist" },
+]
+
 
 # uv 工作区配置
 [tool.uv]

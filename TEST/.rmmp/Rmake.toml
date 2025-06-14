@@ -1,25 +1,23 @@
 [build]
-prebuild = ["echo 'Pre-build step'"]
-build = ["echo 'Main build step'"]
-postbuild = ["echo 'Post-build step'"]
+include = ['# 额外包含的文件或目录，如："extra/"']
 exclude = [
     ".git",
-    "target",
+    ".rmmp",
+    "*.tmp",
     "*.log",
-    ".vscode",
-    ".idea",
+]
+prebuild = ["echo 'Starting build'"]
+build = ["rmm"]
+postbuild = ["echo 'Build completed'"]
+
+[build.src]
+include = ['# 源代码额外包含的文件，如："docs/"']
+exclude = [
+    ".git",
+    "*.tmp",
+    "*.log",
     "node_modules",
-    "__pycache__",
 ]
 
-[package]
-compression = "default"
-zip_name = "default"
-
-[scripts]
-lint = "echo 'Linting code...'"
-test = "echo 'Running tests...'"
-
-[proxy]
-enabled = true
-auto_select = true
+[build.scripts]
+clean = '''Remove-Item '.rmmp\build' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item '.rmmp\dist' -Recurse -Force -ErrorAction SilentlyContinue; New-Item -Path '.rmmp\build' -ItemType Directory -Force; New-Item -Path '.rmmp\dist' -ItemType Directory -Force'''
