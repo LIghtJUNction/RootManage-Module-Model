@@ -58,8 +58,6 @@ pub struct RmmProject {
 pub struct ProjectInfo {
     pub id: String,
     pub description: String,
-    #[serde(rename = "updateJson")]
-    pub update_json: String,
     pub readme: String,
     pub changelog: String,
     pub license: String,
@@ -859,7 +857,6 @@ impl RmmCore {
             project: ProjectInfo {
                 id: id.to_string(),
                 description: format!("RMM项目 {}", id),
-                update_json: format!("https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json"),
                 readme: "README.MD".to_string(),
                 changelog: "CHANGELOG.MD".to_string(),
                 license: "LICENSE".to_string(),

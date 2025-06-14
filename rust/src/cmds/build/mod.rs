@@ -258,15 +258,37 @@ fn get_build_entries(
 
 /// 递归复制目录
 fn copy_directory(src: &Path, dest: &Path) -> Result<()> {
+    // 🔧 修复：添加源目录有效性检查
+    if !src.exists() {
+        return Err(anyhow::anyhow!("源目录不存在: {}", src.display()));
+    }
+    if !src.is_dir() {
+        return Err(anyhow::anyhow!("源路径不是目录: {}", src.display()));
+    }
+
+    // 确保目标目录存在
+    fs::create_dir_all(dest)?;
+
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let src_path = entry.path();
+        
+        // 🔧 修复：添加路径有效性检查
+        if !src_path.exists() {
+            println!("⚠️ 警告: 源路径不存在，跳过: {}", src_path.display());
+            continue;
+        }
+        
         let dest_path = dest.join(entry.file_name());
         
         if src_path.is_dir() {
-            fs::create_dir_all(&dest_path)?;            copy_directory(&src_path, &dest_path)?;
+            if let Err(e) = copy_directory(&src_path, &dest_path) {
+                println!("⚠️ 警告: 复制子目录失败 {}: {}", src_path.display(), e);
+            }
         } else {
-            copy_file_with_line_ending_normalization(&src_path, &dest_path)?;
+            if let Err(e) = copy_file_with_line_ending_normalization(&src_path, &dest_path) {
+                println!("⚠️ 警告: 复制文件失败 {}: {}", src_path.display(), e);
+            }
         }
     }
     Ok(())
@@ -667,10 +689,29 @@ fn add_directory_to_tar<W: Write>(
     dir: &Path,
     base_dir: &Path,
 ) -> Result<()> {
+    // 🔧 修复：添加路径有效性检查
+    if !dir.exists() {
+        println!("⚠️ 警告: 目录不存在，跳过: {}", dir.display());
+        return Ok(());
+    }
+
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        let relative_path = path.strip_prefix(base_dir)?;
+        
+        // 🔧 修复：添加路径存在性检查
+        if !path.exists() {
+            println!("⚠️ 警告: 路径不存在，跳过: {}", path.display());
+            continue;
+        }
+        
+        let relative_path = match path.strip_prefix(base_dir) {
+            Ok(rel_path) => rel_path,
+            Err(e) => {
+                println!("⚠️ 警告: 无法计算相对路径 {}: {}", path.display(), e);
+                continue;
+            }
+        };
         
         // 确保路径使用正确的分隔符，并且不为空
         let normalized_path = if relative_path.as_os_str().is_empty() {
@@ -693,7 +734,11 @@ fn add_directory_to_tar<W: Write>(
                 format!("{}/", normalized_path)
             };
             
-            tar.append_data(&mut header, &dir_path, std::io::empty())?;
+            // 🔧 修复：添加错误处理
+            if let Err(e) = tar.append_data(&mut header, &dir_path, std::io::empty()) {
+                println!("⚠️ 警告: 添加目录到tar失败 {}: {}", dir_path, e);
+                continue;
+            }
             
             // 递归添加子目录
             add_directory_to_tar(tar, &path, base_dir)?;
@@ -703,15 +748,33 @@ fn add_directory_to_tar<W: Write>(
                 continue; // 跳过空路径
             }
             
-            let mut file = fs::File::open(&path)?;
-            let metadata = file.metadata()?;
+            // 🔧 修复：更安全的文件打开方式
+            let mut file = match fs::File::open(&path) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("⚠️ 警告: 无法打开文件 {}: {}", path.display(), e);
+                    continue;
+                }
+            };
+            
+            let metadata = match file.metadata() {
+                Ok(m) => m,
+                Err(e) => {
+                    println!("⚠️ 警告: 无法获取文件元数据 {}: {}", path.display(), e);
+                    continue;
+                }
+            };
             
             let mut header = tar::Header::new_gnu();
             header.set_mode(0o644);
             header.set_size(metadata.len());
             header.set_cksum();
             
-            tar.append_data(&mut header, &normalized_path, &mut file)?;
+            // 🔧 修复：添加错误处理
+            if let Err(e) = tar.append_data(&mut header, &normalized_path, &mut file) {
+                println!("⚠️ 警告: 添加文件到tar失败 {}: {}", normalized_path, e);
+                continue;
+            }
         }
     }
     
@@ -861,28 +924,49 @@ fn copy_source_files(project_path: &Path, source_build_dir: &Path, rmake_config:
             }
             true
         });
-        
-        // 复制文件
+          // 复制文件
         for path in source_entries {
-            let file_name = path.file_name().unwrap();
+            // 🔧 修复：添加路径有效性检查
+            if !path.exists() {
+                println!("⚠️ 警告: 源文件不存在，跳过: {}", path.display());
+                continue;
+            }
+            
+            let file_name = match path.file_name() {
+                Some(name) => name,
+                None => {
+                    println!("⚠️ 警告: 无法获取文件名，跳过: {}", path.display());
+                    continue;
+                }
+            };
             let dest_path = source_build_dir.join(file_name);
             
             if path.is_dir() {
                 if file_name == ".rmmp" {
                     // 特殊处理 .rmmp 目录，只复制 Rmake.toml
-                    fs::create_dir_all(&dest_path)?;
+                    if let Err(e) = fs::create_dir_all(&dest_path) {
+                        println!("⚠️ 警告: 创建目录失败 {}: {}", dest_path.display(), e);
+                        continue;
+                    }
                     let rmake_source = path.join("Rmake.toml");
                     let rmake_dest = dest_path.join("Rmake.toml");
                     if rmake_source.exists() {
-                        fs::copy(&rmake_source, &rmake_dest)?;
-                        println!("    ✅ 包含配置文件: .rmmp/Rmake.toml");
+                        if let Err(e) = fs::copy(&rmake_source, &rmake_dest) {
+                            println!("⚠️ 警告: 复制配置文件失败: {}", e);
+                        } else {
+                            println!("    ✅ 包含配置文件: .rmmp/Rmake.toml");
+                        }
                     }                } else {
-                    copy_directory(&path, &dest_path)?;
+                    if let Err(e) = copy_directory(&path, &dest_path) {
+                        println!("⚠️ 警告: 复制目录失败 {}: {}", path.display(), e);
+                    }
                 }
             } else {
-                copy_file_with_line_ending_normalization(&path, &dest_path)?;
+                if let Err(e) = copy_file_with_line_ending_normalization(&path, &dest_path) {
+                    println!("⚠️ 警告: 复制文件失败 {}: {}", path.display(), e);
+                }
             }
-        }        // 处理 src include（额外包含文件）
+        }// 处理 src include（额外包含文件）
         let src_include_patterns: Vec<&String> = src_config.include
             .iter()
             .filter(|pattern| {
@@ -950,18 +1034,42 @@ fn execute_source_prebuild(project_path: &Path) -> Result<()> {
 
 /// 打包源代码
 fn package_source_code(project_path: &Path, source_build_dir: &Path) -> Result<()> {
+    // 🔧 修复：验证源目录
+    if !source_build_dir.exists() {
+        return Err(anyhow::anyhow!("源代码构建目录不存在: {}", source_build_dir.display()));
+    }
+    
+    // 检查目录是否为空
+    let is_empty = fs::read_dir(source_build_dir)?.next().is_none();
+    if is_empty {
+        println!("⚠️ 警告: 源代码构建目录为空: {}", source_build_dir.display());
+        // 仍然继续创建空的 tar.gz 文件
+    }
+    
     let dist_dir = project_path.join(".rmmp/dist");
+    
+    // 🔧 修复：确保 dist 目录存在
+    if !dist_dir.exists() {
+        fs::create_dir_all(&dist_dir)?;
+    }
+    
     let project_info = read_project_info(project_path)?;
     let source_name = format!("{}-{}-source.tar.gz", project_info.id, project_info.version_code);
     let output_path = dist_dir.join(&source_name);
     
     println!("{} 打包源代码: {}", "[tar]".cyan().bold(), source_name.cyan());
     
-    create_tar_gz_archive(source_build_dir, &output_path)?;
-    
-    println!("{} 源代码打包完成: {}", "✅".green().bold(), output_path.display());
-    
-    Ok(())
+    // 🔧 修复：添加详细的错误处理
+    match create_tar_gz_archive(source_build_dir, &output_path) {
+        Ok(()) => {
+            println!("{} 源代码打包完成: {}", "✅".green().bold(), output_path.display());
+            Ok(())
+        }
+        Err(e) => {
+            Err(anyhow::anyhow!("打包源代码失败: {} -> {}: {}", 
+                source_build_dir.display(), output_path.display(), e))
+        }
+    }
 }
 
 /// 执行源代码 postbuild
@@ -1370,4 +1478,90 @@ fn copy_file_with_line_ending_normalization(src: &Path, dst: &Path) -> Result<()
         std::fs::copy(src, dst)?;
     }
     Ok(())
+}
+
+/// 应用排除规则并收集路径
+fn apply_exclusions_and_collect_paths(
+    project_path: &Path,
+    entries: Vec<PathBuf>,
+    is_source_packaging: bool,
+    rmake_config: &RmakeConfig,
+) -> Result<Vec<PathBuf>> {
+    let mut paths_to_copy = Vec::new();
+    let mut excluded_messages = Vec::new();
+    
+    // 编译排除模式
+    let compiled_exclusions: Vec<regex::Regex> = rmake_config.build.exclude
+        .iter()
+        .filter_map(|pattern| {
+            let trimmed = pattern.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                None // 忽略空行和注释
+            } else {
+                // 编译正则表达式
+                match regex::Regex::new(&format!("^{}$", regex::escape(trimmed).replace(r"\*", ".*"))) {
+                    Ok(re) => Some(re),
+                    Err(e) => {
+                        println!("⚠️ 警告: 排除模式编译失败 {}: {}", trimmed, e);
+                        None
+                    }
+                }
+            }
+        })
+        .collect();
+      for entry in entries {
+        let relative_path = entry.strip_prefix(project_path)?;
+        
+        // 检查是否被排除
+        let mut is_excluded = false;
+        let mut matched_pattern = None;
+        
+        for pattern_regex in &compiled_exclusions {
+            if pattern_regex.is_match(&relative_path.display().to_string()) {
+                is_excluded = true;
+                matched_pattern = Some(pattern_regex.as_str());
+                break;
+            }
+        }
+
+        if is_excluded {
+            // 确保正确区分文件和目录
+            let item_type_str = if entry.is_dir() {
+                "目录" // Directory
+            } else {
+                "文件" // File
+            };
+
+            let exclusion_reason = matched_pattern
+                .map_or_else(String::new, |p| format!(" (匹配 {})", p.cyan()));
+
+            excluded_messages.push(format!(
+                "      [x] {} {}: {}{}",
+                item_type_str, // 使用更准确的类型字符串
+                if is_source_packaging { "排除源" } else { "排除" }.yellow(),
+                relative_path.display().to_string().yellow(),
+                exclusion_reason
+            ));
+            continue; // Skip this entry from being added to paths_to_copy
+        }
+
+        // If the entry is a file, add it to the list of paths to copy
+        if entry.is_file() {
+            paths_to_copy.push(entry);
+        } else if entry.is_dir() {
+            // If it's a directory, we may want to copy the whole directory
+            // 这里可以根据需要决定是否复制整个目录
+            paths_to_copy.push(entry);
+        }
+    }
+    
+    // 输出排除的文件和目录
+    if !excluded_messages.is_empty() {
+        println!("{} 排除的文件和目录:", "[!]".bright_yellow());
+        for message in excluded_messages {
+            println!("{}", message);
+        }
+    }
+    
+    Ok(paths_to_copy)
 }

@@ -143,7 +143,6 @@ impl PyRmmCore {
                 let project_info = PyDict::new(py);
                 project_info.set_item("id", project.project.id)?;
                 project_info.set_item("description", project.project.description)?;
-                project_info.set_item("updateJson", project.project.update_json)?;
                 project_info.set_item("readme", project.project.readme)?;
                 project_info.set_item("changelog", project.project.changelog)?;
                 project_info.set_item("license", project.project.license)?;
@@ -304,7 +303,6 @@ impl PyRmmCore {
             project: ProjectInfo {
                 id: project_id.clone(),
                 description: format!("{} - A Magisk Module", project_id),
-                update_json: "https://example.com/update.json".to_string(),
                 readme: "README.md".to_string(),
                 changelog: "CHANGELOG.md".to_string(),
                 license: "LICENSE".to_string(),
@@ -326,7 +324,6 @@ impl PyRmmCore {
         let project_info = PyDict::new(py);
         project_info.set_item("id", project_config.project.id)?;
         project_info.set_item("description", project_config.project.description)?;
-        project_info.set_item("updateJson", project_config.project.update_json)?;
         project_info.set_item("readme", project_config.project.readme)?;
         project_info.set_item("changelog", project_config.project.changelog)?;
         project_info.set_item("license", project_config.project.license)?;

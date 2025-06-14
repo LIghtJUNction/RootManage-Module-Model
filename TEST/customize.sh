@@ -24,7 +24,7 @@ esac
 
 # 根据Android版本进行处理
 # 示例shellcheck 自动修复 $API -> "$API"
-if [ "$API" -lt 29 ]; then
+if [ $API -lt 29 ]; then
     ui_print "- Android 10以下版本"
 else
     ui_print "- Android 10及以上版本"

@@ -21,12 +21,12 @@ pub fn init_project(project_path: &Path, project_id: &str, author: &str, email: 
       // 确保项目目录存在
     if !project_path.exists() {
         anyhow::bail!("项目目录不存在: {}", project_path.display());
-    }
-
-    // 检查是否已经是一个项目
+    }    // 检查是否已经是一个项目，如果是，则打印警告而不是直接退出
     if project_path.join("module.prop").exists() || project_path.join(".rmmp").exists() {
-        anyhow::bail!("目录已经包含一个模块项目");
-    }    // 验证项目ID格式（符合KernelSU要求）
+        println!("{} 检测到目录已包含项目文件，将跳过已存在的文件和目录。", "⚠️ ".yellow().bold());
+    } else {
+        println!("{} 正在初始化模块项目: {}", "🚀".green().bold(), project_id.cyan().bold());
+    }// 验证项目ID格式（符合KernelSU要求）
     // ID必须与这个正则表达式匹配：^[a-zA-Z][a-zA-Z0-9._-]+$
     // 例如：✓ a_module，✓ a.module，✓ module-101，✗ a module，✗ 1_module，✗ -a-module
     let id_regex = regex::Regex::new(r"^[a-zA-Z][a-zA-Z0-9._-]+$").unwrap();
@@ -171,19 +171,48 @@ fn get_git_user_config(project_path: &Path) -> Result<(String, String)> {
 /// 创建.rmmp目录结构
 fn create_rmmp_structure(project_path: &Path) -> Result<()> {
     let rmmp_dir = project_path.join(".rmmp");
-    fs::create_dir_all(&rmmp_dir)?;
-    fs::create_dir_all(rmmp_dir.join("build"))?;
-    fs::create_dir_all(rmmp_dir.join("dist"))?;
-    println!("{} 创建 {} 目录结构", 
-        "[+]".green().bold(), 
-        ".rmmp".cyan().bold()
-    );
+    let build_dir = rmmp_dir.join("build");
+    let dist_dir = rmmp_dir.join("dist");
+
+    if rmmp_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp".cyan().bold());
+    } else {
+        fs::create_dir_all(&rmmp_dir)?;
+        println!("{} 创建 {} 目录结构", "[+]".green().bold(), ".rmmp".cyan().bold());
+    }
+
+    if build_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp/build".cyan().bold());
+    } else {
+        fs::create_dir_all(&build_dir)?;
+        println!("{} 创建 {} 目录", "[+]".green().bold(), ".rmmp/build".cyan().bold());
+    }
+
+    if dist_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp/dist".cyan().bold());
+    } else {
+        fs::create_dir_all(&dist_dir)?;
+        println!("{} 创建 {} 目录", "[+]".green().bold(), ".rmmp/dist".cyan().bold());
+    }
     Ok(())
 }
 
 /// 作者注：重复实现，主要是为了稳定性 这个是内部调用的办法。 rmmcore主要是设计给给外部调用的
 /// 创建Rmake.toml配置文件
-fn create_rmake_config(project_path: &Path) -> Result<()> {    let rmake_config = RmakeConfig {
+fn create_rmake_config(project_path: &Path) -> Result<()> {
+    let rmake_path = project_path.join(".rmmp").join("Rmake.toml");
+    
+    if rmake_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp/Rmake.toml".cyan().bold());
+        return Ok(());
+    }
+
+    // 确保父目录存在
+    if let Some(parent_dir) = rmake_path.parent() {
+        fs::create_dir_all(parent_dir)?;
+    }
+
+    let rmake_config = RmakeConfig {
         build: BuildConfig {
             include: vec!["# 额外包含的文件或目录，如：\"extra/\"".to_string()],
             exclude: vec![
@@ -203,7 +232,8 @@ fn create_rmake_config(project_path: &Path) -> Result<()> {    let rmake_config 
                     "*.log".to_string(),
                     "node_modules".to_string()
                 ],
-            }),            scripts: Some({
+            }),            
+            scripts: Some({
                 let mut scripts = HashMap::new();
                 // 使用跨平台兼容的clean命令
                 let clean_cmd = if cfg!(target_os = "windows") {
@@ -219,9 +249,10 @@ fn create_rmake_config(project_path: &Path) -> Result<()> {    let rmake_config 
                 scripts
             }),
         },
-    };let rmake_content = toml::to_string_pretty(&rmake_config)?;
+    };
+    
+    let rmake_content = toml::to_string_pretty(&rmake_config)?;
     // 保存到 .rmmp/Rmake.toml
-    let rmake_path = project_path.join(".rmmp").join("Rmake.toml");
     fs::write(&rmake_path, rmake_content)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
@@ -232,6 +263,13 @@ fn create_rmake_config(project_path: &Path) -> Result<()> {    let rmake_config 
 
 /// 创建项目配置文件
 fn create_project_config(project_path: &Path, project_id: &str, author: &str, email: &str, git_info: &Option<GitInfo>) -> Result<()> {
+    let project_config_path = project_path.join("rmmproject.toml");
+    
+    if project_config_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "rmmproject.toml".cyan().bold());
+        return Ok(());
+    }
+
     // 生成智能的update_json URL
     let update_json_url = if let Some(git) = git_info {
         if let Some(remote_url) = &git.remote_url {
@@ -262,7 +300,6 @@ fn create_project_config(project_path: &Path, project_id: &str, author: &str, em
         project: ProjectInfo {
             id: project_id.to_string(),
             description: format!("A Rmm project: {}", project_id),
-            update_json: update_json_url,
             readme: "README.md".to_string(),
             changelog: "CHANGELOG.md".to_string(),
             license: "LICENSE".to_string(),
@@ -290,7 +327,7 @@ fn create_project_config(project_path: &Path, project_id: &str, author: &str, em
     };
 
     let project_content = toml::to_string_pretty(&project_config)?;
-    fs::write(project_path.join("rmmproject.toml"), project_content)?;
+    fs::write(&project_config_path, project_content)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
         "rmmproject.toml".cyan().bold()
@@ -300,6 +337,13 @@ fn create_project_config(project_path: &Path, project_id: &str, author: &str, em
 
 /// 创建module.prop文件
 fn create_module_prop(project_path: &Path, project_id: &str, author: &str, git_info: &Option<GitInfo>) -> Result<()> {
+    let module_prop_path = project_path.join("module.prop");
+    
+    if module_prop_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "module.prop".cyan().bold());
+        return Ok(());
+    }
+
     // 生成智能的update_json URL
     let update_json_url = if let Some(git) = git_info {
         if let Some(remote_url) = &git.remote_url {
@@ -339,7 +383,7 @@ fn create_module_prop(project_path: &Path, project_id: &str, author: &str, git_i
 
     // 确保使用 UNIX 换行符写入文件
     let prop_content_bytes = prop_content.replace("\r\n", "\n").replace("\r", "\n");
-    fs::write(project_path.join("module.prop"), prop_content_bytes)?;
+    fs::write(&module_prop_path, prop_content_bytes)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
         "module.prop".cyan().bold()
@@ -349,23 +393,47 @@ fn create_module_prop(project_path: &Path, project_id: &str, author: &str, git_i
 
 /// 创建system目录结构
 fn create_system_structure(project_path: &Path) -> Result<()> {
-    fs::create_dir_all(project_path.join("system"))?;
+    let system_dir = project_path.join("system");
+    let system_etc_dir = system_dir.join("etc");
+    let example_conf_path = system_etc_dir.join("example.conf");
+
+    if system_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), "system".cyan().bold());
+    } else {
+        fs::create_dir_all(&system_dir)?;
+        println!("{} 创建 {} 目录", "[+]".green().bold(), "system".cyan().bold());
+    }
     
     // 创建一个示例目录和文件
-    fs::create_dir_all(project_path.join("system/etc"))?;
-    fs::write(
-        project_path.join("system/etc/example.conf"),
-        "# 这是一个示例配置文件\n# 将此文件放置在system目录中，它会被挂载到 /system/etc/example.conf\n"
-    )?;
-    println!("{} 创建 {} 目录", 
-        "[+]".green().bold(), 
-        "system".cyan().bold()
-    );
+    if system_etc_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), "system/etc".cyan().bold());
+    } else {
+        fs::create_dir_all(&system_etc_dir)?;
+        println!("{} 创建 {} 目录", "[+]".green().bold(), "system/etc".cyan().bold());
+    }
+
+    if example_conf_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "system/etc/example.conf".cyan().bold());
+    } else {
+        fs::write(
+            &example_conf_path,
+            "# 这是一个示例配置文件\n# 将此文件放置在system目录中，它会被挂载到 /system/etc/example.conf\n"
+        )?;
+        println!("{} 创建 {} 文件", "[+]".green().bold(), "system/etc/example.conf".cyan().bold());
+    }
+
     Ok(())
 }
 
 /// 创建customize.sh安装脚本
 fn create_customize_script(project_path: &Path) -> Result<()> {
+    let customize_script_path = project_path.join("customize.sh");
+    
+    if customize_script_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "customize.sh".cyan().bold());
+        return Ok(());
+    }
+
     let customize_script = r#"#!/system/bin/sh
 # KernelSU 模块自定义安装脚本
 
@@ -416,15 +484,15 @@ fi
 ui_print "- 模块安装完成"
 "#;
 
-    fs::write(project_path.join("customize.sh"), customize_script)?;
+    fs::write(&customize_script_path, customize_script)?;
     
     // 设置可执行权限（仅在Unix系统上）
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(project_path.join("customize.sh"))?.permissions();
+        let mut perms = fs::metadata(&customize_script_path)?.permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(project_path.join("customize.sh"), perms)?;
+        fs::set_permissions(&customize_script_path, perms)?;
     }
     
     println!("{} 创建 {}", 
@@ -444,6 +512,13 @@ fn create_documentation_files(project_path: &Path, project_id: &str) -> Result<(
 
 /// 创建README.md文件
 fn create_readme(project_path: &Path, project_id: &str) -> Result<()> {
+    let readme_path = project_path.join("README.md");
+    
+    if readme_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "README.md".cyan().bold());
+        return Ok(());
+    }
+
     let readme_content = format!(r#"# {} Module
 
 这是一个 rmm 模块项目。
@@ -494,7 +569,7 @@ rmm test
         project_id
     );
 
-    fs::write(project_path.join("README.md"), readme_content)?;
+    fs::write(&readme_path, readme_content)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
         "README.md".cyan().bold()
@@ -504,6 +579,13 @@ rmm test
 
 /// 创建CHANGELOG.md文件
 fn create_changelog(project_path: &Path) -> Result<()> {
+    let changelog_path = project_path.join("CHANGELOG.md");
+    
+    if changelog_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "CHANGELOG.md".cyan().bold());
+        return Ok(());
+    }
+
     let changelog_content = r#"# 更新日志
 
 ### 新增
@@ -517,7 +599,7 @@ fn create_changelog(project_path: &Path) -> Result<()> {
 - 无
 "#;
 
-    fs::write(project_path.join("CHANGELOG.md"), changelog_content)?;
+    fs::write(&changelog_path, changelog_content)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
         "CHANGELOG.md".cyan().bold()
@@ -527,6 +609,13 @@ fn create_changelog(project_path: &Path) -> Result<()> {
 
 /// 创建LICENSE文件
 fn create_license(project_path: &Path) -> Result<()> {
+    let license_path = project_path.join("LICENSE");
+    
+    if license_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "LICENSE".cyan().bold());
+        return Ok(());
+    }
+
     let license_content = r#"#在此处添加你的许可证
     
 # 请不要移除以下许可信息
@@ -554,7 +643,7 @@ SOFTWARE.
 
 "#;
 
-    fs::write(project_path.join("LICENSE"), license_content)?;
+    fs::write(&license_path, license_content)?;
     println!("{} 创建 {}", 
         "[+]".green().bold(), 
         "LICENSE".cyan().bold()
@@ -600,6 +689,13 @@ fn create_update_json(
     project_id: &str, 
     git_info: &Option<GitInfo>
 ) -> Result<()> {
+    let update_json_path = project_path.join("update.json");
+    
+    if update_json_path.exists() {
+        println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "update.json".cyan().bold());
+        return Ok(());
+    }
+
     use serde_json::json;
     use chrono::{Utc, Datelike};
       // 生成版本代码（基于当前日期，与 module.prop 保持一致）
@@ -704,11 +800,11 @@ pub fn init_script_project(project_path: &Path, script_id: &str, script_type: &s
     // 确保项目目录存在
     if !project_path.exists() {
         anyhow::bail!("项目目录不存在: {}", project_path.display());
-    }
-
-    // 检查是否已经是一个项目
+    }    // 检查是否已经是一个项目，如果是，则打印警告而不是直接退出
     if project_path.join(".rmms").exists() || project_path.join(".rmmp").exists() {
-        anyhow::bail!("目录已经包含一个项目");
+        println!("{} 检测到目录已包含项目文件，将跳过已存在的文件和目录。", "⚠️ ".yellow().bold());
+    } else {
+        println!("{} 正在初始化 RMM 脚本项目: {}", "🚀".blue().bold(), script_id.cyan().bold());
     }
 
     // 验证脚本ID格式（与模块ID相同）
@@ -763,6 +859,12 @@ fn get_script_extension() -> &'static str {
 /// 创建.rmms标记文件
 fn create_rmms_file(project_path: &Path, script_type: &str) -> Result<()> {
     let rmms_path = project_path.join(".rmms");
+    
+    if rmms_path.exists() {
+        println!("  {} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmms".cyan().bold());
+        return Ok(());
+    }
+
     let content = format!(r#"# RMM Script 项目标记文件
 # 脚本类型配置（3选1）
 # 相对路径
@@ -791,6 +893,11 @@ fn create_rmms_file(project_path: &Path, script_type: &str) -> Result<()> {
 fn create_script_file(project_path: &Path, script_type: &str) -> Result<()> {
     let script_name = format!("{}.{}", script_type, get_script_extension());
     let script_path = project_path.join(&script_name);
+    
+    if script_path.exists() {
+        println!("  {} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), script_name.cyan().bold());
+        return Ok(());
+    }
     
     let content = if cfg!(windows) {
         // PowerShell脚本模板
@@ -864,6 +971,12 @@ exit 0
 /// 创建脚本项目的README.md
 fn create_script_readme(project_path: &Path, script_id: &str, script_type: &str, author: &str) -> Result<()> {
     let readme_path = project_path.join("README.md");
+    
+    if readme_path.exists() {
+        println!("  {} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "README.md".cyan().bold());
+        return Ok(());
+    }
+
     let content = format!(r#"# {script_id}
 
 RMM {script_type} 脚本项目
@@ -971,14 +1084,25 @@ fn create_script_metadata(project_path: &Path, script_id: &str, script_type: &st
     // 创建hash文件 (hash.扩展名)
     let hash_filename = format!("{}.{}", hash_value, get_script_extension());
     let hash_file_path = project_path.join(&hash_filename);
-    fs::write(&hash_file_path, &script_content)?;
-    println!("  ✅ 创建hash文件: {}", hash_file_path.display());
+    
+    if hash_file_path.exists() {
+        println!("  {} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), hash_filename.cyan().bold());
+    } else {
+        fs::write(&hash_file_path, &script_content)?;
+        println!("  ✅ 创建hash文件: {}", hash_file_path.display());
+    }
     
     // 获取当前日期
     let current_date = chrono::Utc::now().format("%Y-%m-%d").to_string();
     
     // 创建元数据文件 meta.toml
     let meta_path = project_path.join("meta.toml");
+    
+    if meta_path.exists() {
+        println!("  {} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "meta.toml".cyan().bold());
+        return Ok(());
+    }
+    
     let username_id = format!("{}/{}", author.replace(" ", "_").to_lowercase(), script_id);
     
     let meta_content = format!(r#"# RMM Script Meta Configuration

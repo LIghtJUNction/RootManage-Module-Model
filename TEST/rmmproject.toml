@@ -1,15 +1,14 @@
 [project]
 id = "TEST"
 description = "A Rmm project: TEST"
-updateJson = "https://github.com/LIghtJUNction/RootManageModuleModel/releases/latest/download/update.json"
 readme = "README.md"
 changelog = "CHANGELOG.md"
 license = "LICENSE"
 dependencies = []
 
 [project.scripts]
-install = "rmm device install"
 build = "rmm build"
+install = "rmm device install"
 test = "rmm test"
 
 [[authors]]

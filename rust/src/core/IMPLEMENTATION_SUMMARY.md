@@ -101,7 +101,6 @@ ProjectName = "/path/to/project"
 [project]
 id = "MyProject"
 description = "项目描述"
-updateJson = "https://example.com/update.json"
 readme = "README.md"
 changelog = "CHANGELOG.md"
 license = "LICENSE"
