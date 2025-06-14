@@ -1,6 +1,6 @@
 [package]
 name = "rmm"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2024"
 description = "高性能RMMP管理器"
 license = "MIT"

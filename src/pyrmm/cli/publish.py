@@ -211,10 +211,12 @@ def publish(args: list[Any]) -> None:
     参数:
         project_path (Path): 要发布的项目路径，默认为当前工作目录。
     """    
-    if len(args) == 0:
-        project_path = Path.cwd()        
-    elif len(args) == 1:
-        project_path = Path(args[0])
+
+    project_path = Path.cwd()        
+    
+    token: str = ""
+    if len(args) == 1:
+        token = args[0]
     else:
         error("使用方法: rmm publish [project_path]")
         return
@@ -224,8 +226,13 @@ def publish(args: list[Any]) -> None:
         return    # 显示发布标题
     print_banner("🚀 RMM 项目发布工具", f"项目路径: {project_path}")
     from github import Github
-    GITHUB_TOKEN = os.getenv("GITHUB_ACCESS_TOKEN",os.getenv("GITHUB_TOKEN","")) 
-    if not GITHUB_TOKEN:
+
+    if not token:
+        github_token = os.getenv("GITHUB_ACCESS_TOKEN", os.getenv("github_token", ""))
+    else:
+        github_token = token
+
+    if not github_token:
         info("请设置环境变量 GITHUB_ACCESS_TOKEN 或 GITHUB_TOKEN。")
         
         if platform.system() == "Windows":
@@ -236,7 +243,7 @@ def publish(args: list[Any]) -> None:
             info("export GITHUB_ACCESS_TOKEN=your_token_here")
         return
     try:
-        g = Github(GITHUB_TOKEN)
+        g = Github(github_token)
         user = g.get_user()
         success(f"已连接到 GitHub 用户: {user.login}")        
         updateJson = project_path / ".rmmp" / "dist" /"update.json"
@@ -513,9 +520,8 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
             # ⚠️ 重要：其他文件使用具体的 tag，不使用 latest！
             original_url = f"https://github.com/{repo_name}/releases/download/{tag_name}/{file_name}"
             proxy_links.append(f"- [📦 官方下载]({original_url})")
-            
-            # 生成代理下载链接
-            for proxy in proxies[:4]:  # 显示前4个代理
+              # 生成代理下载链接
+            for proxy in proxies[:10]:  # 显示前10个代理
                 try:
                     # 从代理字典中提取URL
                     if isinstance(proxy, dict) and 'url' in proxy:

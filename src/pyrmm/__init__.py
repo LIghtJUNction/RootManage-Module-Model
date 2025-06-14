@@ -5,7 +5,7 @@ This package provides tools for creating, building, and managing root modules
 with support for multiple root solutions including Magisk, APatch, and KernelSU.
 """
 
-__version__: str = "0.3.3"
+__version__: str = "0.3.4"
 __author__: str = "LIghtJUNction"
 __PubKey__: str = ""
 

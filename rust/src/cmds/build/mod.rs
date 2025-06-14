@@ -522,19 +522,21 @@ fn execute_prebuild(
     // 执行 Rmake.toml 中定义的 prebuild 命令
     if !rmake_config.build.prebuild.is_empty() {
         println!("{} 执行 prebuild 命令", "[exec]".blue().bold());
-        
-        for command in &rmake_config.build.prebuild {
+          for command in &rmake_config.build.prebuild {
             println!("    运行: {}", command.cyan());
+              // 修复 Windows 路径问题：确保使用正确的路径格式
+            let working_dir = normalize_path_for_command(project_path)?;
             
             let output = if cfg!(target_os = "windows") {
-                Command::new("cmd")
-                    .args(&["/C", command])
-                    .current_dir(project_path)
+                let powershell_command = convert_bash_to_powershell(command);
+                Command::new("powershell")
+                    .args(&["-Command", &powershell_command])
+                    .current_dir(working_dir)
                     .output()?
             } else {
                 Command::new("sh")
                     .args(&["-c", command])
-                    .current_dir(project_path)
+                    .current_dir(working_dir)
                     .output()?
             };
             
@@ -550,15 +552,15 @@ fn execute_prebuild(
             }
         }
     }
-    
-    // 检查是否有传统的 prebuild 脚本
+      // 检查是否有传统的 prebuild 脚本
     let prebuild_script = project_path.join("scripts/prebuild.sh");
     if prebuild_script.exists() {
         println!("{} 执行传统 prebuild 脚本", "[+]".green().bold());
         
+        let working_dir = normalize_path_for_command(project_path)?;
         let output = Command::new("sh")
             .arg(&prebuild_script)
-            .current_dir(project_path)
+            .current_dir(working_dir)
             .output()?;
         
         if !output.status.success() {
@@ -789,19 +791,19 @@ fn execute_postbuild(
     // 执行 Rmake.toml 中定义的 postbuild 命令
     if !rmake_config.build.postbuild.is_empty() {
         println!("{} 执行 postbuild 命令", "[exec]".blue().bold());
-        
-        for command in &rmake_config.build.postbuild {
+          for command in &rmake_config.build.postbuild {
             println!("    运行: {}", command.cyan());
-            
+              let working_dir = normalize_path_for_command(project_path)?;
             let output = if cfg!(target_os = "windows") {
-                Command::new("cmd")
-                    .args(&["/C", command])
-                    .current_dir(project_path)
+                let powershell_command = convert_bash_to_powershell(command);
+                Command::new("powershell")
+                    .args(&["-Command", &powershell_command])
+                    .current_dir(working_dir)
                     .output()?
             } else {
                 Command::new("sh")
                     .args(&["-c", command])
-                    .current_dir(project_path)
+                    .current_dir(working_dir)
                     .output()?
             };
             
@@ -823,9 +825,10 @@ fn execute_postbuild(
     if postbuild_script.exists() {
         println!("{} 执行传统 postbuild 脚本", "[+]".green().bold());
         
+        let working_dir = normalize_path_for_command(project_path)?;
         let output = Command::new("sh")
             .arg(&postbuild_script)
-            .current_dir(project_path)
+            .current_dir(working_dir)
             .output()?;
         
         if !output.status.success() {
@@ -1018,9 +1021,10 @@ fn execute_source_prebuild(project_path: &Path) -> Result<()> {
     if prebuild_script.exists() {
         println!("{} 执行源代码 prebuild 脚本", "[+]".green().bold());
         
+        let working_dir = normalize_path_for_command(project_path)?;
         let output = Command::new("sh")
             .arg(&prebuild_script)
-            .current_dir(project_path)
+            .current_dir(working_dir)
             .output()?;
         
         if !output.status.success() {
@@ -1079,9 +1083,10 @@ fn execute_source_postbuild(project_path: &Path) -> Result<()> {
     if postbuild_script.exists() {
         println!("{} 执行源代码 postbuild 脚本", "[+]".green().bold());
         
+        let working_dir = normalize_path_for_command(project_path)?;
         let output = Command::new("sh")
             .arg(&postbuild_script)
-            .current_dir(project_path)
+            .current_dir(working_dir)
             .output()?;
         
         if !output.status.success() {
@@ -1420,15 +1425,16 @@ fn apply_simple_fixes(file_path: &Path, diff_content: &str) -> Result<bool> {
 }
 
 /// 尝试使用 git apply（使用规范化路径）
-fn try_git_apply(project_path: &Path, fixes_path: &Path) -> Result<()> {
+fn try_git_apply(project_path: &Path, _fixes_path: &Path) -> Result<()> {
     // 将路径转换为相对路径，避免长路径问题
     let relative_fixes_path = Path::new(".rmmp").join("shellcheck-fixes.diff");
     
+    let working_dir = normalize_path_for_command(project_path)?;
     let output = Command::new("git")
         .arg("apply")
         .arg("--verbose")
         .arg(relative_fixes_path)
-        .current_dir(project_path)
+        .current_dir(working_dir)
         .output()?;
     
     if output.status.success() {
@@ -1440,6 +1446,41 @@ fn try_git_apply(project_path: &Path, fixes_path: &Path) -> Result<()> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("Git apply 失败: {}", stderr);
+    }
+}
+
+/// 标准化路径以避免 Windows UNC 路径问题
+fn normalize_path_for_command(path: &Path) -> Result<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        // 如果路径以 \\?\ 开头（UNC 长路径），尝试转换为普通路径
+        let path_str = path.to_string_lossy();
+        if path_str.starts_with("\\\\?\\") {
+            // 移除 \\?\ 前缀
+            let normal_path = &path_str[4..];
+            return Ok(PathBuf::from(normal_path));
+        }
+        
+        // 尝试获取绝对路径但避免长路径格式
+        if let Ok(canonical) = path.canonicalize() {
+            let canonical_str = canonical.to_string_lossy();
+            if canonical_str.starts_with("\\\\?\\") {
+                // 如果 canonicalize 返回了 UNC 路径，移除前缀
+                let normal_path = &canonical_str[4..];
+                Ok(PathBuf::from(normal_path))
+            } else {
+                Ok(canonical)
+            }
+        } else {
+            // 如果无法规范化，使用原路径
+            Ok(path.to_path_buf())
+        }
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        // 非 Windows 系统直接返回路径
+        Ok(path.to_path_buf())
     }
 }
 
@@ -1478,6 +1519,22 @@ fn copy_file_with_line_ending_normalization(src: &Path, dst: &Path) -> Result<()
         std::fs::copy(src, dst)?;
     }
     Ok(())
+}
+
+/// 将 bash 风格的命令转换为 PowerShell 兼容的命令
+fn convert_bash_to_powershell(command: &str) -> String {
+    // 替换 && 为 ; (PowerShell 的命令分隔符)
+    let mut converted = command.replace(" && ", "; ");
+    
+    // 处理其他常见的 bash 语法差异
+    converted = converted.replace(" || ", "; if ($LASTEXITCODE -ne 0) { ");
+    
+    // 如果包含 || 的替换，需要在末尾添加结束括号
+    if command.contains(" || ") {
+        converted.push_str(" }");
+    }
+    
+    converted
 }
 
 /// 应用排除规则并收集路径
