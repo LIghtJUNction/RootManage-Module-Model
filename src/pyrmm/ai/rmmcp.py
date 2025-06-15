@@ -167,60 +167,7 @@ def echo(message: str = "world") -> str:
     return f"Echo: {message}"
 
 
-@mcp.tool()
-def getRmmMeta():
-    """
-    获取 RMM 的元数据。
-    """
-    return mcp.META
 
-
-@mcp.tool()
-def getRmmProjects():
-    """
-    获取 RMM 的项目列表。
-    """
-    return mcp.projects
-
-
-@mcp.tool()
-def getRmmRoot():
-    """
-    获取 RMM 配置的根目录。
-    """
-    return str(mcp.ROOT)
-
-
-@mcp.tool()
-def testProjectContext(project_name: str | None = None):
-    """
-    测试项目上下文管理器功能
-    
-    参数:
-        project_name: 可选的项目名称
-    
-    返回:
-        上下文切换的测试结果
-    """
-    original_cwd = os.getcwd()
-    
-    try:
-        with with_project_directory(project_name) as ctx:
-            current_cwd = os.getcwd()
-            return {
-                "success": True,
-                "original_cwd": original_cwd,
-                "current_cwd": current_cwd,
-                "context_info": ctx,
-                "test_result": "上下文管理器工作正常"
-            }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "original_cwd": original_cwd,
-            "current_cwd": os.getcwd()
-        }
 
 
 

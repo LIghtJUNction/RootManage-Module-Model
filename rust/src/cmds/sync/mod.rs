@@ -1,11 +1,9 @@
 use anyhow::Result;
-use clap::ArgMatches;
 use colored::Colorize;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
-use std::collections::HashMap;
 
-use crate::core::rmm_core::{RmmCore, GitAnalyzer, MetaConfig};
+use crate::core::rmm_core::{RmmCore, GitAnalyzer};
 
 /// 作者信息
 #[derive(Debug, Clone, PartialEq)]
@@ -56,17 +54,36 @@ struct VersionInfo {
 
 impl VersionInfo {
     fn new(version: &str, version_code: &str) -> Self {
-        Self {
-            version: version.to_string(),
+        Self {            version: version.to_string(),
             version_code: version_code.to_string(),
         }
     }
-      /// 智能版本升级 - 支持基于日期和Git的版本管理
+
+    /// 智能版本升级 - 支持基于日期和Git的版本管理
     fn smart_bump_version(&mut self, project_path: &Path) {
         // 使用智能版本升级
         self.version = smart_version_bump(&self.version, project_path);
         
-        // 生成新的版本代码        self.version_code = generate_version_code(project_path);
+        // 生成新的版本代码（内联版本生成逻辑）
+        let now = chrono::Local::now();
+        let date_str = now.format("%Y%m%d").to_string();
+        
+        // 尝试从现有版本代码中提取递增数字
+        if let Ok(current_version) = VersionInfo::from_module_prop(project_path) {
+            let current_code = &current_version.version_code;
+            
+            // 如果当前版本代码是今天的日期开头，提取并递增后缀
+            if current_code.starts_with(&date_str) {
+                let suffix = &current_code[date_str.len()..];
+                if let Ok(num) = suffix.parse::<u32>() {
+                    self.version_code = format!("{}{:02}", date_str, num + 1);
+                    return;
+                }
+            }
+        }
+        
+        // 默认从01开始
+        self.version_code = format!("{}01", date_str);
     }
     
     /// 从 module.prop 读取版本信息
@@ -689,27 +706,7 @@ fn normalize_path(path: &Path) -> String {
 }
 
 /// 生成基于日期和递增的版本代码
-fn generate_version_code(project_path: &Path) -> String {
-    // 获取当前日期 YYYYMMDD 格式
-    let now = chrono::Local::now();
-    let date_str = now.format("%Y%m%d").to_string();
-    
-    // 尝试从现有版本代码中提取递增数字
-    if let Ok(current_version) = VersionInfo::from_module_prop(project_path) {
-        let current_code = &current_version.version_code;
-        
-        // 如果当前版本代码是今天的日期开头，提取并递增后缀
-        if current_code.starts_with(&date_str) {
-            let suffix = &current_code[date_str.len()..];
-            if let Ok(num) = suffix.parse::<u32>() {
-                return format!("{}{:02}", date_str, num + 1);
-            }
-        }
-    }
-    
-    // 默认从01开始
-    format!("{}01", date_str)
-}
+
 
 /// 智能版本升级 - 修正版本格式，patch使用Git提交hash
 fn smart_version_bump(current_version: &str, project_path: &Path) -> String {

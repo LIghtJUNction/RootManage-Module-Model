@@ -1,0 +1,23 @@
+[project]
+id = "TEST"
+description = "A Rmm project: TEST"
+readme = "README.md"
+changelog = "CHANGELOG.md"
+license = "LICENSE"
+dependencies = []
+
+[project.scripts]
+build = "rmm build"
+test = "rmm test"
+install = "rmm device install"
+
+[[authors]]
+name = "LIghtJUNction"
+email = "LIghtJUNction.me@gmail.com"
+
+[urls]
+github = "https://github.com/LIghtJUNction/RootManageModuleModel"
+
+[build-system]
+requires = ["rmm>=0.3.0"]
+build-backend = "rmm"

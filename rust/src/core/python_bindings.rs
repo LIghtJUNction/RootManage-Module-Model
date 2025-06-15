@@ -1,6 +1,6 @@
 use crate::core::rmm_core::*;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyString, PyModule};
+use pyo3::types::{PyDict, PyList, PyString};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -92,16 +92,38 @@ impl PyRmmCore {
                 e.to_string(),
             )),
         }
-    }
-
-    /// 扫描项目 - 简化版本
+    }    /// 扫描项目 - 简化版本
     fn scan_projects(
         &self,
         py: Python,
         scan_path: String,
         max_depth: Option<usize>,
     ) -> PyResult<PyObject> {
+        // 🔧 修复：添加路径验证，防止无效路径导致崩溃
         let path = Path::new(&scan_path);
+        
+        // 验证路径是否存在且可访问
+        if !path.exists() {
+            return Err(PyErr::new::<pyo3::exceptions::PyFileNotFoundError, _>(
+                format!("扫描路径不存在: {}", scan_path),
+            ));
+        }
+        
+        if !path.is_dir() {
+            return Err(PyErr::new::<pyo3::exceptions::PyNotADirectoryError, _>(
+                format!("扫描路径不是目录: {}", scan_path),
+            ));
+        }
+        
+        // 验证最大深度参数
+        if let Some(depth) = max_depth {
+            if depth > 20 {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "最大深度不能超过20层，以防止性能问题",
+                ));
+            }
+        }
+        
         match self.inner.scan_projects(path, max_depth) {            
             Ok(results) => {
                 let list = PyList::empty(py);

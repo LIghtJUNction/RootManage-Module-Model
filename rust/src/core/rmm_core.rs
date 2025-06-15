@@ -12,8 +12,10 @@ use walkdir::WalkDir;
 
 /// 缓存项结构
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CacheItem<T> {
     data: T,
+    #[allow(dead_code)]
     timestamp: Instant,
     expires_at: Instant,
 }
@@ -126,6 +128,7 @@ pub struct ProjectScanResult {
     pub name: String,
     pub path: PathBuf,
     pub is_valid: bool,
+    #[allow(dead_code)]
     pub git_info: Option<GitInfo>,
 }
 
@@ -236,22 +239,32 @@ impl GitAnalyzer {
         
         Ok(!statuses.is_empty())
     }
-    
-    /// 获取最后一次提交信息
+      /// 获取最后一次提交信息
     fn get_last_commit_info(repo: &Repository) -> Result<(Option<String>, Option<String>)> {
-        let head = repo.head()
-            .with_context(|| "Failed to get HEAD reference")?;
-        
-        if let Some(oid) = head.target() {
-            let commit = repo.find_commit(oid)
-                .with_context(|| "Failed to find commit")?;
-            
-            let hash = oid.to_string();
-            let message = commit.message().unwrap_or("").to_string();
-            
-            Ok((Some(hash), Some(message)))
-        } else {
-            Ok((None, None))
+        // 🔧 修复：优雅处理空仓库和HEAD为空的情况
+        match repo.head() {
+            Ok(head) => {
+                if let Some(oid) = head.target() {
+                    match repo.find_commit(oid) {
+                        Ok(commit) => {
+                            let hash = oid.to_string();
+                            let message = commit.message().unwrap_or("").to_string();
+                            Ok((Some(hash), Some(message)))
+                        }
+                        Err(_) => {
+                            // 提交对象不存在，可能是空仓库
+                            Ok((None, None))
+                        }
+                    }
+                } else {
+                    // HEAD存在但没有指向任何提交（空仓库）
+                    Ok((None, None))
+                }
+            }
+            Err(_) => {
+                // HEAD不存在或无法访问（很可能是空仓库或损坏的仓库）
+                Ok((None, None))
+            }
         }
     }
 }
@@ -304,34 +317,38 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
         self.rmm_root.join("meta.toml")
     }    /// 功能二：获取 RMM_ROOT/meta.toml 文件的内容（解析为字典）
     pub fn get_meta_config(&self) -> Result<MetaConfig> {
-        // 检查缓存
-        {
+        // 🔧 修复：避免多次获取锁，防止死锁
+        let need_reload = {
             let cache = self.meta_cache.lock().unwrap();
-            if let Some(cached) = cache.as_ref() {
-                if !cached.is_expired() {
+            match cache.as_ref() {
+                Some(cached) if !cached.is_expired() => {
                     return Ok(cached.data.clone());
                 }
+                _ => true, // 需要重载
             }
+        };
+
+        if need_reload {
+            // 读取并解析文件
+            let meta_path = self.get_meta_path();
+            let content = fs::read_to_string(&meta_path)
+                .with_context(|| format!("Failed to read meta.toml from {}", meta_path.display()))?;
+            
+            let meta: MetaConfig = toml::from_str(&content)
+                .with_context(|| "Failed to parse meta.toml")?;
+
+            // 🔧 修复：单次获取锁并更新缓存
+            {
+                let mut cache = self.meta_cache.lock().unwrap();
+                *cache = Some(CacheItem::new(meta.clone(), self.cache_ttl));
+            }
+
+            Ok(meta)
+        } else {
+            // 这个分支实际上不会执行到，但为了完备性保留
+            unreachable!("Cache check should have returned early")
         }
-
-        // 读取并解析文件
-        let meta_path = self.get_meta_path();
-        let content = fs::read_to_string(&meta_path)
-            .with_context(|| format!("Failed to read meta.toml from {}", meta_path.display()))?;
-        
-        let meta: MetaConfig = toml::from_str(&content)
-            .with_context(|| "Failed to parse meta.toml")?;
-
-        // 更新缓存
-        {
-            let mut cache = self.meta_cache.lock().unwrap();
-            *cache = Some(CacheItem::new(meta.clone(), self.cache_ttl));
-        }
-
-        Ok(meta)
-    }
-
-    /// 功能三：更新 meta.toml 文件的内容
+    }    /// 功能三：更新 meta.toml 文件的内容
     pub fn update_meta_config(&self, meta: &MetaConfig) -> Result<()> {
         let meta_path = self.get_meta_path();
         
@@ -343,8 +360,17 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
 
         let content = toml::to_string_pretty(meta)
             .with_context(|| "Failed to serialize meta config")?;
-            fs::write(&meta_path, content)
-            .with_context(|| format!("Failed to write meta.toml to {}", meta_path.display()))?;
+        
+        // 🔧 修复：使用临时文件和原子性写入，避免并发写入竞争条件
+        let temp_path = meta_path.with_extension("toml.tmp");
+        
+        // 写入临时文件
+        fs::write(&temp_path, &content)
+            .with_context(|| format!("Failed to write temporary meta.toml to {}", temp_path.display()))?;
+        
+        // 原子性重命名，确保并发安全
+        fs::rename(&temp_path, &meta_path)
+            .with_context(|| format!("Failed to rename temporary file to {}", meta_path.display()))?;
 
         // 更新缓存
         {
@@ -356,6 +382,7 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
     }
 
     /// 功能四：返回 meta.toml 文件内容的某个键的值
+    #[allow(dead_code)]
     pub fn get_meta_value(&self, key: &str) -> Result<Option<toml::Value>> {
         let meta_path = self.get_meta_path();
         let content = fs::read_to_string(&meta_path)
@@ -388,12 +415,23 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
                 results.insert(name.clone(), false);
                 continue;
             }
-            
-            // 2. 黑名单检查 - 排除构建相关目录和系统目录
+              // 2. 黑名单检查 - 排除构建相关目录和系统目录
             let blacklisted_names = [
+                // 构建和开发相关目录
                 "build", "source-build", "dist", "target", "node_modules", 
                 ".git", ".vscode", "tmp", "temp", "cache", "output",
-                ".rmmp", "out", "bin", "obj", ".next", "coverage"
+                ".rmmp", "out", "bin", "obj", ".next", "coverage",
+                // 🔧 修复：增加更完整的系统目录黑名单
+                "System32", "Windows", "Program Files", "Program Files (x86)",
+                "usr", "var", "etc", "proc", "sys", "dev", "boot", "mnt",
+                "AppData", "Application Data", "Documents and Settings",
+                // 包管理器和虚拟环境目录
+                "venv", ".venv", "env", ".env", "__pycache__", ".pytest_cache",
+                "vendor", "packages", ".nuget", ".gradle", ".m2",
+                // 编辑器和IDE目录
+                ".idea", ".vs", ".vscode", ".sublime-workspace", ".atom",
+                // 日志和临时文件目录
+                "logs", "log", "Temp", "temporary", "TEMP", "TMP"
             ];
             if blacklisted_names.contains(&name.as_str()) {
                 #[cfg(debug_assertions)]
@@ -464,24 +502,23 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
                 eprintln!("⏭️  跳过 .rmmp 目录下的路径: {}", path.display());
                 continue;
             }
-            
-            // 检查是否包含 rmmproject.toml
+              // 检查是否包含 rmmproject.toml
             let project_file = path.join("rmmproject.toml");
             if project_file.exists() {
-                // 修复项目名称提取逻辑 - 使用 canonicalize 解析真实路径
+                // 🔧 修复：改进路径规范化错误处理逻辑
                 let canonical_path = match path.canonicalize() {
                     Ok(p) => p,
-                    Err(_) => {
+                    Err(e) => {
                         #[cfg(debug_assertions)]
-                        eprintln!("⚠️  无法解析路径: {}", path.display());
-                        continue;
+                        eprintln!("⚠️  路径规范化失败 {} ({}), 使用原始路径", path.display(), e);
+                        // 🔧 修复：不直接跳过，而是使用原始路径但标记为潜在重复
+                        path.to_path_buf()
                     }
                 };
-                
-                // 检查路径是否已存在
+                  // 🔧 修复：使用路径字符串进行重复检查，以处理规范化失败的情况
                 if canonical_paths.contains(&canonical_path) {
                     #[cfg(debug_assertions)]
-                    eprintln!("⏭️  跳过重复路径: {}", canonical_path.display());
+                    eprintln!("⏭️  跳过重复路径: {} (canonical: {})", path.display(), canonical_path.display());
                     continue;
                 }
                 
@@ -493,12 +530,23 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
                 // 调试信息：打印正在验证的项目名称
                 #[cfg(debug_assertions)]
                 eprintln!("🔍 正在验证项目名称: '{}' 在路径: {} (canonical: {})", name, path.display(), canonical_path.display());
-                
-                // 黑名单检查 - 排除构建相关目录
+                  // 黑名单检查 - 排除构建相关目录
                 let blacklisted_names = [
+                    // 构建和开发相关目录
                     "build", "source-build", "dist", "target", "node_modules", 
                     ".git", ".vscode", "tmp", "temp", "cache", "output",
-                    ".rmmp", "out", "bin", "obj", ".next", "coverage"
+                    ".rmmp", "out", "bin", "obj", ".next", "coverage",
+                    // 🔧 修复：增加更完整的系统目录黑名单
+                    "System32", "Windows", "Program Files", "Program Files (x86)",
+                    "usr", "var", "etc", "proc", "sys", "dev", "boot", "mnt",
+                    "AppData", "Application Data", "Documents and Settings",
+                    // 包管理器和虚拟环境目录
+                    "venv", ".venv", "env", ".env", "__pycache__", ".pytest_cache",
+                    "vendor", "packages", ".nuget", ".gradle", ".m2",
+                    // 编辑器和IDE目录
+                    ".idea", ".vs", ".vscode", ".sublime-workspace", ".atom",
+                    // 日志和临时文件目录
+                    "logs", "log", "Temp", "temporary", "TEMP", "TMP"
                 ];
                 if blacklisted_names.contains(&name.as_str()) {
                     #[cfg(debug_assertions)]
@@ -598,7 +646,8 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
         Ok(project)
     }
 
-    /// 写入项目的 rmmproject.toml
+    /// 更新项目配置
+    #[allow(dead_code)]
     pub fn update_project_config(&self, project_path: &Path, project: &RmmProject) -> Result<()> {
         let project_file = project_path.join("rmmproject.toml");
         
@@ -653,9 +702,8 @@ impl RmmCore {    /// 创建新的 RmmCore 实例
             .with_context(|| "Failed to parse Rmake.toml")?;
 
         Ok(rmake)
-    }
-
-    /// 写入项目根目录下的 .rmmp/Rmake.toml 文件
+    }    /// 写入项目根目录下的 .rmmp/Rmake.toml 文件
+    #[allow(dead_code)]
     pub fn update_rmake_config(&self, project_path: &Path, rmake: &RmakeConfig) -> Result<()> {
         let rmmp_dir = project_path.join(".rmmp");
         let rmake_file = rmmp_dir.join("Rmake.toml");
@@ -782,6 +830,7 @@ impl Default for RmmCore {
 // 工具函数
 impl RmmCore {
     /// 创建默认的 meta.toml 配置
+    #[allow(dead_code)]
     pub fn create_default_meta(&self, email: &str, username: &str, version: &str) -> MetaConfig {
         MetaConfig {
             email: email.to_string(),
@@ -792,6 +841,7 @@ impl RmmCore {
     }
 
     /// 创建默认的项目配置
+    #[allow(dead_code)]
     pub fn create_default_project(&self, id: &str, username: &str, email: &str) -> RmmProject {
         RmmProject {
             project: ProjectInfo {
@@ -823,6 +873,7 @@ impl RmmCore {
     }
 
     /// 创建默认的 module.prop
+    #[allow(dead_code)]
     pub fn create_default_module_prop(&self, id: &str, username: &str) -> ModuleProp {
         ModuleProp {
             id: id.to_string(),
@@ -834,6 +885,7 @@ impl RmmCore {
             update_json: "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPOSITORY/main/update.json".to_string(),
         }
     }    /// 创建默认的 Rmake.toml 配置
+    #[allow(dead_code)]
     pub fn create_default_rmake(&self) -> RmakeConfig {
         let mut default_scripts = HashMap::new();        // 添加跨平台默认脚本
         if cfg!(target_os = "windows") {
@@ -1019,6 +1071,7 @@ impl RmmCore {/// 检测给定路径是否在 Git 仓库中，并返回详细信
     }
     
     /// 获取项目的 Git 信息
+    #[allow(dead_code)]
     pub fn get_project_git_info(&self, project_name: &str) -> Result<Option<GitInfo>> {
         if let Some(project_path) = self.get_project_path(project_name)? {
             Ok(Some(self.get_git_info(&project_path)?))
@@ -1027,7 +1080,8 @@ impl RmmCore {/// 检测给定路径是否在 Git 仓库中，并返回详细信
         }
     }
     
-    /// 批量获取所有项目的 Git 信息
+    /// 获取所有项目的 Git 信息
+    #[allow(dead_code)]
     pub fn get_all_projects_git_info(&self) -> Result<HashMap<String, GitInfo>> {
         let meta = self.get_meta_config()?;
         let mut git_info_map = HashMap::new();
@@ -1041,6 +1095,7 @@ impl RmmCore {/// 检测给定路径是否在 Git 仓库中，并返回详细信
         Ok(git_info_map)
     }
       /// 检查项目是否在 Git 仓库中
+    #[allow(dead_code)]
     pub fn is_project_in_git(&self, project_name: &str) -> Result<bool> {
         if let Ok(Some(_git_info)) = self.get_project_git_info(project_name) {
             Ok(true)
@@ -1048,8 +1103,8 @@ impl RmmCore {/// 检测给定路径是否在 Git 仓库中，并返回详细信
             Ok(false)
         }
     }
-    
-    /// 获取项目相对于 Git 根目录的路径
+      /// 获取项目相对于 Git 根目录的路径
+    #[allow(dead_code)]
     pub fn get_project_git_relative_path(&self, project_name: &str) -> Result<Option<PathBuf>> {
         if let Ok(Some(git_info)) = self.get_project_git_info(project_name) {
             return Ok(Some(git_info.relative_path));
@@ -1064,6 +1119,7 @@ impl RmmCore {/// 检测给定路径是否在 Git 仓库中，并返回详细信
     }
     
     /// 清理过期的 Git 缓存项
+    #[allow(dead_code)]
     pub fn cleanup_expired_git_cache(&self) {
         let mut cache = self.git_cache.lock().unwrap();
         let now = Instant::now();
@@ -1108,16 +1164,20 @@ impl RmmCore {    /// 从meta配置中移除项目
             .collect();
         
         self.remove_projects_from_meta(&invalid_projects)
-    }
-
-    /// 清理所有缓存
+    }    /// 清理所有缓存
     pub fn clear_all_cache(&self) {
+        // 🔧 修复：清理所有类型的缓存
+        {
+            let mut cache = self.meta_cache.lock().unwrap();
+            *cache = None;
+        }
+        {
+            let mut cache = self.project_cache.lock().unwrap();
+            cache.clear();
+        }
         self.clear_git_cache();
-        // 注意：meta_cache 和 project_cache 清理在这里可以添加
-        // 但目前只有 git_cache 的清理方法可用
-    }
-
-    /// 清除所有缓存，强制重新读取
+    }    /// 清除所有缓存，强制重新读取
+    #[allow(dead_code)]
     pub fn clear_cache(&self) {
         {
             let mut cache = self.meta_cache.lock().unwrap();
@@ -1139,12 +1199,17 @@ impl RmmCore {    /// 从meta配置中移除项目
 /// - 必须以字母开头
 /// - 后续字符可以是字母、数字、点、下划线或连字符
 fn is_valid_project_name(name: &str) -> bool {
+    use std::sync::OnceLock;
     use regex::Regex;
     
-    // 创建正则表达式
-    let re = Regex::new(r"^[a-zA-Z][a-zA-Z0-9._-]+$").unwrap();
+    // 🔧 修复：使用静态正则表达式，避免重复编译
+    static PROJECT_NAME_REGEX: OnceLock<Regex> = OnceLock::new();
     
-    // 验证名称
-    re.is_match(name) && name.len() >= 2 // 至少2个字符
+    let regex = PROJECT_NAME_REGEX.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z][a-zA-Z0-9._-]+$").expect("Invalid regex pattern")
+    });
+    
+    // 验证名称长度和格式
+    name.len() >= 2 && name.len() <= 100 && regex.is_match(name)
 }
 

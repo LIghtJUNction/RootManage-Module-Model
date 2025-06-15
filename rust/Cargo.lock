@@ -1248,7 +1248,7 @@ dependencies = [
 
 [[package]]
 name = "rmm"
-version = "0.3.5-alpha.6"
+version = "0.3.5-alpha.7"
 dependencies = [
  "anyhow",
  "chrono",

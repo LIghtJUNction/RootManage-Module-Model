@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::core::RmmCore;
+    use crate::core::rmm_core::RmmCore;
     use std::fs;
     use std::path::PathBuf;
     use tempfile::tempdir;    fn setup_test_env() -> (tempfile::TempDir, RmmCore) {
@@ -100,9 +100,7 @@ mod tests {
         let loaded_prop = core.get_module_prop(&project_dir).unwrap();
         assert_eq!(loaded_prop.id, module_prop.id);
         assert_eq!(loaded_prop.author, module_prop.author);
-    }
-
-    #[test]
+    }    #[test]
     fn test_rmake_config_operations() {
         let (temp_dir, core) = setup_test_env();
         
@@ -111,7 +109,8 @@ mod tests {
 
         // 测试创建默认 Rmake 配置
         let rmake = core.create_default_rmake();
-        assert!(rmake.build.include.contains(&"rmm".to_string()));
+        // 🔧 修复：检查实际的默认配置内容
+        assert!(rmake.build.build.contains(&"rmm".to_string()));
         assert!(rmake.build.exclude.contains(&".git".to_string()));
 
         // 测试保存 Rmake 配置
@@ -145,9 +144,7 @@ mod tests {
         let project_names: Vec<&String> = results.iter().map(|r| &r.name).collect();
         assert!(project_names.contains(&&"project1".to_string()));
         assert!(project_names.contains(&&"project2".to_string()));
-    }
-
-    #[test]
+    }    #[test]
     fn test_project_validity_check() {
         let (temp_dir, core) = setup_test_env();
         
@@ -157,10 +154,16 @@ mod tests {
         let valid_project = temp_dir.path().join("valid_project");
         let invalid_project = temp_dir.path().join("invalid_project");
         
+        // 🔧 修复：创建完整的有效项目结构
         fs::create_dir_all(&valid_project).unwrap();
         fs::create_dir_all(&invalid_project).unwrap();
+        
+        // 创建有效项目的必要文件
         fs::write(valid_project.join("rmmproject.toml"), "").unwrap();
-        // invalid_project 没有 rmmproject.toml
+        fs::create_dir_all(valid_project.join(".rmmp")).unwrap();
+        fs::write(valid_project.join(".rmmp").join("Rmake.toml"), "").unwrap();
+        
+        // invalid_project 没有必要的文件
         
         meta.projects.insert("valid".to_string(), valid_project.to_string_lossy().to_string());
         meta.projects.insert("invalid".to_string(), invalid_project.to_string_lossy().to_string());
@@ -449,15 +452,20 @@ build-backend = "rmm"
         }
         
         let core = RmmCore::new();
-        
-        // 创建有效和无效的项目引用
+          // 创建有效和无效的项目引用
         let valid_project = temp_dir.path().join("valid_project");
         let invalid_project = temp_dir.path().join("invalid_project");
         
+        // 🔧 修复：创建完整的有效项目结构
         fs::create_dir_all(&valid_project)?;
         fs::create_dir_all(&invalid_project)?;
+        
+        // 创建有效项目的必要文件
         fs::write(valid_project.join("rmmproject.toml"), "")?;
-        // invalid_project 没有 rmmproject.toml
+        fs::create_dir_all(valid_project.join(".rmmp"))?;
+        fs::write(valid_project.join(".rmmp").join("Rmake.toml"), "")?;
+        
+        // invalid_project 没有必要的文件
         
         let mut meta = core.create_default_meta("test@example.com", "testuser", "1.0.0");
         meta.projects.insert("valid".to_string(), valid_project.to_string_lossy().to_string());
