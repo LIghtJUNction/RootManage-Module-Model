@@ -38,8 +38,7 @@ pub enum Commands {
         #[arg(value_name = "SCRIPT")]
         script: Option<String>,
     },
-    
-    /// 🔄 同步项目元数据
+      /// 🔄 同步项目元数据
     Sync {
         /// 特定项目名称（可选，默认同步所有项目）
         #[arg(value_name = "PROJECT")]
@@ -48,6 +47,10 @@ pub enum Commands {
         /// 仅同步项目列表，跳过依赖同步
         #[arg(long, default_value = "false")]
         projects_only: bool,
+        
+        /// 强制修复版本信息不一致的问题
+        #[arg(long, default_value = "false")]
+        fix_version: bool,
         
         /// 指定搜索路径（可多个）
         #[arg(short, long, value_delimiter = ',')]

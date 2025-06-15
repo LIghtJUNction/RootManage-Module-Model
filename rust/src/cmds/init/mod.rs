@@ -171,6 +171,7 @@ fn create_rmmp_structure(project_path: &Path) -> Result<()> {
     let rmmp_dir = project_path.join(".rmmp");
     let build_dir = rmmp_dir.join("build");
     let dist_dir = rmmp_dir.join("dist");
+    let source_build_dir = rmmp_dir.join("source-build");
 
     if rmmp_dir.exists() {
         println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp".cyan().bold());
@@ -191,6 +192,13 @@ fn create_rmmp_structure(project_path: &Path) -> Result<()> {
     } else {
         fs::create_dir_all(&dist_dir)?;
         println!("{} 创建 {} 目录", "[+]".green().bold(), ".rmmp/dist".cyan().bold());
+    }
+
+    if source_build_dir.exists() {
+        println!("{} 目录 {} 已存在，跳过创建。", "[!]".yellow().bold(), ".rmmp/source-build".cyan().bold());
+    } else {
+        fs::create_dir_all(&source_build_dir)?;
+        println!("{} 创建 {} 目录", "[+]".green().bold(), ".rmmp/source-build".cyan().bold());
     }
     Ok(())
 }
@@ -266,20 +274,7 @@ fn create_project_config(project_path: &Path, project_id: &str, author: &str, em
     if project_config_path.exists() {
         println!("{} 文件 {} 已存在，跳过创建。", "[!]".yellow().bold(), "rmmproject.toml".cyan().bold());
         return Ok(());
-    }
-
-    // 生成智能的update_json URL
-    let update_json_url = if let Some(git) = git_info {
-        if let Some(remote_url) = &git.remote_url {
-            generate_update_json_url(remote_url, project_id)
-        } else {
-            format!("https://github.com/{}/releases/latest/download/update.json", project_id)
-        }
-    } else {
-        format!("https://github.com/{}/releases/latest/download/update.json", project_id)
-    };
-
-    // 生成GitHub URL
+    }    // 生成GitHub URL
     let github_url = if let Some(git) = git_info {
         if let Some(remote_url) = &git.remote_url {
             if let Some((owner, repo)) = parse_github_url(remote_url) {
@@ -356,13 +351,11 @@ fn create_module_prop(project_path: &Path, project_id: &str, author: &str, git_i
     // 生成基于当前日期的 versionCode（整数）
     let now = Utc::now();
     let version_code: i64 = format!("{:04}{:02}{:02}{:02}", 
-        now.year(), now.month(), now.day(), 1).parse().unwrap_or(2025061301);
-
-    let module_prop = ModuleProp {
+        now.year(), now.month(), now.day(), 1).parse().unwrap_or(2025061301);    let module_prop = ModuleProp {
         id: project_id.to_string(),
         name: format!("{} Module", 
             project_id.chars().next().unwrap().to_uppercase().to_string() + &project_id[1..]),
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version: "0.1.0".to_string(), // 🐛 修复：使用模块的初始版本，而不是 RMM 工具版本
         version_code: version_code.to_string(),
         author: author.to_string(),
         description: format!("A rmm project: {}", project_id),

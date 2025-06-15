@@ -99,6 +99,7 @@ fn load_rmake_config(project_path: &Path) -> Result<RmakeConfig> {
 /// 设置构建目录
 fn setup_build_directories(project_path: &Path) -> Result<()> {
     let build_dir = project_path.join(".rmmp/build");
+    let source_build_dir = project_path.join(".rmmp/source-build");
     let dist_dir = project_path.join(".rmmp/dist");
     
     // 清理并重新创建构建目录
@@ -106,6 +107,12 @@ fn setup_build_directories(project_path: &Path) -> Result<()> {
         fs::remove_dir_all(&build_dir)?;
     }
     fs::create_dir_all(&build_dir)?;
+    
+    // 清理并重新创建源码构建目录
+    if source_build_dir.exists() {
+        fs::remove_dir_all(&source_build_dir)?;
+    }
+    fs::create_dir_all(&source_build_dir)?;
     
     // 创建分发目录
     if !dist_dir.exists() {
@@ -122,52 +129,83 @@ fn execute_build_process(
     rmake_config: &RmakeConfig,
     auto_fix: bool,
 ) -> Result<()> {
-    // 1. 复制文件到构建目录
-    copy_files_to_build(project_path, rmake_config)?;
+    // 1. 首先复制文件到构建目录和源码构建目录（为 prebuild 准备源代码）
+    copy_files_to_build_and_source(project_path, rmake_config)?;
     
-    // 2. 复制 update.json 到 dist 目录
-    copy_update_json_to_dist(project_path)?;
-    
-    // 3. 执行 shell 脚本检查
-    check_shell_scripts(project_path, auto_fix)?;
-    
-    // 4. 执行 prebuild 配置
+    // 2. 执行 prebuild 配置（现在可以访问复制好的源代码）
     execute_prebuild(project_path, rmake_config)?;
     
-    // 5. 打包模块
-    package_module(project_path, rmake_config)?;
+    // 3. 检查是否使用内置构建流程还是自定义构建命令
+    let use_builtin_build = rmake_config.build.build.is_empty() 
+        || (rmake_config.build.build.len() == 1 && rmake_config.build.build[0] == "rmm");
     
-    // 6. 执行 postbuild
+    if use_builtin_build {
+        println!("{} 使用内置构建流程", "[build]".cyan().bold());
+        
+        // 内置构建流程
+        // 3.1. 复制 update.json 到 dist 目录
+        copy_update_json_to_dist(project_path)?;
+        
+        // 3.2. 执行 shell 脚本检查
+        check_shell_scripts(project_path, auto_fix)?;
+        
+        // 3.3. 打包模块
+        package_module(project_path, rmake_config)?;
+    } else {
+        println!("{} 使用自定义构建命令", "[build]".cyan().bold());
+        
+        // 执行自定义构建命令
+        execute_custom_build(project_path, rmake_config)?;
+    }
+    
+    // 4. 执行 postbuild
     execute_postbuild(project_path, rmake_config)?;
     
     Ok(())
 }
 
-/// 复制文件到构建目录
-fn copy_files_to_build(
+/// 复制文件到构建目录和源码构建目录
+fn copy_files_to_build_and_source(
     project_path: &Path,
     rmake_config: &RmakeConfig,
 ) -> Result<()> {
     let build_dir = project_path.join(".rmmp/build");
+    let source_build_dir = project_path.join(".rmmp/source-build");
+    
+    // 确保目录存在
+    fs::create_dir_all(&build_dir)?;
+    fs::create_dir_all(&source_build_dir)?;
     
     // 获取需要复制的文件和目录
     let entries = get_build_entries(project_path, rmake_config)?;
     
+    println!("{} 复制文件到构建目录和源码构建目录", "[copy]".cyan().bold());
+    
     for entry in entries {
         let relative_path = entry.strip_prefix(project_path)?;
-        let dest_path = build_dir.join(relative_path);
-          if entry.is_dir() {
-            fs::create_dir_all(&dest_path)?;
-            copy_directory(&entry, &dest_path)?;
+        let build_dest_path = build_dir.join(relative_path);
+        let source_build_dest_path = source_build_dir.join(relative_path);
+        
+        if entry.is_dir() {
+            // 复制目录到两个位置
+            fs::create_dir_all(&build_dest_path)?;
+            fs::create_dir_all(&source_build_dest_path)?;
+            copy_directory(&entry, &build_dest_path)?;
+            copy_directory(&entry, &source_build_dest_path)?;
         } else {
-            if let Some(parent) = dest_path.parent() {
+            // 复制文件到两个位置
+            if let Some(parent) = build_dest_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            copy_file_with_line_ending_normalization(&entry, &dest_path)?;
+            if let Some(parent) = source_build_dest_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            copy_file_with_line_ending_normalization(&entry, &build_dest_path)?;
+            copy_file_with_line_ending_normalization(&entry, &source_build_dest_path)?;
         }
     }
     
-    println!("{} 复制文件到构建目录", "[+]".green().bold());
+    println!("{} 文件复制完成", "[+]".green().bold());
     Ok(())
 }
 
@@ -571,6 +609,51 @@ fn execute_prebuild(
         // 打印输出
         if !output.stdout.is_empty() {
             println!("{}", String::from_utf8_lossy(&output.stdout));
+        }
+    }
+    
+    Ok(())
+}
+
+/// 执行自定义构建命令
+fn execute_custom_build(
+    project_path: &Path,
+    rmake_config: &RmakeConfig,
+) -> Result<()> {
+    if rmake_config.build.build.is_empty() {
+        return Ok(());
+    }
+    
+    println!("{} 执行自定义构建命令", "[exec]".blue().bold());
+    
+    for command in &rmake_config.build.build {
+        println!("    运行: {}", command.cyan());
+        
+        // 修复 Windows 路径问题：确保使用正确的路径格式
+        let working_dir = normalize_path_for_command(project_path)?;
+        
+        let output = if cfg!(target_os = "windows") {
+            let powershell_command = convert_bash_to_powershell(command);
+            Command::new("powershell")
+                .args(&["-Command", &powershell_command])
+                .current_dir(working_dir)
+                .output()?
+        } else {
+            Command::new("sh")
+                .args(&["-c", command])
+                .current_dir(working_dir)
+                .output()?
+        };
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("自定义构建命令执行失败: {}\n错误: {}", command, stderr);
+        }
+        
+        // 打印输出
+        if !output.stdout.is_empty() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            println!("    输出: {}", stdout.trim());
         }
     }
     

@@ -1,0 +1,23 @@
+[build]
+include = ['# 额外包含的文件或目录，如："extra/"']
+exclude = [
+    ".git",
+    ".rmmp",
+    "*.tmp",
+    "*.log",
+]
+prebuild = ["echo 'Starting build'"]
+build = ["rmm"]
+postbuild = ["echo 'Build completed'"]
+
+[build.src]
+include = ['# 源代码额外包含的文件，如："docs/"']
+exclude = [
+    ".git",
+    "*.tmp",
+    "*.log",
+    "node_modules",
+]
+
+[build.scripts]
+clean = '''Remove-Item '.rmmp\build' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item '.rmmp\dist' -Recurse -Force -ErrorAction SilentlyContinue; New-Item -Path '.rmmp\build' -ItemType Directory -Force; New-Item -Path '.rmmp\dist' -ItemType Directory -Force'''

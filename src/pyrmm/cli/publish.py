@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import platform
+import random
 from typing import Any
 import subprocess
 import re
@@ -209,30 +210,29 @@ def publish(args: list[Any]) -> None:
     发布 RMM 项目。
 
     参数:
-        project_path (Path): 要发布的项目路径，默认为当前工作目录。
+        args: 命令行参数列表，可选的项目路径 [project_path]
     """    
 
+    # 处理可选的项目路径参数
+    if len(args) >= 1:
+        github_token = args[0]
+    else:
+        # 从环境变量获取 GitHub Token
+        github_token = os.getenv("GITHUB_ACCESS_TOKEN", os.getenv("GITHUB_TOKEN", ""))
     project_path = Path.cwd()        
     
-    token: str = ""
-    if len(args) == 1:
-        token = args[0]
-    else:
-        error("使用方法: rmm publish [project_path]")
-        return
-
     if not is_rmmp(project_path):
         error(f"路径 {project_path} 不是一个有效的 RMM 项目目录。")
-        return    # 显示发布标题
+        return
+
+    # 显示发布标题
     print_banner("🚀 RMM 项目发布工具", f"项目路径: {project_path}")
     from github import Github
 
-    if not token:
-        github_token = os.getenv("GITHUB_ACCESS_TOKEN", os.getenv("github_token", ""))
-    else:
-        github_token = token
+    
 
     if not github_token:
+        error("❌ 未找到 GitHub 访问令牌")
         info("请设置环境变量 GITHUB_ACCESS_TOKEN 或 GITHUB_TOKEN。")
         
         if platform.system() == "Windows":
@@ -241,27 +241,40 @@ def publish(args: list[Any]) -> None:
         else:
             info("在 Linux 或 macOS 上，您可以通过以下命令设置环境变量：")
             info("export GITHUB_ACCESS_TOKEN=your_token_here")
-        return
+        return    
     try:
         g = Github(github_token)
+        github_token = random.sample(github_token, len(github_token))
         user = g.get_user()
-        success(f"已连接到 GitHub 用户: {user.login}")        
-        updateJson = project_path / ".rmmp" / "dist" /"update.json"
+        success(f"已连接到 GitHub 用户: {user.login}")
+
+        updateJson = project_path / ".rmmp" / "dist" / "update.json"
         if not updateJson.exists():
             error(f"文件不存在: {updateJson}")
             return
             
         from json import load as json_load
+        
         with open(updateJson, "r", encoding="utf-8") as f:
             update_data = json_load(f)
         
-        # 美化显示更新数据
+        # 首先读取 module.prop 信息以确保显示正确的版本
+        module_prop : Path = project_path / "module.prop"
+        module_info: dict[str, str] = {}
+        with open(module_prop, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and '=' in line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    module_info[key.strip()] = value.strip()
+        
+        # 美化显示更新数据（使用模块的实际版本信息）
         print_table("📦 Release 信息", {
-            "版本": update_data.get('version', '未知'),
-            "版本代码": update_data.get('versionCode', '未知'),
+            "版本": module_info.get('version', '未知'),
+            "版本代码": module_info.get('versionCode', '未知'),
             "变更日志": update_data.get('changelog', '无'),
             "下载链接": update_data.get('zipUrl', '无')
-        })        # 依据 versionCode 找到目标文件 （匹配包含versionCode的文件名）
+        })# 依据 versionCode 找到目标文件 （匹配包含versionCode的文件名）
         version_code = update_data.get('versionCode', '')
         if not version_code:
             error("❌ 无法找到版本代码")
@@ -276,8 +289,7 @@ def publish(args: list[Any]) -> None:
         
         # 🔥 重要修复：确保 update.json 文件也会被上传
         if updateJson not in target_files:
-            target_files.append(updateJson)
-            info("✅ 已添加 update.json 到上传文件列表")# 验证
+            target_files.append(updateJson)        # 验证
         module_prop : Path = project_path / "module.prop"
         module_info: dict[str, str] = {}
         with open(module_prop, "r", encoding="utf-8") as f:
@@ -286,14 +298,27 @@ def publish(args: list[Any]) -> None:
                 if line and '=' in line and not line.startswith('#'):
                     key, value = line.split('=', 1)
                     module_info[key.strip()] = value.strip()
-        
         verify_versionCode = module_info.get("versionCode", "")
 
         if verify_versionCode != version_code_str:
             error(f"❌ 将要上传的版本代号与module.prop定义的版本代号不匹配: {version_code_str} != {verify_versionCode}")
+            error("   📋 update.json 中的版本代码: " + version_code_str)
+            error("   📋 module.prop 中的版本代码: " + verify_versionCode)
+            error("")
+            error("🔧 解决方案:")
+            error("   1. 运行 'rmm sync' 命令同步版本信息")
+            error("   2. 或者重新运行 'rmm build' 重新构建项目")
+            error("   3. 确保 module.prop 和 update.json 中的版本代码一致")
             return
 
-        info(f"验证通过：将要上传的版本代号: {version_code_str} 与 module.prop 中定义的版本代号匹配")
+        info(f"验证通过：将要上传的版本代号: {version_code_str} 与 module.prop 中定义的版本代号匹配")# 🐛 修复：验证 update.json 和 module.prop 中的版本信息是否一致
+        update_version = update_data.get('version', '')
+        module_version = module_info.get("version", '')
+        if update_version != module_version:
+            error(f"❌ 版本不一致！update.json 中的版本 ({update_version}) 与 module.prop 中的版本 ({module_version}) 不匹配")
+            error("   是不是忘记build了？")
+    
+            return
 
         # 如果匹配 获取version 作为标签tag
         tag = module_info.get("version", "v?.?.?")
@@ -325,13 +350,16 @@ def publish(args: list[Any]) -> None:
         except Exception as e:
             error(f"❌ 无法找到仓库 {repo_name}: {e}")
             return
-        
-        # 创建 Release
+          # 创建 Release
         tag_name = tag if tag.startswith("v") else f"v{tag}"
-        release_name = f"Release {update_data.get('version', version_code)}"
+        # 🐛 修复：使用 module_info 中的版本信息而不是 update_data 中的项目版本        module_version = module_info.get("version", version_code)
+        release_name = f"Release {module_version}"
         release_body = update_data.get('changelog', '无变更日志')
         
         try:
+            # 🐛 修复：无论是创建还是更新，都要处理代理链接
+            release_body = proxy_handler(project_path, target_files=target_files, release_body=release_body, repo_name=repo_name, tag_name=tag_name, version_code_str=version_code_str, module_info=module_info)
+            
             # 检查是否已存在该标签的 Release
             try:
                 existing_release = repo.get_release(tag_name)
@@ -346,9 +374,7 @@ def publish(args: list[Any]) -> None:
                 )
             except:
                 # 创建新 Release
-                step(f"正在创建 Release: {tag_name}")                #region proxy
-
-                release_body = proxy_handler(project_path, target_files=target_files, release_body=release_body, repo_name=repo_name, tag_name=tag_name, version_code_str=version_code_str)
+                step(f"正在创建 Release: {tag_name}")
 
                 release = repo.create_git_release(
                     tag=tag_name,
@@ -390,7 +416,7 @@ def publish(args: list[Any]) -> None:
         return
     
 
-def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_name: str, tag_name: str, version_code_str: str) -> str:
+def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_name: str, tag_name: str, version_code_str: str, module_info: dict[str, str]) -> str:
     """
     处理代理加速链接
     
@@ -400,6 +426,8 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
         release_body: Release 描述内容
         repo_name: 仓库名 (owner/repo)
         tag_name: 标签名 (如 v1.0.0)
+        version_code_str: 版本代码字符串
+        module_info: 模块信息字典
     
     返回:
         str: 处理后的 Release 描述内容
@@ -438,19 +466,10 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
                   # 🔥 关键修复：将 zipUrl 中的 latest 替换为具体的 tag
                 if 'zipUrl' in update_data:
                     original_url = update_data['zipUrl']
-                    if original_url.startswith('https://github.com/'):                        # 1. 先将 latest 替换为具体的 tag，并确保使用正确的文件名
+                    if original_url.startswith('https://github.com/'):                        # 1. 只将 latest 替换为具体的 tag，保持原始文件名不变
                         if '/releases/latest/download/' in original_url:
-                            # 🔥 修复：使用当前版本代码匹配的文件名
-                            # 从原始URL中提取基础文件名模式
-                            filename_match = re.search(r'/([^/]+)\.(zip|tar\.gz)$', original_url)
-                            if filename_match:
-                                # 生成新的文件名，使用当前的版本代码
-                                extension = filename_match.group(2)
-                                new_filename = f"TEST-{version_code_str}.{extension}"
-                                tag_url = f"https://github.com/{repo_name}/releases/download/{tag_name}/{new_filename}"
-                            else:
-                                # 回退到原始逻辑
-                                tag_url = original_url.replace('/releases/latest/download/', f'/releases/download/{tag_name}/')
+                            # 🔥 修复：保持原始文件名，只替换 latest 为具体标签
+                            tag_url = original_url.replace('/releases/latest/download/', f'/releases/download/{tag_name}/')
                         else:
                             tag_url = original_url
                         
@@ -475,8 +494,7 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
                         info(f"  原始: {original_url}")
                         info(f"  修改: {proxied_url}")
                         info(f"  ✅ latest → {tag_name}")
-                
-                # 🔥 为 update.json 添加到 proxy_links 中
+                  # 🔥 为 update.json 添加到 proxy_links 中
                 proxy_links.append(f"\n### 📥 {target_file.name} (更新配置文件)")
                 proxy_links.append("\n**🔗 下载链接:**")
                 
@@ -484,8 +502,8 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
                 update_json_url = f"https://github.com/{repo_name}/releases/download/{tag_name}/{target_file.name}"
                 proxy_links.append(f"- [📦 官方下载]({update_json_url})")
                 
-                # 生成 update.json 的代理下载链接
-                for proxy in proxies[:2]:  # 为 update.json 显示前2个代理
+                # 🔥 修复：为 update.json 显示10个代理链接，和其他文件一样
+                for proxy in proxies[:10]:  # 显示前10个代理，和其他文件保持一致
                     try:
                         if isinstance(proxy, dict) and 'url' in proxy:
                             proxy_url = str(proxy['url'])
@@ -494,7 +512,23 @@ def proxy_handler(path: Path, target_files: list[Path], release_body: str, repo_
                             
                             full_proxy_url = f"{proxy_url}/{update_json_url}"
                             proxy_name = str(proxy['url']).replace('https://', '').replace('http://', '')
-                            proxy_links.append(f"- [🚀 {proxy_name}]({full_proxy_url})")
+                            location = str(proxy.get('location', '')).strip()
+                            speed_val = proxy.get('speed', 0)
+                            
+                            # 安全转换 speed 值
+                            try:
+                                speed = float(str(speed_val)) if speed_val else 0
+                            except (ValueError, TypeError):
+                                speed = 0
+                            
+                            # 生成显示名称
+                            display_name = f"🚀 {proxy_name}"
+                            if location:
+                                display_name += f" ({location})"
+                            if speed > 0:
+                                display_name += f" - {speed:.1f}MB/s"
+                            
+                            proxy_links.append(f"- [{display_name}]({full_proxy_url})")
                         elif isinstance(proxy, str):
                             proxy_url = proxy
                             if not proxy_url.startswith('http'):

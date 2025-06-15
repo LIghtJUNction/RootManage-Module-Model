@@ -66,24 +66,7 @@ impl VersionInfo {
         // 使用智能版本升级
         self.version = smart_version_bump(&self.version, project_path);
         
-        // 生成新的版本代码
-        self.version_code = generate_version_code(project_path);
-    }
-    
-    /// 传统版本升级（保留兼容性）
-    fn bump_version(&mut self) {
-        if let Some(last_dot) = self.version.rfind('.') {
-            let prefix = &self.version[..last_dot + 1];
-            let suffix = &self.version[last_dot + 1..];
-            if let Ok(num) = suffix.parse::<u32>() {
-                self.version = format!("{}{}", prefix, num + 1);
-            }
-        }
-        
-        // 增加 version_code
-        if let Ok(code) = self.version_code.parse::<u32>() {
-            self.version_code = (code + 1).to_string();
-        }
+        // 生成新的版本代码        self.version_code = generate_version_code(project_path);
     }
     
     /// 从 module.prop 读取版本信息
@@ -131,19 +114,19 @@ impl VersionInfo {
 pub fn sync_projects(
     project_name: Option<&str>,
     projects_only: bool,
+    fix_version: bool,
     search_paths: Option<Vec<&str>>,
     max_depth: Option<usize>,
 ) -> Result<()> {
     let core = RmmCore::new();
     
     println!("{} 开始同步项目...", "[🔄]".cyan().bold());
-    
-    if let Some(name) = project_name {
+      if let Some(name) = project_name {
         // 同步特定项目
-        sync_specific_project(&core, name)?;
+        sync_specific_project(&core, name, fix_version)?;
     } else {
         // 同步所有项目
-        sync_all_projects(&core, projects_only, search_paths, max_depth)?;
+        sync_all_projects(&core, projects_only, fix_version, search_paths, max_depth)?;
     }
     
     println!("{} 项目同步完成", "[✅]".green().bold());
@@ -151,7 +134,7 @@ pub fn sync_projects(
 }
 
 /// 同步特定项目
-fn sync_specific_project(core: &RmmCore, project_name: &str) -> Result<()> {
+fn sync_specific_project(core: &RmmCore, project_name: &str, fix_version: bool) -> Result<()> {
     println!("{} 同步项目: {}", "[📋]".blue().bold(), project_name.yellow().bold());
     
     // 获取当前 meta 配置
@@ -164,9 +147,8 @@ fn sync_specific_project(core: &RmmCore, project_name: &str) -> Result<()> {
         // 检查项目是否仍然有效
         if is_valid_project(project_path) {
             println!("  ✅ 项目 {} 有效", project_name.green());
-            
-            // 执行完整的项目同步
-            sync_project_metadata(core, project_path, &mut meta)?;
+              // 执行完整的项目同步
+            sync_project_metadata(core, project_path, fix_version, &mut meta)?;
             
         } else {
             println!("  ❌ 项目 {} 无效，从 meta 中移除", project_name.red());
@@ -207,11 +189,12 @@ fn search_and_add_project(core: &RmmCore, project_name: &str, meta: &mut crate::
 }
 
 /// 同步项目元数据（版本、作者信息等）
-fn sync_project_metadata(core: &RmmCore, project_path: &Path, meta: &mut crate::core::rmm_core::MetaConfig) -> Result<()> {
+fn sync_project_metadata(core: &RmmCore, project_path: &Path, fix_version: bool, meta: &mut crate::core::rmm_core::MetaConfig) -> Result<()> {
     println!("  🔄 同步项目元数据...");
-      // 1. 版本管理
+    
+    // 1. 版本管理
     println!("    📦 检查版本信息...");
-    if let Err(e) = sync_version_info(core, project_path) {
+    if let Err(e) = sync_version_info(core, project_path, fix_version) {
         println!("    ⚠️  版本同步失败: {}", e.to_string().yellow());
     }
     
@@ -245,34 +228,85 @@ fn sync_project_metadata(core: &RmmCore, project_path: &Path, meta: &mut crate::
 }
 
 /// 同步版本信息
-fn sync_version_info(core: &RmmCore, project_path: &Path) -> Result<()> {
+fn sync_version_info(core: &RmmCore, project_path: &Path, fix_version: bool) -> Result<()> {
     if let Ok(mut version_info) = VersionInfo::from_module_prop(project_path) {
         println!("    📦 当前版本: {} ({})", version_info.version.bright_green(), version_info.version_code.bright_black());
         
-        // 执行智能版本升级
-        let old_version = version_info.version.clone();
-        let old_code = version_info.version_code.clone();
-        
-        version_info.smart_bump_version(project_path);
-        
-        // 检查是否有变化
-        if version_info.version != old_version || version_info.version_code != old_code {
-            version_info.update_module_prop(project_path)?;
-            sync_update_json(project_path, &version_info)?;
-            println!("    🆙 版本已升级: {} ({}) -> {} ({})", 
-                old_version.bright_black(), old_code.bright_black(),
-                version_info.version.bright_green(), version_info.version_code.bright_green());
-            
-            // 同步全局版本到meta.toml
-            if let Err(e) = sync_global_version(core, &version_info.version) {
-                println!("    ⚠️  更新全局版本失败: {}", e.to_string().yellow());
+        // 🔥 重要修复：首先检查 update.json 是否与 module.prop 一致
+        let update_json_path = project_path.join(".rmmp/dist/update.json");
+        let needs_sync = if update_json_path.exists() {
+            match fs::read_to_string(&update_json_path) {
+                Ok(content) => {
+                    if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(&content) {
+                        let update_version = json_value.get("version").and_then(|v| v.as_str()).unwrap_or("");
+                        let update_version_code = json_value.get("versionCode")
+                            .and_then(|v| v.as_i64())
+                            .map(|v| v.to_string())
+                            .unwrap_or_default();
+                        
+                        // 检查版本是否不一致
+                        if update_version != version_info.version || update_version_code != version_info.version_code {
+                            println!("    ⚠️  检测到版本不一致:");
+                            println!("       module.prop: {} ({})", version_info.version.bright_cyan(), version_info.version_code.bright_cyan());
+                            println!("       update.json: {} ({})", update_version.bright_yellow(), update_version_code.bright_yellow());
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        println!("    ⚠️  update.json 格式错误，需要重新同步");
+                        true
+                    }
+                }
+                Err(_) => {
+                    println!("    ⚠️  无法读取 update.json，需要重新同步");
+                    true
+                }
             }
         } else {
-            println!("    ℹ️  版本无需升级");
+            println!("    ⚠️  update.json 不存在，需要创建");
+            true
+        };        
+        if needs_sync {
+            println!("    🔄 同步版本信息到 update.json...");
+            sync_update_json(project_path, &version_info)?;
+            println!("    ✅ 版本信息已同步");
+        }
+        
+        // 🔥 重要修复：默认情况下只同步版本信息，--fix-version 参数控制是否跳过版本升级
+        if !fix_version {
+            // 执行智能版本升级
+            let old_version = version_info.version.clone();
+            let old_code = version_info.version_code.clone();
             
-            // 即使版本不升级，也确保全局版本是同步的
-            if let Err(e) = sync_global_version(core, &version_info.version) {
-                println!("    ⚠️  检查全局版本失败: {}", e.to_string().yellow());
+            version_info.smart_bump_version(project_path);
+            
+            // 检查是否有变化
+            if version_info.version != old_version || version_info.version_code != old_code {
+                version_info.update_module_prop(project_path)?;
+                sync_update_json(project_path, &version_info)?;
+                println!("    🆙 版本已升级: {} ({}) -> {} ({})", 
+                    old_version.bright_black(), old_code.bright_black(),
+                    version_info.version.bright_green(), version_info.version_code.bright_green());
+                
+                // 检查全局版本（但不修改）
+                if let Err(e) = check_global_version(core, &version_info.version) {
+                    println!("    ⚠️  检查全局版本失败: {}", e.to_string().yellow());
+                }
+            } else {
+                println!("    ℹ️  版本无需升级");
+                
+                // 即使版本不升级，也显示项目版本信息
+                if let Err(e) = check_global_version(core, &version_info.version) {
+                    println!("    ⚠️  检查版本信息失败: {}", e.to_string().yellow());
+                }
+            }
+        } else {
+            println!("    🔧 --fix-version 模式：仅修复版本不一致，跳过版本升级");
+            
+            // 显示项目版本信息
+            if let Err(e) = check_global_version(core, &version_info.version) {
+                println!("    ⚠️  检查版本信息失败: {}", e.to_string().yellow());
             }
         }
     }
@@ -310,12 +344,11 @@ fn sync_author_info(core: &RmmCore, project_path: &Path, meta: &mut crate::core:
 }
 
 /// 应用作者信息同步逻辑
-fn apply_author_sync_logic(
-    meta_author: &AuthorInfo,
+fn apply_author_sync_logic(    meta_author: &AuthorInfo,
     project_author: &AuthorInfo, 
     git_author: &Option<AuthorInfo>,
     core: &RmmCore,
-    project_path: &Path,
+    _project_path: &Path,  // 标记为未使用但保留接口兼容性
     meta: &mut crate::core::rmm_core::MetaConfig
 ) -> Result<()> {
     
@@ -381,6 +414,7 @@ fn apply_author_sync_logic(
 fn sync_all_projects(
     core: &RmmCore,
     projects_only: bool,
+    fix_version: bool,
     search_paths: Option<Vec<&str>>,
     max_depth: Option<usize>,
 ) -> Result<()> {
@@ -472,14 +506,13 @@ fn sync_all_projects(
                             meta.projects.insert(project_name.clone(), safe_path);
                             path_updates += 1;
                         }
-                        
-                        // 为现有项目执行元数据同步
+                          // 为现有项目执行元数据同步
                         if !projects_only {
                             println!("    🔄 同步项目 {} 的元数据", project_name.cyan());
-                            if let Err(e) = sync_project_metadata(core, project_path, &mut meta) {
+                            if let Err(e) = sync_project_metadata(core, project_path, fix_version, &mut meta) {
                                 println!("    ⚠️  同步失败: {}", e.to_string().yellow());
                             }
-                        }                    } else {                        // 新项目 - 检查是否与现有项目路径重复
+                        }} else {                        // 新项目 - 检查是否与现有项目路径重复
                         let normalized_path = normalize_path(project_path);
                         
                         // 防止空路径
@@ -509,11 +542,10 @@ fn sync_all_projects(
                         println!("      路径: {}", safe_path.bright_black());
                         meta.projects.insert(project_name.clone(), safe_path);
                         new_projects_count += 1;
-                        
-                        // 为新项目也执行元数据同步
+                          // 为新项目也执行元数据同步
                         if !projects_only {
                             println!("    🔄 同步新项目 {} 的元数据", project_name.cyan());
-                            if let Err(e) = sync_project_metadata(core, project_path, &mut meta) {
+                            if let Err(e) = sync_project_metadata(core, project_path, fix_version, &mut meta) {
                                 println!("    ⚠️  同步失败: {}", e.to_string().yellow());
                             }
                         }
@@ -753,111 +785,98 @@ fn smart_version_bump(current_version: &str, project_path: &Path) -> String {
 
 /// 同步版本信息到update.json
 fn sync_update_json(project_path: &Path, version_info: &VersionInfo) -> Result<()> {
-    let update_json_path = project_path.join("update.json");
+    // 🔥 修复：需要同步所有 update.json 文件
+    let update_json_paths = vec![
+        project_path.join(".rmmp/dist/update.json"),
+        project_path.join(".rmmp/build/update.json"),
+        project_path.join(".rmmp/source-build/update.json"),
+    ];
     
-    if update_json_path.exists() {
-        let content = fs::read_to_string(&update_json_path)?;
-        
-        // 解析JSON
-        if let Ok(mut json_value) = serde_json::from_str::<serde_json::Value>(&content) {
-            // 更新版本信息
-            if let Some(obj) = json_value.as_object_mut() {
-                obj.insert("version".to_string(), serde_json::Value::String(version_info.version.clone()));
-                
-                // 将版本代码转换为数字
-                if let Ok(version_code_num) = version_info.version_code.parse::<i64>() {
-                    obj.insert("versionCode".to_string(), serde_json::Value::Number(serde_json::Number::from(version_code_num)));
+    let mut updated_count = 0;
+    
+    for update_json_path in update_json_paths {
+        if update_json_path.exists() {
+            let content = fs::read_to_string(&update_json_path)?;
+            
+            // 解析JSON
+            if let Ok(mut json_value) = serde_json::from_str::<serde_json::Value>(&content) {
+                // 更新版本信息
+                if let Some(obj) = json_value.as_object_mut() {
+                    obj.insert("version".to_string(), serde_json::Value::String(version_info.version.clone()));
+                    
+                    // 将版本代码转换为数字
+                    if let Ok(version_code_num) = version_info.version_code.parse::<i64>() {
+                        obj.insert("versionCode".to_string(), serde_json::Value::Number(serde_json::Number::from(version_code_num)));
+                    }
+                    
+                    // 🔥 新增：同步更新 zipUrl 中的版本信息
+                    if let Some(zip_url) = obj.get("zipUrl").and_then(|v| v.as_str()) {
+                        // 更新 zipUrl 中的版本标签和版本代码
+                        let updated_zip_url = update_zip_url_version(zip_url, &version_info.version, &version_info.version_code);
+                        obj.insert("zipUrl".to_string(), serde_json::Value::String(updated_zip_url));
+                    }
+                    
+                    // 写回文件，保持格式美观
+                    let formatted_json = serde_json::to_string_pretty(&json_value)?;
+                    fs::write(&update_json_path, formatted_json)?;
+                    
+                    // 获取相对路径用于显示
+                    let relative_path = update_json_path.strip_prefix(project_path)
+                        .unwrap_or(&update_json_path)
+                        .display();
+                    println!("    📄 已同步版本信息到 {}", relative_path);
+                    updated_count += 1;
                 }
-                
-                // 写回文件，保持格式美观
-                let formatted_json = serde_json::to_string_pretty(&json_value)?;
-                fs::write(&update_json_path, formatted_json)?;
-                
-                println!("    📄 已同步版本信息到 update.json");
             }
         }
     }
+      if updated_count == 0 {
+        println!("    ⚠️  未找到任何 update.json 文件");
+    } else {
+        println!("    ✅ 共同步了 {} 个 update.json 文件", updated_count);
+    }
     
     Ok(())
 }
 
-/// 同步全局版本到meta.toml - 🔧 修复：只有当项目版本更高时才同步
-fn sync_global_version(core: &RmmCore, project_version: &str) -> Result<()> {
-    let mut meta = core.get_meta_config()?;
+/// 更新 zipUrl 中的版本信息
+fn update_zip_url_version(zip_url: &str, new_version: &str, new_version_code: &str) -> String {
+    use regex::Regex;
     
-    // 移除版本号中的'v'前缀用于比较
-    let clean_project_version = project_version.trim_start_matches('v').to_string();
-    let clean_meta_version = meta.version.trim_start_matches('v');
-    
-    // 🔥 重要修复：只在以下情况才更新全局版本：
-    // 1. meta.toml 版本为空或默认值
-    // 2. 项目版本明显更高（主版本号更高）
-    // 3. 用户明确要求同步
-    
-    let should_update = if meta.version.is_empty() || meta.version == "1.0.0" {
-        // 如果全局版本为空或是默认值，使用项目版本
-        true
-    } else if let (Ok(meta_major), Ok(project_major)) = (
-        extract_major_version(clean_meta_version),
-        extract_major_version(&clean_project_version)
-    ) {
-        // 只有当项目主版本号明显更高时才更新
-        project_major > meta_major
+    // 1. 更新版本标签 (如 v0.1.8-357fe85b -> v0.1.10-357fe85b)
+    let version_regex = Regex::new(r"/releases/download/v[^/]+/").unwrap();
+    let version_tag = if new_version.starts_with('v') {
+        new_version.to_string()
     } else {
-        // 版本格式不标准，不自动更新
-        false
+        format!("v{}", new_version)
     };
     
-    if should_update && meta.version != clean_project_version {
-        println!("    🔄 更新全局版本: {} -> {}", 
-                 meta.version.bright_black(), 
-                 clean_project_version.bright_green());
+    let mut updated_url = version_regex.replace(zip_url, &format!("/releases/download/{}/", version_tag)).to_string();
+    
+    // 2. 更新文件名中的版本代码 (如 rmmp-2025061507-arm64.zip -> rmmp-2025061510-arm64.zip)
+    let version_code_regex = Regex::new(r"([a-zA-Z\-]+)-(\d{10})([-a-zA-Z0-9]*\.zip)").unwrap();
+    if let Some(caps) = version_code_regex.captures(&updated_url) {
+        let prefix = caps.get(1).map_or("", |m| m.as_str());
+        let suffix = caps.get(3).map_or("", |m| m.as_str());
+        let new_filename = format!("{}-{}{}", prefix, new_version_code, suffix);
         
-        meta.version = clean_project_version;
-        core.update_meta_config(&meta)?;
-    } else if meta.version != clean_project_version {
-        println!("    ℹ️  保持全局版本: {} (项目版本: {})", 
-                 meta.version.bright_green(), 
-                 clean_project_version.bright_black());
-    } else {
-        println!("    ✅ 全局版本已是最新: {}", meta.version.bright_green());
+        // 替换文件名部分
+        let filename_regex = Regex::new(r"/([^/]+\.zip)$").unwrap();
+        updated_url = filename_regex.replace(&updated_url, &format!("/{}", new_filename)).to_string();
     }
+    
+    updated_url
+}
+
+/// 检查全局版本但不自动更新 - 全局版本应该由CLI写死，不应该被sync命令修改
+fn check_global_version(_core: &RmmCore, project_version: &str) -> Result<()> {
+    // 🔥 重要修复：sync命令不应该修改全局版本！
+    // 全局版本是CLI工具本身的版本，应该写死在代码中，不应该被项目版本影响
+    
+    // 仅显示信息，不做任何修改
+    println!("    ℹ️  项目版本: {} (全局版本由CLI工具管理，不自动同步)", 
+             project_version.bright_green());
     
     Ok(())
 }
 
-/// 提取版本号的主版本号（用于比较）
-fn extract_major_version(version: &str) -> Result<u32, std::num::ParseIntError> {
-    version.split('.').next()
-           .unwrap_or("0")
-           .split('-').next()
-           .unwrap_or("0")
-           .parse::<u32>()
-}
-
-#[cfg(test)]
-mod tests {    use super::*;
-    use tempfile::TempDir;
-
-    #[test]
-    fn test_sync_projects_basic() {
-        // 测试基本同步功能
-        let temp_dir = TempDir::new().unwrap();
-        let result = sync_all_projects(
-            &RmmCore::new(),
-            false,
-            Some(vec![temp_dir.path().to_str().unwrap()]),
-            Some(2),
-        );
-        
-        // 应该能够成功执行，即使没有找到项目
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_sync_specific_project() {
-        let result = sync_specific_project(&RmmCore::new(), "nonexistent_project");
-        // 应该能够处理不存在的项目
-        assert!(result.is_ok());
-    }
-}

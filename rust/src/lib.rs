@@ -178,10 +178,8 @@ fn cli() -> PyResult<()> {
                     return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("执行失败: {}", e)));
                 }
             }
-        },
-        
-        // 同步项目元数据命令
-        Some(Commands::Sync { project_name, projects_only, search_paths, max_depth }) => {
+        },        // 同步项目元数据命令
+        Some(Commands::Sync { project_name, projects_only, fix_version, search_paths, max_depth }) => {
             // 转换 search_paths 为 &str 类型
             let search_paths_refs = search_paths.as_ref().map(|paths| {
                 paths.iter().map(|s| s.as_str()).collect::<Vec<&str>>()
@@ -191,6 +189,7 @@ fn cli() -> PyResult<()> {
             match cmds::sync::sync_projects(
                 project_name.as_deref(),
                 projects_only,
+                fix_version,
                 search_paths_refs,
                 max_depth,
             ) {
@@ -201,7 +200,8 @@ fn cli() -> PyResult<()> {
                     eprintln!("❌ 同步失败: {}", e);
                     return Err(pyo3::exceptions::PyRuntimeError::new_err(format!("同步失败: {}", e)));
                 }
-            }        },
+            }
+        },
         
         // 显示版本信息
         Some(Commands::Version) => {
